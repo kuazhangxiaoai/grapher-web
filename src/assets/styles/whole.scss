@@ -1,0 +1,26 @@
+.ant-form-item {
+  margin-bottom: 10px;
+}
+
+.ant-input {
+  border-color:1px solid #d9d9d9;
+  border-radius: 2px;
+}
+.ant-input:hover{
+  border-color:  #d14424;
+}
+
+.inputNumber{
+  border-radius: 2px;
+}
+.inputNumber:hover {
+  border-color: #d14424;
+}
+.ant-input-number-focused{
+  border-color: #d14424;
+  box-shadow: none;
+}
+
+.ant-form-item-label{
+  text-align: start !important;
+}
