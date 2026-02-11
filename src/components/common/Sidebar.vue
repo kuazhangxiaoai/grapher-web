@@ -2,7 +2,7 @@
   <aside class="sidebar">
     <!-- 面包屑导航 -->
     <div class="breadcrumb" v-if="currentSubDomain">
-      <el-icon><Menu /></el-icon>
+      <!-- <el-icon><Menu /></el-icon> -->
       <span
         @click="handleBackToDomains"
         class="breadcrumb-item cursor-pointer"
@@ -18,6 +18,7 @@
       <span class="breadcrumb-item">{{ currentSubDomain }}</span>
     </div>
     <div class="breadcrumb" v-else-if="currentDomain">
+      <!-- <el-icon><Menu /></el-icon> -->
       <span
         @click="handleBackToDomains"
         class="breadcrumb-item cursor-pointer"
@@ -27,6 +28,8 @@
       <span class="breadcrumb-item">{{ currentDomain }}</span>
     </div>
     <div class="all-option" v-else>
+      <!-- <el-icon><Menu /></el-icon> -->
+      <img class="all-option-icon" src="../../assets/images/全部.png" alt="" />
       <span>{{ allOption }}</span>
     </div>
     <div class="search-box" v-if="!currentSubDomain || currentSubDomain">
@@ -94,7 +97,7 @@
               @click.stop="handleDeleteDomain(domain.id)"
               title="删除"
             >
-              ×
+              <img src="@/assets/images/矩形.png" alt="delete" />
             </button>
           </div>
         </div>
@@ -175,14 +178,14 @@
         </div>
 
         <!-- 新建图谱按钮 -->
-        <div class="create-graph-btn-container">
+        <div class="add-btn">
           <el-button
-            type="primary"
+            type="success"
             size="small"
-            plain
             @click="handleCreateGraphClick"
           >
-            <i class="el-icon-plus"></i> 新建图谱
+            <el-icon class="plusIcon"><Plus /></el-icon>
+            新建图谱
           </el-button>
         </div>
       </div>
@@ -249,7 +252,7 @@
     </div>
     <div class="add-btn" v-if="!currentSubDomain">
       <el-button type="success" size="small" @click="openAddDialog">
-        <i class="el-icon-plus"></i>
+        <el-icon class="plusIcon"><Plus /></el-icon>
         {{ currentDomain ? "新增专题" : "新增领域" }}
       </el-button>
     </div>
@@ -407,27 +410,31 @@ const handleDeleteGraph = (id) => {
 .sidebar {
   width: 280px;
   background-color: white;
-  padding: 20px 15px;
-  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+  padding: 24px 24px 35px 24px;
   display: flex;
   flex-direction: column;
-  .el-icon {
-    margin-right: 10px;
-    color: var(--color);
-    display: inline-flex;
-    fill: currentColor;
-    font-size: 18px;
-    // height: 1em;
-    // justify-content: center;
-    // line-height: 1em;
-    // position: relative;
-    // width: 1em;
+  box-sizing: border-box;
+  box-shadow: 1px 0px 0px 0px rgba(229, 230, 235, 1);
+  border-right: 1px solid #eee;
+  .all-option-icon {
+    width: 20px;
+    height: 20px;
+    margin-right: 12px;
+    vertical-align: top;
   }
 }
-
+.plusIcon {
+  margin-right: 10px;
+  color: #999;
+}
+.el-button:hover .plusIcon {
+  color: #fff;
+}
 .all-option {
   margin-bottom: 15px;
-  font-weight: 500;
+  font-weight: 400;
+  font-size: 14px;
+  color: #303234;
 }
 
 /* 面包屑导航 */
@@ -479,11 +486,12 @@ const handleDeleteGraph = (id) => {
 }
 ::v-deep .el-input__wrapper {
   background: #f8fcff;
-  border: 1px solid rgba(236, 241, 244, 0.5);
+  border: 1px solid rgba(236, 241, 244, 1);
   border-radius: 4px;
+  box-shadow: none;
 }
 ::v-deep .el-input .el-input__icon {
-  font-size: 18px;
+  font-size: 19px;
 }
 /* 搜索结果下拉框 */
 .search-dropdown {
@@ -522,7 +530,7 @@ const handleDeleteGraph = (id) => {
   flex: 1;
   // border: 1px solid #e4e7ed;
   border-radius: 4px;
-  padding: 10px;
+  padding: 2px 0;
   margin-bottom: 15px;
   overflow-y: auto;
 }
@@ -531,10 +539,10 @@ const handleDeleteGraph = (id) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 9px 12px;
+  padding: 9px 3px 9px 12px;
   margin-bottom: 16px;
   background: #ffffff;
-  border: 1px solid rgba(198, 202, 220, 0.6);
+  border: 2px solid rgba(224, 226, 235, 0.7);
   border-radius: 4px;
   transition: all 0.3s;
 }
@@ -544,14 +552,20 @@ const handleDeleteGraph = (id) => {
   margin-right: 0;
 }
 .domain-item:hover {
-  border: 1px solid rgba(61, 210, 176, 1);
+  border: 2px solid rgba(61, 210, 176, 0.6);
   // box-shadow: 0 0 0 2px rgba(103, 194, 58, 0.2);
   cursor: pointer;
+}
+.domain-item .domain-info span {
+  font-size: 16px;
+  color: #333333;
+  font-weight: 400;
 }
 
 .domain-item:hover .domain-info span {
   font-size: 16px;
-  color: #333333;
+  color: #000000;
+  font-weight: 500;
 }
 
 .domain-item:hover .arrow-icon {
@@ -572,12 +586,12 @@ const handleDeleteGraph = (id) => {
 .domain-icons {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
 }
 
 .arrow-icon {
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
   object-fit: contain;
 }
 
@@ -586,32 +600,36 @@ const handleDeleteGraph = (id) => {
   gap: 8px;
   opacity: 0;
   transition: all 0.3s;
+  width: 0;
+  overflow: hidden;
 }
 
 .domain-item:hover .domain-actions {
   opacity: 1;
+  width: 24px;
 }
 
 .delete-btn {
   width: 20px;
   height: 20px;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  background-color: #f5f7fa;
-  color: #909399;
-  font-size: 14px;
-  font-weight: bold;
+  border: none;
+  background: none;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.3s;
+  padding: 0;
 }
 
-.delete-btn:hover {
-  background-color: #f56c6c;
-  color: white;
-  border-color: #f56c6c;
+.delete-btn img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.delete-btn:hover img {
+  // transform: scale(1.1);
 }
 
 .add-btn {
@@ -621,12 +639,20 @@ const handleDeleteGraph = (id) => {
 .add-btn .el-button {
   width: 100%;
   transition: all 0.3s;
+  border: 1px dashed rgba(213, 215, 222, 1);
+  background: #fff;
+  border-radius: 5px;
+  font-size: 14px;
+  color: #999999;
+  height: 40px;
+  line-height: 40px;
 }
 
 .add-btn .el-button:hover {
-  background-color: #85ce61;
-  border-color: #85ce61;
-  box-shadow: 0 2px 4px rgba(103, 194, 58, 0.3);
+  background: #43d7b5;
+  box-shadow: 0px 15px 30px -10px rgba(67, 215, 181, 0.55);
+  border-color: #43d7b5;
+  color: #fff;
 }
 
 /* 数据列表 */
@@ -828,28 +854,6 @@ const handleDeleteGraph = (id) => {
 
 .edit-btn:hover {
   color: #409eff;
-}
-
-.delete-btn {
-  width: 20px;
-  height: 20px;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  background-color: white;
-  color: #909399;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s;
-}
-
-.delete-btn:hover {
-  background-color: #f56c6c;
-  color: white;
-  border-color: #f56c6c;
 }
 
 .create-graph-btn-container {

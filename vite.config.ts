@@ -1,34 +1,25 @@
-import { fileURLToPath, URL } from 'node:url'
+import { fileURLToPath, URL } from "node:url";
 
-import { defineConfig } from 'vite'
-import vue from '@vitejs/plugin-vue'
-import cesium from 'vite-plugin-cesium'
+import { defineConfig } from "vite";
+import vue from "@vitejs/plugin-vue";
+import cesium from "vite-plugin-cesium";
 export default defineConfig({
   define: {
-    __IS_PLAYER_MODE__: JSON.stringify(process.env.VITE_APP_MODE === 'player')
+    __IS_PLAYER_MODE__: JSON.stringify(process.env.VITE_APP_MODE === "player"),
   },
-  base: '/',
-  plugins: [
-    vue(),
-    cesium(),
-  ],
+  base: "/",
+  plugins: [vue(), cesium()],
   server: {
-    host: '0.0.0.0', // 本地ip地址
+    host: "0.0.0.0", // 本地ip地址
     port: 5173,
     proxy: {
-      '/serve_api': {
-        // target: 'http://10.11.52.173:8080',//王
-        target: 'http://10.11.52.10:8080',//李
+      "/serve_api": {
+        target: "http://10.11.52.173:8080", //王浩
+        // target: "http://10.11.52.10:8080", //李双
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/serve_api/, '/ppt_api/v1'),
+        rewrite: (path) => path.replace(/^\/serve_api/, "/graph_api/v1"),
       },
-      '/ai_api': {
-        // target: 'http://10.11.52.173:8080',//王
-        target: 'http://10.11.52.10:8080',//李
-        changeOrigin: true,
-        rewrite: path => path.replace(/^\/ai_api/, '/api/')
-      },
-    }
+    },
   },
   css: {
     preprocessorOptions: {
@@ -37,13 +28,13 @@ export default defineConfig({
           @use '@/assets/styles/variable.scss' as *;
           @use '@/assets/styles/mixin.scss' as *;
         `,
-        api: 'modern-compiler' // or "modern"
+        api: "modern-compiler", // or "modern"
       },
     },
   },
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
-    }
-  }
-})
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+    },
+  },
+});

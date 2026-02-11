@@ -20,23 +20,50 @@
     <div class="user">
       <el-dropdown>
         <span class="user-info">
-          <el-avatar
-            size="small"
-            :src="'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=user%20avatar%2C%20professional%20look&image_size=square'"
-          />
+          <img src="../../assets/images/蒙版分组.png" />
           <span>管理员</span>
         </span>
         <template #dropdown>
           <el-dropdown-menu>
-            <el-dropdown-item>个人中心</el-dropdown-item>
-            <el-dropdown-item>退出登录</el-dropdown-item>
+            <!-- <el-dropdown-item>个人中心</el-dropdown-item> -->
+            <el-dropdown-item @click="loginOut">退出登录</el-dropdown-item>
           </el-dropdown-menu>
         </template>
       </el-dropdown>
     </div>
   </header>
 </template>
+<script setup lang="ts">
+import { useRouter } from "vue-router";
+import auth from "@/services/auth";
+import type { logout } from "../../services/auth";
+import message from "@/utils/message";
+import { ElMessageBox } from "element-plus";
+const router = useRouter();
 
+const loginOut = async () => {
+  try {
+    await ElMessageBox.confirm("确定要退出登录吗？", "退出登录", {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning",
+    });
+    const response = await auth.logout();
+    if (response.resultCode == "0000") {
+      message.success("退出登录成功");
+      // 清空本地存储中的 token
+      localStorage.removeItem("token");
+      sessionStorage.removeItem("token");
+      // 强制刷新路由，确保token已清除
+      setTimeout(() => {
+        router.push("/login");
+      }, 100);
+    } else {
+      message.error("退出登录失败，请稍后再试");
+    }
+  } catch (error: any) {}
+};
+</script>
 <style scoped lang="scss">
 .header {
   height: 72px;
@@ -45,12 +72,14 @@
   justify-content: space-between;
   padding: 0 20px;
   background-color: white;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0px 1px 0px 0px rgba(229, 230, 235, 1);
+  border-bottom: 1px solid #e5e6eb;
 }
 
 .logo {
   display: flex;
   align-items: center;
+  padding-left: 10px;
 }
 
 .logo img {
@@ -67,23 +96,33 @@
 
 .nav {
   flex: 1;
-  margin-left: 40px;
+  margin-left: 100px;
   .el-menu-item {
     font-size: 16px;
     font-weight: 600;
     color: #666;
-    opacity: 0.66;
+    opacity: 0.45;
+    padding: 0 2px;
   }
   .el-menu--horizontal > .el-menu-item.is-active {
     border-bottom: 3px solid #2976ff;
     background: #fff;
     font-weight: 600;
     font-size: 16px;
+    opacity: 1;
   }
   .el-menu-item:hover {
     background: #fff;
     font-weight: 600;
     font-size: 16px;
+    opacity: 1;
+  }
+  .el-menu--horizontal.el-menu {
+    border-bottom: none;
+  }
+  .el-menu--horizontal {
+    gap: 44px;
+    height: 70px;
   }
 }
 
@@ -96,10 +135,18 @@
   display: flex;
   align-items: center;
   cursor: pointer;
+  margin-right: 4px;
+  img {
+    width: 36px;
+    height: 36px;
+    margin-right: 3px;
+  }
 }
 
 .user-info span {
   margin-left: 8px;
+  font-size: 14px;
+  color: #333333;
 }
 
 /* 响应式设计 */

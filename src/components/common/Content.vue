@@ -55,21 +55,27 @@
             <div class="form-item" v-if="createMethod === 'any'">
               <label>任意创建</label>
               <div class="form-content">
-                <el-input type="textarea" v-model="anyContent" placeholder="请输入任意内容" />
+                <el-input
+                  type="textarea"
+                  v-model="anyContent"
+                  placeholder="请输入任意内容"
+                />
               </div>
             </div>
             <div class="dialog-buttons">
               <el-button @click="handleCancelCreateGraph">取消</el-button>
-              <el-button type="primary" @click="handleConfirmCreateGraph">确定</el-button>
+              <el-button type="primary" @click="handleConfirmCreateGraph"
+                >确定</el-button
+              >
             </div>
           </div>
         </div>
         <!-- G6关系图 -->
         <div v-else class="relationship-graph">
           <div v-if="false">
-            {{ console.log('Content组件接收到的graphNodes:', graphNodes) }}
+            {{ console.log("Content组件接收到的graphNodes:", graphNodes) }}
           </div>
-          <GraphContainer 
+          <GraphContainer
             :nodes="graphNodes"
             :edges="graphEdges"
             @add-entity="handleAddEntity"
@@ -94,96 +100,100 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
-import { Plus } from '@element-plus/icons-vue'
-import GraphContainer from '@/components/graph/GraphContainer.vue'
+import { ref, watch } from "vue";
+import { Plus } from "@element-plus/icons-vue";
+import GraphContainer from "@/components/graph/GraphContainer.vue";
 
 const props = defineProps({
   currentSubDomain: {
     type: String,
-    default: ''
+    default: "",
   },
   hasData: {
     type: Boolean,
-    default: false
+    default: false,
   },
   graphNodes: {
     type: Array,
-    default: () => []
+    default: () => [],
   },
   entityProperties: {
     type: Array,
-    default: () => []
+    default: () => [],
   },
   showGraphDialog: {
     type: Boolean,
-    default: false
-  }
-})
+    default: false,
+  },
+});
 
 const emit = defineEmits([
-  'add-entity',
-  'create-relationship',
-  'create-graph',
-  'close-graph-dialog'
-])
+  "add-entity",
+  "create-relationship",
+  "create-graph",
+  "close-graph-dialog",
+]);
 
 // 图谱边数据
-const graphEdges = ref([])
+const graphEdges = ref([]);
 
 // 新建图谱相关状态
-const graphName = ref('')
-const createMethod = ref('')
-const uploadedFile = ref(null)
-const databaseName = ref('')
-const anyContent = ref('')
+const graphName = ref("");
+const createMethod = ref("");
+const uploadedFile = ref(null);
+const databaseName = ref("");
+const anyContent = ref("");
 
 // 处理添加实体
 const handleAddEntity = (position) => {
-  emit('add-entity', position)
-}
+  emit("add-entity", position);
+};
 
 // 处理创建关系
 const handleCreateRelationship = () => {
-  emit('create-relationship')
-}
+  emit("create-relationship");
+};
 
 // 处理节点点击
 const handleNodeClick = (node) => {
-  console.log('节点点击:', node)
-}
+  console.log("节点点击:", node);
+};
 
 // 处理边点击
 const handleEdgeClick = (edge) => {
-  console.log('边点击:', edge)
-}
+  console.log("边点击:", edge);
+};
 
 // 处理图谱点击
 const handleGraphClick = (event) => {
-  console.log('图谱点击:', event)
-}
+  console.log("图谱点击:", event);
+};
 
 // 监听graphNodes的变化
-watch(() => props.graphNodes, (newValue) => {
-  console.log('Content组件的graphNodes变化:', newValue)
-}, { deep: true })
+watch(
+  () => props.graphNodes,
+  (newValue) => {
+    console.log("Content组件的graphNodes变化:", newValue);
+  },
+  { deep: true },
+);
 
 // 处理文件上传
 const handleFileChange = (file) => {
-  uploadedFile.value = file.raw
-}
+  uploadedFile.value = file.raw;
+};
 
 // 处理取消创建图谱
 const handleCancelCreateGraph = () => {
   // 重置表单
-  graphName.value = ''
-  createMethod.value = ''
-  uploadedFile.value = null
-  databaseName.value = ''
-  anyContent.value = ''
+  graphName.value = "";
+  createMethod.value = "";
+  uploadedFile.value = null;
+  databaseName.value = "";
+  anyContent.value = "";
   // 关闭对话框
-  emit('close-graph-dialog')
-}
+  emit("close-graph-dialog");
+};
 
 // 处理确认创建图谱
 const handleConfirmCreateGraph = () => {
@@ -192,28 +202,28 @@ const handleConfirmCreateGraph = () => {
     const graphData = {
       name: graphName.value,
       createMethod: createMethod.value,
-      file: createMethod.value === 'text' ? uploadedFile.value : null,
-      databaseName: createMethod.value === 'database' ? databaseName.value : '',
-      anyContent: createMethod.value === 'any' ? anyContent.value : ''
-    }
+      file: createMethod.value === "text" ? uploadedFile.value : null,
+      databaseName: createMethod.value === "database" ? databaseName.value : "",
+      anyContent: createMethod.value === "any" ? anyContent.value : "",
+    };
     // 触发创建图谱事件
-    emit('create-graph', graphData)
+    emit("create-graph", graphData);
     // 重置表单
-    graphName.value = ''
-    createMethod.value = ''
-    uploadedFile.value = null
-    databaseName.value = ''
-    anyContent.value = ''
+    graphName.value = "";
+    createMethod.value = "";
+    uploadedFile.value = null;
+    databaseName.value = "";
+    anyContent.value = "";
     // 关闭对话框
-    emit('close-graph-dialog')
+    emit("close-graph-dialog");
   }
-}
+};
 </script>
 
 <style scoped>
 .content {
   flex: 1;
-  padding: 20px;
+  /* padding: 20px; */
   overflow: auto;
   background-color: #f5f7fa;
 }
@@ -221,10 +231,10 @@ const handleConfirmCreateGraph = () => {
 .content-area {
   width: 100%;
   height: 100%;
-  background-color: white;
+  background-color: #f5f8fb;
   border-radius: 4px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  background-image: radial-gradient(#e0e0e0 1px, transparent 1px);
+  background-image: radial-gradient(#e9e9e9 1px, transparent 1px);
   background-size: 20px 20px;
   padding: 20px;
   display: flex;
@@ -242,8 +252,6 @@ const handleConfirmCreateGraph = () => {
   width: 100%;
   height: calc(100% - 40px);
 }
-
-
 
 /* 子子级页面内容 */
 .sub-sub-domain-content {
@@ -330,8 +338,8 @@ const handleConfirmCreateGraph = () => {
   padding: 6px 12px;
 }
 
-.el-button+.el-button{
-  margin-left:0;
+.el-button + .el-button {
+  margin-left: 0;
 }
 
 /* 响应式设计 */
@@ -339,7 +347,7 @@ const handleConfirmCreateGraph = () => {
   .content {
     padding: 10px;
   }
-  
+
   .content-area {
     padding: 10px;
   }
