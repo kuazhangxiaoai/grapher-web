@@ -136,10 +136,30 @@ const loginOut = async () => {
   align-items: center;
   cursor: pointer;
   margin-right: 4px;
+  padding: 4px 8px;
+  background-color: #ffffff;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  border: none;
+  outline: none;
+  box-shadow: none;
+  z-index: 1000;
+  position: relative;
   img {
     width: 36px;
     height: 36px;
     margin-right: 3px;
+    display: block;
+    border: none;
+    outline: none;
+  }
+  &:hover {
+    background-color: #f5f7fa;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  &:focus {
+    outline: none;
+    box-shadow: none;
   }
 }
 
@@ -147,6 +167,7 @@ const loginOut = async () => {
   margin-left: 8px;
   font-size: 14px;
   color: #333333;
+  display: block;
 }
 
 /* 响应式设计 */
