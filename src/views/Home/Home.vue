@@ -71,6 +71,113 @@ const rightClickPosition = ref({ x: 0, y: 0 });
 // 专题列表加载状态
 const isLoadingTopics = ref(false);
 
+// ============ 历史搜索记录相关 ============
+// 存储在不同上下文中的历史记录
+const domainSearchHistory = ref([]); // 领域搜索历史
+const topicSearchHistory = ref([]); // 专题搜索历史
+
+// 从localStorage加载历史搜索记录
+const loadSearchHistory = () => {
+  const savedDomainHistory = localStorage.getItem("domainSearchHistory");
+  const savedTopicHistory = localStorage.getItem("topicSearchHistory");
+
+  if (savedDomainHistory) {
+    domainSearchHistory.value = JSON.parse(savedDomainHistory);
+  }
+  if (savedTopicHistory) {
+    topicSearchHistory.value = JSON.parse(savedTopicHistory);
+  }
+};
+
+// 保存历史搜索记录到localStorage
+const saveSearchHistory = () => {
+  localStorage.setItem(
+    "domainSearchHistory",
+    JSON.stringify(domainSearchHistory.value),
+  );
+  localStorage.setItem(
+    "topicSearchHistory",
+    JSON.stringify(topicSearchHistory.value),
+  );
+};
+
+// 添加领域搜索历史记录
+const addDomainSearchHistory = (query) => {
+  if (!query || query.trim() === "") return;
+
+  const trimmedQuery = query.trim();
+  // 移除已存在的相同记录
+  domainSearchHistory.value = domainSearchHistory.value.filter(
+    (item) => item !== trimmedQuery,
+  );
+  // 添加到开头
+  domainSearchHistory.value.unshift(trimmedQuery);
+  // 限制最多10条记录
+  if (domainSearchHistory.value.length > 10) {
+    domainSearchHistory.value = domainSearchHistory.value.slice(0, 10);
+  }
+  saveSearchHistory();
+};
+
+// 添加专题搜索历史记录
+const addTopicSearchHistory = (query) => {
+  if (!query || query.trim() === "") return;
+
+  const trimmedQuery = query.trim();
+  // 移除已存在的相同记录
+  topicSearchHistory.value = topicSearchHistory.value.filter(
+    (item) => item !== trimmedQuery,
+  );
+  // 添加到开头
+  topicSearchHistory.value.unshift(trimmedQuery);
+  // 限制最多10条记录
+  if (topicSearchHistory.value.length > 10) {
+    topicSearchHistory.value = topicSearchHistory.value.slice(0, 10);
+  }
+  saveSearchHistory();
+};
+
+// 清除领域搜索历史
+const clearDomainSearchHistory = () => {
+  domainSearchHistory.value = [];
+  saveSearchHistory();
+  // 更新搜索下拉框为历史记录（空状态）
+  updateDomainSearchOptions();
+};
+
+// 清除专题搜索历史
+const clearTopicSearchHistory = () => {
+  topicSearchHistory.value = [];
+  saveSearchHistory();
+  // 更新专题搜索下拉框为历史记录（空状态）
+  updateTopicSearchOptions();
+};
+
+// 更新领域搜索下拉框选项（显示历史记录）
+const updateDomainSearchOptions = () => {
+  if (domainSearchHistory.value.length > 0) {
+    searchOptions.value = domainSearchHistory.value.map((item) => ({
+      value: item,
+      isHistory: true,
+    }));
+  } else {
+    searchOptions.value = [{ value: "暂无搜索历史", disabled: true }];
+  }
+};
+
+// 更新专题搜索下拉框选项（显示历史记录）
+const updateTopicSearchOptions = () => {
+  if (topicSearchHistory.value.length > 0) {
+    topicSearchOptions.value = topicSearchHistory.value.map((item) => ({
+      value: item,
+      isHistory: true,
+    }));
+  } else {
+    topicSearchOptions.value = [{ value: "暂无搜索历史", disabled: true }];
+  }
+};
+// ============ 历史搜索记录相关结束 ============
+
 // 保存状态到localStorage
 const saveState = () => {
   const state = {
@@ -118,6 +225,13 @@ onMounted(async () => {
   graphs.value = savedState.graphs;
   graphNodes.value = savedState.graphNodes || [];
 
+  // 加载历史搜索记录
+  loadSearchHistory();
+
+  // 初始化搜索下拉框选项
+  updateDomainSearchOptions();
+  updateTopicSearchOptions();
+
   // 调用接口获取所有领域列表
   await fetchAllDomains();
 
@@ -144,11 +258,10 @@ const fetchAllDomains = async () => {
       }));
       // 初始时显示所有领域
       domains.value = [...allDomains.value];
-      // 更新搜索选项
+      // 更新原始搜索选项（用于后续高亮显示）
       originalSearchOptions.value = allDomains.value.map((domain) => ({
         value: domain.name,
       }));
-      searchOptions.value = [...originalSearchOptions.value];
     }
   } catch (error) {
     console.error("获取领域列表失败:", error);
@@ -223,48 +336,146 @@ const handleAddDomain = async (name) => {
   }
 };
 
-const handleSearch = async (query) => {
-  if (query) {
-    // 调用接口搜索领域列表
-    const searchResults = await searchDomains(query);
+// 处理搜索输入变化 - 只更新下拉框显示历史记录，不调用接口
+const handleSearch = (query) => {
+  searchQuery.value = query;
 
-    // 只更新搜索选项，不改变领域列表
-    if (searchResults.length === 0) {
-      // 搜索结果为空，下拉框显示“暂无匹配内容”
-      searchOptions.value = [{ value: "暂无匹配内容", disabled: true }];
+  if (currentDomain.value) {
+    // 在专题页面，只更新下拉框显示历史记录，不调用接口
+    if (query) {
+      // 如果有输入内容，过滤历史记录
+      const filteredHistory = topicSearchHistory.value.filter((item) =>
+        item.toLowerCase().includes(query.toLowerCase()),
+      );
+      if (filteredHistory.length > 0) {
+        topicSearchOptions.value = filteredHistory.map((item) => ({
+          value: item,
+          isHistory: true,
+        }));
+      } else {
+        topicSearchOptions.value = [{ value: "暂无匹配历史", disabled: true }];
+      }
     } else {
-      // 搜索结果不为空，下拉框显示搜索结果
-      originalSearchOptions.value = searchResults.map((domain) => ({
-        value: domain.name,
-      }));
-      searchOptions.value = [...originalSearchOptions.value];
+      // 输入框为空，显示全部历史记录
+      updateTopicSearchOptions();
     }
   } else {
-    // 搜索框为空，重新获取所有领域列表
-    await fetchAllDomains();
+    // 在领域页面，只更新下拉框显示历史记录，不调用接口
+    if (query) {
+      // 如果有输入内容，过滤历史记录
+      const filteredHistory = domainSearchHistory.value.filter((item) =>
+        item.toLowerCase().includes(query.toLowerCase()),
+      );
+      if (filteredHistory.length > 0) {
+        searchOptions.value = filteredHistory.map((item) => ({
+          value: item,
+          isHistory: true,
+        }));
+      } else {
+        searchOptions.value = [{ value: "暂无匹配历史", disabled: true }];
+      }
+    } else {
+      // 输入框为空，显示全部历史记录
+      updateDomainSearchOptions();
+    }
   }
 };
 
+// 选择搜索下拉框中的项 - 调用接口查询
 const selectSearchItem = async (value) => {
   searchQuery.value = value;
 
   if (currentDomain.value) {
-    // 在专题页面，调用专题搜索
+    // 在专题页面，添加专题搜索历史
+    addTopicSearchHistory(value);
+    // 调用专题搜索接口
     const currentDomainObj = domains.value.find(
       (domain) => domain.name === currentDomain.value,
     );
     if (currentDomainObj) {
       await fetchTopics(currentDomainObj.id, value);
     }
+    // 更新下拉框显示历史记录
+    updateTopicSearchOptions();
   } else {
-    // 在领域页面，调用领域搜索
+    // 在领域页面，添加领域搜索历史
+    addDomainSearchHistory(value);
+    // 调用领域搜索接口
     const searchResults = await searchDomains(value);
     if (searchResults.length > 0) {
       domains.value = [...searchResults];
     } else {
-      // 搜索结果为空，保持显示所有领域
-      domains.value = [...allDomains.value];
+      domains.value = [];
     }
+    // 更新下拉框显示历史记录
+    updateDomainSearchOptions();
+  }
+};
+
+// 搜索图标点击事件处理 - 调用接口查询
+const handleSearchIconClick = async (query) => {
+  if (query) {
+    // 添加领域搜索历史
+    addDomainSearchHistory(query);
+    // 调用接口搜索领域列表
+    const searchResults = await searchDomains(query);
+
+    // 更新领域列表
+    if (searchResults.length === 0) {
+      domains.value = [];
+    } else {
+      domains.value = [...searchResults];
+    }
+  } else {
+    // 搜索框为空，重新获取所有领域列表
+    await fetchAllDomains();
+  }
+  // 更新下拉框显示历史记录
+  updateDomainSearchOptions();
+};
+
+// 专题搜索图标点击事件处理 - 调用接口查询
+const handleTopicSearchIconClick = async (query) => {
+  const currentDomainObj = domains.value.find(
+    (domain) => domain.name === currentDomain.value,
+  );
+  if (currentDomainObj) {
+    if (query) {
+      // 添加专题搜索历史
+      addTopicSearchHistory(query);
+      // 调用接口获取专题列表
+      const response = await projectService.getTopicProjectList(
+        query,
+        currentDomainObj.id,
+      );
+      // 更新专题列表
+      if (response && response.data && response.data.length > 0) {
+        topics.value = response.data.map((item) => ({
+          id: item.topicId,
+          name: item.topicName,
+          fieldId: item.fieldId,
+        }));
+      } else {
+        topics.value = [];
+      }
+    } else {
+      // 搜索框为空，获取所有专题并显示
+      const response = await projectService.getTopicProjectList(
+        "",
+        currentDomainObj.id,
+      );
+      if (response && response.data) {
+        topics.value = response.data.map((item) => ({
+          id: item.topicId,
+          name: item.topicName,
+          fieldId: item.fieldId,
+        }));
+      } else {
+        topics.value = [];
+      }
+    }
+    // 更新下拉框显示历史记录
+    updateTopicSearchOptions();
   }
 };
 
@@ -273,6 +484,8 @@ const handleBackToDomains = () => {
   currentSubDomain.value = "";
   subDomains.value = [];
   subSubDomains.value = [];
+  // 切换回领域页面，更新下拉框显示领域搜索历史
+  updateDomainSearchOptions();
 };
 
 const handleBackToSubDomains = () => {
@@ -303,6 +516,9 @@ const handleDomainClick = async (domain) => {
   await fetchTopics(domain.id);
   // 取消加载状态
   isLoadingTopics.value = false;
+
+  // 切换到专题页面，更新下拉框显示专题搜索历史
+  updateTopicSearchOptions();
 
   // 根据选择的领域设置子领域
   if (domain.name === "服务") {
@@ -356,9 +572,12 @@ const fetchTopics = async (fieldId, condition = "") => {
         name: item.topicName,
         fieldId: item.fieldId,
       }));
+    } else {
+      topics.value = [];
     }
   } catch (error) {
     console.error("获取专题列表失败:", error);
+    topics.value = [];
   }
 };
 
@@ -393,126 +612,27 @@ const handleDeleteTopic = async (id) => {
   }
 };
 
-// 搜索专题
-const handleTopicSearch = async (query) => {
-  const currentDomainObj = domains.value.find(
-    (domain) => domain.name === currentDomain.value,
-  );
-  console.log(23334444444444, currentDomainObj);
-  if (currentDomainObj) {
-    // 调用接口获取专题列表
-    const response = await projectService.getTopicProjectList(
-      query,
-      currentDomainObj.id,
-    );
-    console.log(23334444444444, query);
-    // 更新专题搜索选项
-    if (query) {
-      if (response && response.data && response.data.length > 0) {
-        // 搜索结果不为空，下拉框显示搜索结果
-        topicSearchOptions.value = response.data.map((topic) => ({
-          value: topic.topicName,
-        }));
-        // 只更新下拉框，不更新专题列表
-      } else {
-        // 搜索结果为空，下拉框显示“暂无匹配内容”
-        topicSearchOptions.value = [{ value: "暂无匹配内容", disabled: true }];
-        // 只更新下拉框，不更新专题列表
-      }
-    } else {
-      // 搜索框为空，获取所有专题并显示
-      if (response && response.data) {
-        topicSearchOptions.value = response.data.map((topic) => ({
-          value: topic.topicName,
-        }));
-        // 更新专题列表
-        topics.value = response.data.map((item) => ({
-          id: item.topicId,
-          name: item.topicName,
-          fieldId: item.fieldId,
-        }));
-      } else {
-        topicSearchOptions.value = [];
-        topics.value = [];
-      }
-    }
-  }
-};
+// 搜索专题 - 只更新下拉框显示历史记录，不调用接口
+const handleTopicSearch = (query) => {
+  topicSearchQuery.value = query;
 
-// 搜索图标点击事件处理
-const handleSearchIconClick = async (query) => {
+  // 只更新下拉框显示历史记录，不调用接口
   if (query) {
-    // 调用接口搜索领域列表
-    const searchResults = await searchDomains(query);
-
-    // 更新搜索选项和领域列表
-    if (searchResults.length === 0) {
-      // 搜索结果为空，下拉框显示“暂无匹配内容”
-      searchOptions.value = [{ value: "暂无匹配内容", disabled: true }];
-      // 清空领域列表
-      domains.value = [];
-    } else {
-      // 搜索结果不为空，下拉框显示搜索结果
-      originalSearchOptions.value = searchResults.map((domain) => ({
-        value: domain.name,
+    // 如果有输入内容，过滤历史记录
+    const filteredHistory = topicSearchHistory.value.filter((item) =>
+      item.toLowerCase().includes(query.toLowerCase()),
+    );
+    if (filteredHistory.length > 0) {
+      topicSearchOptions.value = filteredHistory.map((item) => ({
+        value: item,
+        isHistory: true,
       }));
-      searchOptions.value = [...originalSearchOptions.value];
-      // 更新领域列表
-      domains.value = [...searchResults];
+    } else {
+      topicSearchOptions.value = [{ value: "暂无匹配历史", disabled: true }];
     }
   } else {
-    // 搜索框为空，重新获取所有领域列表
-    await fetchAllDomains();
-  }
-};
-
-// 专题搜索图标点击事件处理
-const handleTopicSearchIconClick = async (query) => {
-  const currentDomainObj = domains.value.find(
-    (domain) => domain.name === currentDomain.value,
-  );
-  if (currentDomainObj) {
-    // 调用接口获取专题列表
-    const response = await projectService.getTopicProjectList(
-      query,
-      currentDomainObj.id,
-    );
-    // 更新专题搜索选项和专题列表
-    if (query) {
-      if (response && response.data && response.data.length > 0) {
-        // 搜索结果不为空，下拉框显示搜索结果
-        topicSearchOptions.value = response.data.map((topic) => ({
-          value: topic.topicName,
-        }));
-        // 更新专题列表
-        topics.value = response.data.map((item) => ({
-          id: item.topicId,
-          name: item.topicName,
-          fieldId: item.fieldId,
-        }));
-      } else {
-        // 搜索结果为空，下拉框显示“暂无匹配内容”
-        topicSearchOptions.value = [{ value: "暂无匹配内容", disabled: true }];
-        // 清空专题列表
-        topics.value = [];
-      }
-    } else {
-      // 搜索框为空，获取所有专题并显示
-      if (response && response.data) {
-        topicSearchOptions.value = response.data.map((topic) => ({
-          value: topic.topicName,
-        }));
-        // 更新专题列表
-        topics.value = response.data.map((item) => ({
-          id: item.topicId,
-          name: item.topicName,
-          fieldId: item.fieldId,
-        }));
-      } else {
-        topicSearchOptions.value = [];
-        topics.value = [];
-      }
-    }
+    // 输入框为空，显示全部历史记录
+    updateTopicSearchOptions();
   }
 };
 
@@ -819,6 +939,8 @@ const handleCloseGraphDialog = () => {
         @topic-search="handleTopicSearch"
         @search-icon-click="handleSearchIconClick"
         @topic-search-icon-click="handleTopicSearchIconClick"
+        @clear-domain-history="clearDomainSearchHistory"
+        @clear-topic-history="clearTopicSearchHistory"
       />
 
       <!-- 中间内容 -->

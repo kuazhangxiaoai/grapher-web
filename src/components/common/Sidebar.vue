@@ -2,7 +2,6 @@
   <aside class="sidebar">
     <!-- 面包屑导航 -->
     <div class="breadcrumb" v-if="currentSubDomain">
-      <!-- <el-icon><Menu /></el-icon> -->
       <span
         @click="handleBackToDomains"
         class="breadcrumb-item cursor-pointer"
@@ -26,7 +25,6 @@
       <span class="breadcrumb-item">{{ currentSubDomain }}</span>
     </div>
     <div class="breadcrumb" v-else-if="currentDomain">
-      <!-- <el-icon><Menu /></el-icon> -->
       <span
         @click="handleBackToDomains"
         class="breadcrumb-item cursor-pointer"
@@ -40,10 +38,11 @@
       <span class="breadcrumb-item">{{ currentDomain }}</span>
     </div>
     <div class="all-option" v-else>
-      <!-- <el-icon><Menu /></el-icon> -->
       <img class="all-option-icon" src="../../assets/images/全部.png" alt="" />
       <span>{{ allOption }}</span>
     </div>
+
+    <!-- 搜索框区域 - 领域页面 -->
     <div class="search-box" v-if="!currentDomain">
       <div class="search-container">
         <el-input
@@ -66,11 +65,21 @@
             </el-icon>
           </template>
         </el-input>
-        <!-- 搜索结果下拉框 -->
+        <!-- 历史搜索下拉框 -->
         <div
           v-if="searchOptions.length > 0 && isSearchFocused"
           class="search-dropdown"
         >
+          <div class="dropdown-header">
+            <span class="dropdown-title">历史搜索</span>
+            <span
+              v-if="searchOptions.length > 0 && !searchOptions[0].disabled"
+              class="clear-history"
+              @click.stop="handleClearDomainHistory"
+            >
+              清空
+            </span>
+          </div>
           <div
             v-for="item in searchOptions"
             :key="item.value"
@@ -78,6 +87,7 @@
             :class="{ disabled: item.disabled }"
             @click="!item.disabled && selectSearchItem(item.value)"
           >
+            <!-- <span class="history-icon">⏱️</span> -->
             <template v-if="localSearchQuery && !item.disabled">
               <span
                 v-for="(part, index) in item.value.split(
@@ -98,6 +108,7 @@
         </div>
       </div>
     </div>
+
     <!-- 领域列表 -->
     <div class="domain-list" v-if="!currentDomain">
       <div v-if="domains.length === 0" class="empty-state">
@@ -127,7 +138,8 @@
         </div>
       </div>
     </div>
-    <!-- 子领域列表 -->
+
+    <!-- 子领域/专题页面 -->
     <div v-else-if="!currentSubDomain" class="sub-domain-container">
       <!-- 专题搜索框 -->
       <div class="search-box">
@@ -152,11 +164,24 @@
               </el-icon>
             </template>
           </el-input>
-          <!-- 搜索结果下拉框 -->
+          <!-- 历史搜索下拉框 -->
           <div
             v-if="topicSearchOptions.length > 0 && isSearchFocused"
             class="search-dropdown"
           >
+            <div class="dropdown-header">
+              <span class="dropdown-title">历史搜索</span>
+              <span
+                v-if="
+                  topicSearchOptions.length > 0 &&
+                  !topicSearchOptions[0].disabled
+                "
+                class="clear-history"
+                @click.stop="handleClearTopicHistory"
+              >
+                清空
+              </span>
+            </div>
             <div
               v-for="item in topicSearchOptions"
               :key="item.value"
@@ -164,6 +189,7 @@
               :class="{ disabled: item.disabled }"
               @click="!item.disabled && selectSearchItem(item.value)"
             >
+              <!-- <span class="history-icon">⏱️</span> -->
               <template v-if="localSearchQuery && !item.disabled">
                 <span
                   v-for="(part, index) in item.value.split(
@@ -222,6 +248,7 @@
         </div>
       </div>
     </div>
+
     <!-- 子子领域详情页面 -->
     <div v-else>
       <!-- 图谱列表 -->
@@ -360,6 +387,8 @@
         </div>
       </div>
     </div>
+
+    <!-- 新增按钮 -->
     <div class="add-btn" v-if="!currentSubDomain">
       <el-button
         type="success"
@@ -444,6 +473,7 @@ const emit = defineEmits([
   "back-to-domains",
   "back-to-sub-domains",
   "open-add-dialog",
+  "open-add-topic-dialog",
   "search",
   "search-icon-click",
   "topic-search-icon-click",
@@ -457,6 +487,8 @@ const emit = defineEmits([
   "add-topic",
   "delete-topic",
   "topic-search",
+  "clear-domain-history",
+  "clear-topic-history",
 ]);
 
 const localSearchQuery = ref("");
@@ -527,6 +559,24 @@ const handleTopicSearchClick = () => {
     inputElements.forEach((input) => {
       input.blur();
     });
+  }, 0);
+};
+
+// 清空领域搜索历史
+const handleClearDomainHistory = () => {
+  emit("clear-domain-history");
+  // 清空后保持下拉框显示
+  setTimeout(() => {
+    isSearchFocused.value = true;
+  }, 0);
+};
+
+// 清空专题搜索历史
+const handleClearTopicHistory = () => {
+  emit("clear-topic-history");
+  // 清空后保持下拉框显示
+  setTimeout(() => {
+    isSearchFocused.value = true;
   }, 0);
 };
 
@@ -602,8 +652,10 @@ const handleDeleteGraph = (id) => {
 const handleSearchClear = () => {
   // 点击删除图标时，确保下拉框消失
   isSearchFocused.value = false;
-  // 触发搜索事件，获取所有数据
-  handleSearch("");
+  // 清空搜索框内容
+  localSearchQuery.value = "";
+  // 调用搜索图标点击事件，获取所有领域列表
+  handleSearchClick();
   // 确保输入框失去焦点
   setTimeout(() => {
     const inputElements = document.querySelectorAll(".search-input input");
@@ -617,8 +669,10 @@ const handleSearchClear = () => {
 const handleTopicSearchClear = () => {
   // 点击删除图标时，确保下拉框消失
   isSearchFocused.value = false;
-  // 触发专题搜索事件，获取所有专题
-  handleTopicSearch("");
+  // 清空搜索框内容
+  localSearchQuery.value = "";
+  // 调用专题搜索图标点击事件，获取所有专题
+  handleTopicSearchClick();
   // 确保输入框失去焦点
   setTimeout(() => {
     const inputElements = document.querySelectorAll(".search-input input");
@@ -639,6 +693,7 @@ const handleTopicSearchClear = () => {
   box-sizing: border-box;
   box-shadow: 1px 0px 0px 0px rgba(229, 230, 235, 1);
   border-right: 1px solid #eee;
+
   .all-option-icon {
     width: 20px;
     height: 20px;
@@ -652,13 +707,16 @@ const handleTopicSearchClear = () => {
   display: flex;
   flex-direction: column;
 }
+
 .plusIcon {
   margin-right: 10px;
   color: #999;
 }
+
 .el-button:hover .plusIcon {
   color: #fff;
 }
+
 .all-option {
   margin-bottom: 15px;
   font-weight: 400;
@@ -675,7 +733,6 @@ const handleTopicSearchClear = () => {
 }
 
 .breadcrumb-item {
-  // margin-right: 5px;
   font-size: 14px;
   color: #555353;
   font-weight: 600;
@@ -705,6 +762,7 @@ const handleTopicSearchClear = () => {
   margin-bottom: 20px;
   padding-bottom: 15px;
   border-bottom: 1px dashed rgba(238, 238, 238, 1);
+
   ::v-deep .el-input__inner {
     font-size: 14px;
     color: #333;
@@ -717,7 +775,6 @@ const handleTopicSearchClear = () => {
 }
 
 .search-container:has(.search-dropdown) ::v-deep .el-input__wrapper {
-  // border-color: rgba(61, 210, 176, 1);
   border-top-color: rgba(61, 210, 176, 1);
   border-left-color: rgba(61, 210, 176, 1);
   border-right-color: rgba(61, 210, 176, 1);
@@ -727,15 +784,16 @@ const handleTopicSearchClear = () => {
 
 .search-input {
   width: 100%;
-
   height: 40px;
 }
+
 ::v-deep .el-input__wrapper {
   background: #f8fcff;
   border: 1px solid rgba(236, 241, 244, 1);
   border-radius: 4px;
   box-shadow: none;
 }
+
 ::v-deep .el-input .el-input__icon {
   font-size: 19px;
 }
@@ -750,27 +808,53 @@ const handleTopicSearchClear = () => {
 .search-icon:hover {
   color: rgba(61, 210, 176, 1);
 }
-/* 搜索结果下拉框 */
+
+/* 历史搜索下拉框 */
 .search-dropdown {
   position: absolute;
   top: 100%;
   left: 0;
   right: 0;
-  // margin-top: 4px;
   background: #ffffff;
   border: 0.5px solid rgba(61, 210, 176, 1);
   border-top: none;
   box-shadow: 0px 8px 10px 0px rgba(78, 89, 105, 0.18);
   border-radius: 0px 0px 4px 4px;
   z-index: 1000;
-  max-height: 200px;
+  max-height: 300px;
   overflow-y: auto;
   box-sizing: border-box;
   padding-top: 8px;
   padding-bottom: 10px;
 }
 
+.dropdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 12px 8px 12px;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 4px;
+}
+
+.dropdown-title {
+  font-size: 12px;
+  color: #999;
+}
+
+.clear-history {
+  font-size: 12px;
+  color: #409eff;
+  cursor: pointer;
+}
+
+.clear-history:hover {
+  text-decoration: underline;
+}
+
 .search-item {
+  display: flex;
+  align-items: center;
   padding: 6px 12px;
   cursor: pointer;
   transition: all 0.3s;
@@ -786,10 +870,17 @@ const handleTopicSearchClear = () => {
   color: #999;
   cursor: default;
   text-align: center;
+  justify-content: center;
 }
 
 .search-item.disabled:hover {
   background-color: transparent;
+}
+
+.history-icon {
+  margin-right: 8px;
+  font-size: 12px;
+  color: #999;
 }
 
 /* 高亮样式 */
@@ -800,7 +891,6 @@ const handleTopicSearchClear = () => {
 /* 领域列表 */
 .domain-list {
   flex: 1;
-  // border: 1px solid #e4e7ed;
   border-radius: 4px;
   padding: 2px 0;
   margin-bottom: 15px;
@@ -818,16 +908,18 @@ const handleTopicSearchClear = () => {
   border-radius: 4px;
   transition: all 0.3s;
 }
+
 .domain-info i {
   display: none;
   color: transparent;
   margin-right: 0;
 }
+
 .domain-item:hover {
   border: 2px solid rgba(61, 210, 176, 0.6);
-  // box-shadow: 0 0 0 2px rgba(103, 194, 58, 0.2);
   cursor: pointer;
 }
+
 .domain-item .domain-info span {
   font-size: 16px;
   color: #333333;
@@ -900,10 +992,6 @@ const handleTopicSearchClear = () => {
   object-fit: contain;
 }
 
-.delete-btn:hover img {
-  // transform: scale(1.1);
-}
-
 .add-btn {
   margin-top: auto;
 }
@@ -961,16 +1049,6 @@ const handleTopicSearchClear = () => {
 .entity-type-item:hover {
   background-color: rgba(61, 210, 176, 1);
   color: white;
-}
-
-/* 实体数量 */
-.entity-count {
-  margin-left: 8px;
-  font-size: 12px;
-  color: rgba(61, 210, 176, 1);
-  background-color: #f0f9eb;
-  padding: 2px 6px;
-  border-radius: 10px;
 }
 
 .relationship-types {
