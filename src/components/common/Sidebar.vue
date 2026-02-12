@@ -57,7 +57,11 @@
           @clear="handleSearchClear"
         >
           <template #suffix>
-            <el-icon @click.stop="handleSearchClick" class="search-icon">
+            <el-icon
+              @click.stop="handleSearchClick"
+              @mousedown.prevent
+              class="search-icon"
+            >
               <Search />
             </el-icon>
           </template>
@@ -139,7 +143,11 @@
             @clear="handleTopicSearchClear"
           >
             <template #suffix>
-              <el-icon @click.stop="handleTopicSearchClick" class="search-icon">
+              <el-icon
+                @click.stop="handleTopicSearchClick"
+                @mousedown.prevent
+                class="search-icon"
+              >
                 <Search />
               </el-icon>
             </template>
@@ -231,7 +239,11 @@
             @clear="handleSearchClear"
           >
             <template #suffix>
-              <el-icon @click.stop="handleSearchClick" class="search-icon">
+              <el-icon
+                @click.stop="handleSearchClick"
+                @mousedown.prevent
+                class="search-icon"
+              >
                 <Search />
               </el-icon>
             </template>
