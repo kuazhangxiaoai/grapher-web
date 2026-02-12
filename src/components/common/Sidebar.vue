@@ -54,9 +54,14 @@
           @input="handleSearch"
           @focus="handleSearchFocus"
           @blur="handleSearchBlur"
-          :suffix-icon="Search"
-          @click:suffix="handleSearchClick"
-        />
+          @clear="handleSearchClear"
+        >
+          <template #suffix>
+            <el-icon @click.stop="handleSearchClick" class="search-icon">
+              <Search />
+            </el-icon>
+          </template>
+        </el-input>
         <!-- 搜索结果下拉框 -->
         <div
           v-if="searchOptions.length > 0 && isSearchFocused"
@@ -131,9 +136,14 @@
             @input="handleTopicSearch"
             @focus="handleSearchFocus"
             @blur="handleSearchBlur"
-            :suffix-icon="Search"
-            @click:suffix="handleTopicSearchClick"
-          />
+            @clear="handleTopicSearchClear"
+          >
+            <template #suffix>
+              <el-icon @click.stop="handleTopicSearchClick" class="search-icon">
+                <Search />
+              </el-icon>
+            </template>
+          </el-input>
           <!-- 搜索结果下拉框 -->
           <div
             v-if="topicSearchOptions.length > 0 && isSearchFocused"
@@ -218,9 +228,14 @@
             @input="handleSearch"
             @focus="handleSearchFocus"
             @blur="handleSearchBlur"
-            :suffix-icon="Search"
-            @click:suffix="handleSearchClick"
-          />
+            @clear="handleSearchClear"
+          >
+            <template #suffix>
+              <el-icon @click.stop="handleSearchClick" class="search-icon">
+                <Search />
+              </el-icon>
+            </template>
+          </el-input>
         </div>
 
         <!-- 图谱项目 -->
@@ -347,7 +362,7 @@
 </template>
 
 <script setup>
-import { ref,watch } from "vue";
+import { ref, watch } from "vue";
 import { Search } from "@element-plus/icons-vue";
 
 const props = defineProps({
@@ -418,6 +433,8 @@ const emit = defineEmits([
   "back-to-sub-domains",
   "open-add-dialog",
   "search",
+  "search-icon-click",
+  "topic-search-icon-click",
   "select-search-item",
   "drag-start",
   "drag-end",
@@ -440,6 +457,14 @@ watch(
     localSearchQuery.value = "";
   },
 );
+
+// 监听搜索结果变化，确保下拉框显示更新后的数据
+watch([() => props.searchOptions, () => props.topicSearchOptions], () => {
+  // 如果搜索框是聚焦状态，保持下拉框显示
+  if (isSearchFocused.value) {
+    // 不需要做任何操作，因为下拉框的显示条件已经包含了 isSearchFocused
+  }
+});
 
 const handleDeleteDomain = (id) => {
   emit("delete-domain", id);
@@ -467,12 +492,30 @@ const handleSearch = (query) => {
 
 // 搜索图标点击事件
 const handleSearchClick = () => {
-  handleSearch(localSearchQuery.value);
+  // 点击搜索图标时，确保下拉框消失
+  isSearchFocused.value = false;
+  emit("search-icon-click", localSearchQuery.value);
+  // 确保输入框失去焦点
+  setTimeout(() => {
+    const inputElements = document.querySelectorAll(".search-input input");
+    inputElements.forEach((input) => {
+      input.blur();
+    });
+  }, 0);
 };
 
 // 专题搜索图标点击事件
 const handleTopicSearchClick = () => {
-  handleTopicSearch(localSearchQuery.value);
+  // 点击搜索图标时，确保下拉框消失
+  isSearchFocused.value = false;
+  emit("topic-search-icon-click", localSearchQuery.value);
+  // 确保输入框失去焦点
+  setTimeout(() => {
+    const inputElements = document.querySelectorAll(".search-input input");
+    inputElements.forEach((input) => {
+      input.blur();
+    });
+  }, 0);
 };
 
 const selectSearchItem = (value) => {
@@ -541,6 +584,36 @@ const handleEditGraph = (graph) => {
 // 处理删除图谱
 const handleDeleteGraph = (id) => {
   emit("delete-graph", id);
+};
+
+// 搜索框清空事件处理
+const handleSearchClear = () => {
+  // 点击删除图标时，确保下拉框消失
+  isSearchFocused.value = false;
+  // 触发搜索事件，获取所有数据
+  handleSearch("");
+  // 确保输入框失去焦点
+  setTimeout(() => {
+    const inputElements = document.querySelectorAll(".search-input input");
+    inputElements.forEach((input) => {
+      input.blur();
+    });
+  }, 0);
+};
+
+// 专题搜索框清空事件处理
+const handleTopicSearchClear = () => {
+  // 点击删除图标时，确保下拉框消失
+  isSearchFocused.value = false;
+  // 触发专题搜索事件，获取所有专题
+  handleTopicSearch("");
+  // 确保输入框失去焦点
+  setTimeout(() => {
+    const inputElements = document.querySelectorAll(".search-input input");
+    inputElements.forEach((input) => {
+      input.blur();
+    });
+  }, 0);
 };
 </script>
 
@@ -653,6 +726,17 @@ const handleDeleteGraph = (id) => {
 }
 ::v-deep .el-input .el-input__icon {
   font-size: 19px;
+}
+
+.search-icon {
+  font-size: 19px;
+  cursor: pointer;
+  color: #909399;
+  transition: color 0.3s;
+}
+
+.search-icon:hover {
+  color: rgba(61, 210, 176, 1);
 }
 /* 搜索结果下拉框 */
 .search-dropdown {
