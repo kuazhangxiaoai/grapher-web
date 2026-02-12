@@ -8,13 +8,21 @@
         class="breadcrumb-item cursor-pointer"
         >{{ allOption }}</span
       >
-      <span class="breadcrumb-separator">></span>
+      <img
+        class="breadcrumb-separator"
+        src="../../assets/images/下一个.png"
+        alt=""
+      />
       <span
         @click="handleBackToSubDomains"
         class="breadcrumb-item cursor-pointer"
         >{{ currentDomain }}</span
       >
-      <span class="breadcrumb-separator">></span>
+      <img
+        class="breadcrumb-separator"
+        src="../../assets/images/下一个.png"
+        alt=""
+      />
       <span class="breadcrumb-item">{{ currentSubDomain }}</span>
     </div>
     <div class="breadcrumb" v-else-if="currentDomain">
@@ -24,7 +32,11 @@
         class="breadcrumb-item cursor-pointer"
         >{{ allOption }}</span
       >
-      <span class="breadcrumb-separator">></span>
+      <img
+        class="breadcrumb-separator"
+        src="../../assets/images/下一个.png"
+        alt=""
+      />
       <span class="breadcrumb-item">{{ currentDomain }}</span>
     </div>
     <div class="all-option" v-else>
@@ -32,7 +44,7 @@
       <img class="all-option-icon" src="../../assets/images/全部.png" alt="" />
       <span>{{ allOption }}</span>
     </div>
-    <div class="search-box" v-if="!currentSubDomain || currentSubDomain">
+    <div class="search-box" v-if="!currentDomain">
       <div class="search-container">
         <el-input
           v-model="localSearchQuery"
@@ -43,21 +55,21 @@
           @focus="handleSearchFocus"
           @blur="handleSearchBlur"
           :suffix-icon="Search"
+          @click:suffix="handleSearchClick"
         />
         <!-- 搜索结果下拉框 -->
         <div
-          v-if="
-            searchOptions.length > 0 && (localSearchQuery || isSearchFocused)
-          "
+          v-if="searchOptions.length > 0 && isSearchFocused"
           class="search-dropdown"
         >
           <div
             v-for="item in searchOptions"
             :key="item.value"
             class="search-item"
-            @click="selectSearchItem(item.value)"
+            :class="{ disabled: item.disabled }"
+            @click="!item.disabled && selectSearchItem(item.value)"
           >
-            <template v-if="localSearchQuery">
+            <template v-if="localSearchQuery && !item.disabled">
               <span
                 v-for="(part, index) in item.value.split(
                   new RegExp(`(${localSearchQuery})`, 'gi'),
@@ -79,14 +91,17 @@
     </div>
     <!-- 领域列表 -->
     <div class="domain-list" v-if="!currentDomain">
+      <div v-if="domains.length === 0" class="empty-state">
+        <span>暂无数据</span>
+      </div>
       <div
+        v-else
         v-for="domain in domains"
         :key="domain.id"
         class="domain-item"
         @click="handleDomainClick(domain)"
       >
         <div class="domain-info">
-          <i :class="domain.icon"></i>
           <span>{{ domain.name }}</span>
         </div>
         <div class="domain-icons">
@@ -104,21 +119,88 @@
       </div>
     </div>
     <!-- 子领域列表 -->
-    <div class="domain-list" v-else-if="!currentSubDomain">
-      <div
-        v-for="(subDomain, index) in subDomains"
-        :key="index"
-        class="domain-item"
-        @click="handleSubDomainClick(subDomain)"
-      >
-        <div class="domain-info">
-          <span>{{ subDomain.name }}</span>
-          <span v-if="subDomain.count > 0" class="entity-count">{{
-            subDomain.count
-          }}</span>
+    <div v-else-if="!currentSubDomain" class="sub-domain-container">
+      <!-- 专题搜索框 -->
+      <div class="search-box">
+        <div class="search-container">
+          <el-input
+            v-model="localSearchQuery"
+            placeholder="搜索专题"
+            class="search-input"
+            clearable
+            @input="handleTopicSearch"
+            @focus="handleSearchFocus"
+            @blur="handleSearchBlur"
+            :suffix-icon="Search"
+            @click:suffix="handleTopicSearchClick"
+          />
+          <!-- 搜索结果下拉框 -->
+          <div
+            v-if="topicSearchOptions.length > 0 && isSearchFocused"
+            class="search-dropdown"
+          >
+            <div
+              v-for="item in topicSearchOptions"
+              :key="item.value"
+              class="search-item"
+              :class="{ disabled: item.disabled }"
+              @click="!item.disabled && selectSearchItem(item.value)"
+            >
+              <template v-if="localSearchQuery && !item.disabled">
+                <span
+                  v-for="(part, index) in item.value.split(
+                    new RegExp(`(${localSearchQuery})`, 'gi'),
+                  )"
+                  :key="index"
+                  :class="{
+                    highlight:
+                      part.toLowerCase() === localSearchQuery.toLowerCase(),
+                  }"
+                  >{{ part }}</span
+                >
+              </template>
+              <template v-else>
+                {{ item.value }}
+              </template>
+            </div>
+          </div>
         </div>
-        <div class="domain-icons">
-          <img class="arrow-icon" src="@/assets/images/复制.png" alt="arrow" />
+      </div>
+
+      <!-- 专题列表 -->
+      <div class="domain-list">
+        <div v-if="isLoadingTopics" class="loading-container">
+          <div class="loading-icon"></div>
+          <span>加载中...</span>
+        </div>
+        <div v-else-if="topics.length === 0" class="empty-state">
+          <span>暂无数据</span>
+        </div>
+        <div
+          v-else
+          v-for="(topic, index) in topics"
+          :key="topic.id"
+          class="domain-item"
+        >
+          <div class="domain-info">
+            <span>{{ topic.name }}</span>
+          </div>
+          <div class="domain-icons">
+            <img
+              class="arrow-icon"
+              src="@/assets/images/复制.png"
+              alt="arrow"
+            />
+            <div class="domain-actions">
+              <button
+                class="delete-btn"
+                @click.stop="handleDeleteTopic(topic.id)"
+                title="删除"
+              >
+                <img src="@/assets/images/矩形.png" alt="delete" />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -137,6 +219,7 @@
             @focus="handleSearchFocus"
             @blur="handleSearchBlur"
             :suffix-icon="Search"
+            @click:suffix="handleSearchClick"
           />
         </div>
 
@@ -251,7 +334,11 @@
       </div>
     </div>
     <div class="add-btn" v-if="!currentSubDomain">
-      <el-button type="success" size="small" @click="openAddDialog">
+      <el-button
+        type="success"
+        size="small"
+        @click="currentDomain ? openAddTopicDialog() : openAddDialog()"
+      >
         <el-icon class="plusIcon"><Plus /></el-icon>
         {{ currentDomain ? "新增专题" : "新增领域" }}
       </el-button>
@@ -260,7 +347,7 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref,watch } from "vue";
 import { Search } from "@element-plus/icons-vue";
 
 const props = defineProps({
@@ -288,6 +375,10 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  topics: {
+    type: Array,
+    default: () => [],
+  },
   graphs: {
     type: Array,
     default: () => [],
@@ -295,6 +386,14 @@ const props = defineProps({
   searchOptions: {
     type: Array,
     default: () => [],
+  },
+  topicSearchOptions: {
+    type: Array,
+    default: () => [],
+  },
+  isLoadingTopics: {
+    type: Boolean,
+    default: false,
   },
   hasData: {
     type: Boolean,
@@ -326,10 +425,21 @@ const emit = defineEmits([
   "graph-click",
   "edit-graph",
   "delete-graph",
+  "add-topic",
+  "delete-topic",
+  "topic-search",
 ]);
 
 const localSearchQuery = ref("");
 const isSearchFocused = ref(false);
+
+// 监听页面切换，清空搜索框内容
+watch(
+  () => [props.currentDomain, props.currentSubDomain],
+  () => {
+    localSearchQuery.value = "";
+  },
+);
 
 const handleDeleteDomain = (id) => {
   emit("delete-domain", id);
@@ -339,19 +449,47 @@ const openAddDialog = () => {
   emit("open-add-dialog");
 };
 
+const openAddTopicDialog = () => {
+  emit("open-add-topic-dialog");
+};
+
+const handleDeleteTopic = (id) => {
+  emit("delete-topic", id);
+};
+
+const handleTopicSearch = (query) => {
+  emit("topic-search", query);
+};
+
 const handleSearch = (query) => {
   emit("search", query);
 };
 
+// 搜索图标点击事件
+const handleSearchClick = () => {
+  handleSearch(localSearchQuery.value);
+};
+
+// 专题搜索图标点击事件
+const handleTopicSearchClick = () => {
+  handleTopicSearch(localSearchQuery.value);
+};
+
 const selectSearchItem = (value) => {
   localSearchQuery.value = value;
+  // 确保下拉框消失
   isSearchFocused.value = false;
   emit("select-search-item", value);
 };
 
 const handleSearchFocus = () => {
   isSearchFocused.value = true;
-  handleSearch(localSearchQuery.value);
+  // 根据当前是否在专题页面决定调用哪个搜索函数
+  if (props.currentDomain) {
+    handleTopicSearch(localSearchQuery.value);
+  } else {
+    handleSearch(localSearchQuery.value);
+  }
 };
 
 const handleSearchBlur = () => {
@@ -423,6 +561,12 @@ const handleDeleteGraph = (id) => {
     vertical-align: top;
   }
 }
+
+.sub-domain-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
 .plusIcon {
   margin-right: 10px;
   color: #999;
@@ -446,21 +590,25 @@ const handleDeleteGraph = (id) => {
 }
 
 .breadcrumb-item {
-  margin-right: 5px;
+  // margin-right: 5px;
   font-size: 14px;
-  color: #333;
-  font-weight: 500;
+  color: #555353;
+  font-weight: 600;
 }
 
 .breadcrumb-separator {
   margin: 0 5px;
-  color: #909399;
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  vertical-align: middle;
 }
 
 .cursor-pointer {
   cursor: pointer;
   color: #999999;
   font-size: 14px;
+  font-weight: 400;
 }
 
 .cursor-pointer:hover {
@@ -472,11 +620,24 @@ const handleDeleteGraph = (id) => {
   margin-bottom: 20px;
   padding-bottom: 15px;
   border-bottom: 1px dashed rgba(238, 238, 238, 1);
+  ::v-deep .el-input__inner {
+    font-size: 14px;
+    color: #333;
+  }
 }
 
 .search-container {
   position: relative;
   width: 100%;
+}
+
+.search-container:has(.search-dropdown) ::v-deep .el-input__wrapper {
+  // border-color: rgba(61, 210, 176, 1);
+  border-top-color: rgba(61, 210, 176, 1);
+  border-left-color: rgba(61, 210, 176, 1);
+  border-right-color: rgba(61, 210, 176, 1);
+  background: #fff;
+  border-radius: 4px 4px 0px 0px;
 }
 
 .search-input {
@@ -499,30 +660,45 @@ const handleDeleteGraph = (id) => {
   top: 100%;
   left: 0;
   right: 0;
-  margin-top: 4px;
-  background-color: white;
-  border: 1px solid #e4e7ed;
-  border-radius: 4px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  // margin-top: 4px;
+  background: #ffffff;
+  border: 0.5px solid rgba(61, 210, 176, 1);
+  border-top: none;
+  box-shadow: 0px 8px 10px 0px rgba(78, 89, 105, 0.18);
+  border-radius: 0px 0px 4px 4px;
   z-index: 1000;
   max-height: 200px;
   overflow-y: auto;
+  box-sizing: border-box;
+  padding-top: 8px;
+  padding-bottom: 10px;
 }
 
 .search-item {
-  padding: 8px 12px;
+  padding: 6px 12px;
   cursor: pointer;
   transition: all 0.3s;
+  font-size: 14px;
+  color: #333;
 }
 
 .search-item:hover {
-  background-color: #f0f9eb;
+  background-color: rgba(61, 210, 176, 0.1);
+}
+
+.search-item.disabled {
+  color: #999;
+  cursor: default;
+  text-align: center;
+}
+
+.search-item.disabled:hover {
+  background-color: transparent;
 }
 
 /* 高亮样式 */
 .highlight {
-  color: rgba(61, 210, 176, 1) !important;
-  font-weight: bold;
+  color: #3dd2b0 !important;
 }
 
 /* 领域列表 */
@@ -564,8 +740,8 @@ const handleDeleteGraph = (id) => {
 
 .domain-item:hover .domain-info span {
   font-size: 16px;
-  color: #000000;
-  font-weight: 500;
+  color: #555353;
+  font-weight: 600;
 }
 
 .domain-item:hover .arrow-icon {
@@ -888,6 +1064,43 @@ const handleDeleteGraph = (id) => {
 .list-placeholder i {
   font-size: 24px;
   margin-bottom: 8px;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 0;
+  color: #999;
+}
+
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 0;
+  color: #999;
+  font-size: 14px;
+}
+
+.loading-icon {
+  width: 30px;
+  height: 30px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #43d7b5;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 10px;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* 响应式设计 */

@@ -13,7 +13,7 @@
         active-text-color="#43D7B5"
       >
         <el-menu-item index="1">本体设计</el-menu-item>
-        <el-menu-item index="2">图结构建</el-menu-item>
+        <el-menu-item index="2">图谱构建</el-menu-item>
         <el-menu-item index="3">探索应用</el-menu-item>
       </el-menu>
     </nav>
@@ -51,8 +51,9 @@ const loginOut = async () => {
     const response = await auth.logout();
     if (response.resultCode == "0000") {
       message.success("退出登录成功");
-      // 清空本地存储中的 token
+      // 清空本地存储中的 token 和状态
       localStorage.removeItem("token");
+      localStorage.removeItem("homePageState");
       sessionStorage.removeItem("token");
       // 强制刷新路由，确保token已清除
       setTimeout(() => {
@@ -99,9 +100,9 @@ const loginOut = async () => {
   margin-left: 100px;
   .el-menu-item {
     font-size: 16px;
-    font-weight: 600;
-    color: #666;
-    opacity: 0.45;
+    font-weight: 400;
+    color: #666666;
+    opacity: 0.65;
     padding: 0 2px;
   }
   .el-menu--horizontal > .el-menu-item.is-active {

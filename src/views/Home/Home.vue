@@ -1,11 +1,13 @@
 <script setup>
 import { ref, onMounted, watch } from "vue";
 import { Search } from "@element-plus/icons-vue";
+import { ElMessageBox } from "element-plus";
 import Header from "@/components/common/Header.vue";
 import Sidebar from "@/components/common/Sidebar.vue";
 import Content from "@/components/common/Content.vue";
 import PropertyPanel from "@/components/common/PropertyPanel.vue";
 import AddDomainDialog from "@/components/common/AddDomainDialog.vue";
+import projectService from "@/services/project";
 
 // 从localStorage读取状态，或使用默认值
 const loadState = () => {
@@ -16,12 +18,7 @@ const loadState = () => {
   return {
     currentDomain: "",
     currentSubDomain: "",
-    domains: [
-      { id: 1, name: "服务", icon: "el-icon-s-operation" },
-      { id: 2, name: "名城", icon: "el-icon-office-building" },
-      { id: 3, name: "规划知识", icon: "el-icon-notebook-2" },
-      { id: 4, name: "空间通讯", icon: "el-icon-message" },
-    ],
+    domains: [],
     subDomains: [],
     subSubDomains: [],
     hasData: false,
@@ -38,16 +35,14 @@ const subDomains = ref([]);
 const subSubDomains = ref([]);
 const newDomainName = ref("");
 const showAddDialog = ref(false);
+const showAddTopicDialog = ref(false);
+const newTopicName = ref("");
 const searchQuery = ref("");
-const searchOptions = ref([
-  { value: "服务" },
-  { value: "政务服务" },
-  { value: "服务案例" },
-  { value: "服务中心" },
-  { value: "名城" },
-  { value: "规划知识" },
-  { value: "空间通讯" },
-]);
+// 原始搜索选项（从领域列表动态生成）
+const originalSearchOptions = ref([]);
+const searchOptions = ref([]);
+// 专题搜索选项
+const topicSearchOptions = ref([]);
 const showPropertyPanel = ref(false);
 const entityName = ref("人物");
 const entityDescription = ref("");
@@ -73,6 +68,8 @@ const graphs = ref([]);
 const showGraphDialog = ref(false);
 // 保存右键点击的位置
 const rightClickPosition = ref({ x: 0, y: 0 });
+// 专题列表加载状态
+const isLoadingTopics = ref(false);
 
 // 保存状态到localStorage
 const saveState = () => {
@@ -107,70 +104,206 @@ watch(
   { deep: true },
 );
 
+// 存储所有领域列表
+const allDomains = ref([]);
+
 // 组件挂载时加载状态
-onMounted(() => {
+onMounted(async () => {
   const savedState = loadState();
   currentDomain.value = savedState.currentDomain;
   currentSubDomain.value = savedState.currentSubDomain;
-  domains.value = savedState.domains;
   subDomains.value = savedState.subDomains;
   subSubDomains.value = savedState.subSubDomains;
   hasData.value = savedState.hasData;
   graphs.value = savedState.graphs;
   graphNodes.value = savedState.graphNodes || [];
+
+  // 调用接口获取所有领域列表
+  await fetchAllDomains();
+
+  // 如果当前有选中的领域，获取对应的专题列表
+  if (currentDomain.value) {
+    const currentDomainObj = domains.value.find(
+      (domain) => domain.name === currentDomain.value,
+    );
+    if (currentDomainObj) {
+      await fetchTopics(currentDomainObj.id);
+    }
+  }
 });
 
-const handleDeleteDomain = (id) => {
-  domains.value = domains.value.filter((domain) => domain.id !== id);
+// 获取所有领域列表
+const fetchAllDomains = async () => {
+  try {
+    const response = await projectService.getProjectList("");
+    if (response && response.data) {
+      allDomains.value = response.data.map((item) => ({
+        id: item.fieldId,
+        name: item.fieldName,
+        icon: "el-icon-menu",
+      }));
+      // 初始时显示所有领域
+      domains.value = [...allDomains.value];
+      // 更新搜索选项
+      originalSearchOptions.value = allDomains.value.map((domain) => ({
+        value: domain.name,
+      }));
+      searchOptions.value = [...originalSearchOptions.value];
+    }
+  } catch (error) {
+    console.error("获取领域列表失败:", error);
+  }
+};
+
+// 搜索领域列表
+const searchDomains = async (condition = "") => {
+  try {
+    const response = await projectService.getProjectList(condition);
+    if (response && response.data) {
+      return response.data.map((item) => ({
+        id: item.fieldId,
+        name: item.fieldName,
+        icon: "el-icon-menu",
+      }));
+    }
+    return [];
+  } catch (error) {
+    console.error("搜索领域列表失败:", error);
+    return [];
+  }
+};
+
+const handleDeleteDomain = async (id) => {
+  console.log("开始删除领域，ID:", id);
+  try {
+    // 询问是否删除
+    console.log("显示确认对话框");
+    await ElMessageBox.confirm("确定要删除该领域吗？", "删除确认", {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning",
+      customClass: "custom-delete-dialog",
+      confirmButtonClass: "confirm-btn",
+      cancelButtonClass: "cancel-btn",
+    });
+
+    console.log("用户确认删除，执行删除操作");
+    // 用户确认删除
+    await projectService.deleteProject(id);
+    console.log("删除操作成功，重新获取领域列表");
+    // 删除成功后，重新获取所有领域列表
+    await fetchAllDomains();
+    console.log("重新获取领域列表成功");
+  } catch (error) {
+    // 如果用户取消删除，error 会被捕获，这里不做处理
+    console.log("删除操作被中断，错误:", error);
+    if (error !== "cancel") {
+      console.error("删除领域失败:", error);
+    }
+  }
 };
 
 const openAddDialog = () => {
   showAddDialog.value = true;
 };
 
-const handleAddDomain = (name) => {
+const handleAddDomain = async (name) => {
   if (name) {
-    const newId =
-      domains.value.length > 0
-        ? Math.max(...domains.value.map((d) => d.id)) + 1
-        : 1;
-    domains.value.push({
-      id: newId,
-      name: name,
-      icon: "el-icon-menu",
-    });
-    newDomainName.value = "";
-    showAddDialog.value = false;
+    try {
+      const response = await projectService.addProject({ fieldName: name });
+      if (response && response.data) {
+        // 新增成功后，重新获取所有领域列表
+        await fetchAllDomains();
+        newDomainName.value = "";
+        showAddDialog.value = false;
+      }
+    } catch (error) {
+      console.error("新增领域失败:", error);
+    }
   }
 };
 
-const handleSearch = (query) => {
+const handleSearch = async (query) => {
   if (query) {
-    searchOptions.value = [
-      { value: query },
-      { value: `政务${query}` },
-      { value: `${query}案例` },
-      { value: `${query}中心` },
-    ];
+    // 调用接口搜索领域列表
+    const searchResults = await searchDomains(query);
+
+    // 只更新搜索选项，不改变领域列表
+    if (searchResults.length === 0) {
+      // 搜索结果为空，下拉框显示“暂无匹配内容”
+      searchOptions.value = [{ value: "暂无匹配内容", disabled: true }];
+    } else {
+      // 搜索结果不为空，下拉框显示搜索结果
+      originalSearchOptions.value = searchResults.map((domain) => ({
+        value: domain.name,
+      }));
+      searchOptions.value = [...originalSearchOptions.value];
+    }
   } else {
-    searchOptions.value = [
-      { value: "服务" },
-      { value: "政务服务" },
-      { value: "服务案例" },
-      { value: "服务中心" },
-      { value: "名城" },
-      { value: "规划知识" },
-      { value: "空间通讯" },
-    ];
+    // 搜索框为空，重新获取所有领域列表
+    await fetchAllDomains();
   }
 };
 
-const selectSearchItem = (value) => {
+const selectSearchItem = async (value) => {
   searchQuery.value = value;
+
+  if (currentDomain.value) {
+    // 在专题页面，调用专题搜索
+    const currentDomainObj = domains.value.find(
+      (domain) => domain.name === currentDomain.value,
+    );
+    if (currentDomainObj) {
+      await fetchTopics(currentDomainObj.id, value);
+    }
+  } else {
+    // 在领域页面，调用领域搜索
+    const searchResults = await searchDomains(value);
+    if (searchResults.length > 0) {
+      domains.value = [...searchResults];
+    } else {
+      // 搜索结果为空，保持显示所有领域
+      domains.value = [...allDomains.value];
+    }
+  }
 };
 
-const handleDomainClick = (domain) => {
+const handleBackToDomains = () => {
+  currentDomain.value = "";
+  currentSubDomain.value = "";
+  subDomains.value = [];
+  subSubDomains.value = [];
+};
+
+const handleBackToSubDomains = () => {
+  // 保存当前子领域名称，用于显示数量
+  const previousSubDomain = currentSubDomain.value;
+  currentSubDomain.value = "";
+  subSubDomains.value = [];
+  // 可以在这里更新子领域的数量
+  // 例如：subDomains中找到对应的子领域并更新其数量
+};
+
+// 存储专题列表
+const topics = ref([]);
+// 专题搜索条件
+const topicSearchQuery = ref("");
+
+// 处理领域点击，获取该领域下的专题列表
+const handleDomainClick = async (domain) => {
   currentDomain.value = domain.name;
+  currentSubDomain.value = "";
+
+  // 立即清空topics列表，避免显示上一个领域的专题数据
+  topics.value = [];
+  // 设置加载状态
+  isLoadingTopics.value = true;
+
+  // 调用接口获取专题列表
+  await fetchTopics(domain.id);
+  // 取消加载状态
+  isLoadingTopics.value = false;
+
   // 根据选择的领域设置子领域
   if (domain.name === "服务") {
     subDomains.value = [
@@ -205,20 +338,102 @@ const handleDomainClick = (domain) => {
   }
 };
 
-const handleBackToDomains = () => {
-  currentDomain.value = "";
-  currentSubDomain.value = "";
-  subDomains.value = [];
-  subSubDomains.value = [];
+// 获取专题列表
+const fetchTopics = async (fieldId, condition = "") => {
+  try {
+    const currentDomainObj = domains.value.find(
+      (domain) => domain.name === currentDomain.value,
+    );
+    if (!currentDomainObj) return;
+
+    const response = await projectService.getTopicProjectList(
+      condition,
+      currentDomainObj.id,
+    );
+    if (response && response.data) {
+      topics.value = response.data.map((item) => ({
+        id: item.topicId,
+        name: item.topicName,
+        fieldId: item.fieldId,
+      }));
+    }
+  } catch (error) {
+    console.error("获取专题列表失败:", error);
+  }
 };
 
-const handleBackToSubDomains = () => {
-  // 保存当前子领域名称，用于显示数量
-  const previousSubDomain = currentSubDomain.value;
-  currentSubDomain.value = "";
-  subSubDomains.value = [];
-  // 可以在这里更新子领域的数量
-  // 例如：subDomains中找到对应的子领域并更新其数量
+// 删除专题
+const handleDeleteTopic = async (id) => {
+  try {
+    // 询问是否删除
+    await ElMessageBox.confirm("确定要删除该专题吗？", "删除确认", {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning",
+      customClass: "custom-delete-dialog",
+      confirmButtonClass: "confirm-btn",
+      cancelButtonClass: "cancel-btn",
+    });
+
+    // 用户确认删除
+    await projectService.deleteTopic(id);
+
+    // 删除成功后，重新获取专题列表
+    const currentDomainObj = domains.value.find(
+      (domain) => domain.name === currentDomain.value,
+    );
+    if (currentDomainObj) {
+      await fetchTopics(currentDomainObj.id);
+    }
+  } catch (error) {
+    // 如果用户取消删除，error 会被捕获，这里不做处理
+    if (error !== "cancel") {
+      console.error("删除专题失败:", error);
+    }
+  }
+};
+
+// 搜索专题
+const handleTopicSearch = async (query) => {
+  const currentDomainObj = domains.value.find(
+    (domain) => domain.name === currentDomain.value,
+  );
+  if (currentDomainObj) {
+    // 调用接口获取专题列表
+    const response = await projectService.getTopicProjectList(
+      query,
+      currentDomainObj.id,
+    );
+
+    // 更新专题搜索选项
+    if (query) {
+      if (response && response.data && response.data.length > 0) {
+        // 搜索结果不为空，下拉框显示搜索结果
+        topicSearchOptions.value = response.data.map((topic) => ({
+          value: topic.topicName,
+        }));
+      } else {
+        // 搜索结果为空，下拉框显示“暂无匹配内容”
+        topicSearchOptions.value = [{ value: "暂无匹配内容", disabled: true }];
+      }
+    } else {
+      // 搜索框为空，获取所有专题并显示
+      if (response && response.data) {
+        topicSearchOptions.value = response.data.map((topic) => ({
+          value: topic.topicName,
+        }));
+        // 更新专题列表
+        topics.value = response.data.map((item) => ({
+          id: item.topicId,
+          name: item.topicName,
+          fieldId: item.fieldId,
+        }));
+      } else {
+        topicSearchOptions.value = [];
+        topics.value = [];
+      }
+    }
+  }
 };
 
 const handleSubDomainClick = (subDomain) => {
@@ -399,6 +614,42 @@ const handleCancelAddDomain = () => {
   showAddDialog.value = false;
 };
 
+// 打开新增专题对话框
+const openAddTopicDialog = () => {
+  showAddTopicDialog.value = true;
+};
+
+// 取消新增专题
+const handleCancelAddTopic = () => {
+  showAddTopicDialog.value = false;
+  newTopicName.value = "";
+};
+
+// 处理新增专题
+const handleAddTopic = async (name) => {
+  if (name) {
+    try {
+      const currentDomainObj = domains.value.find(
+        (domain) => domain.name === currentDomain.value,
+      );
+      if (!currentDomainObj) return;
+
+      const response = await projectService.addTopicProject({
+        topicName: name,
+        fieldId: currentDomainObj.id,
+      });
+      if (response && response.data) {
+        // 新增成功后，重新获取专题列表
+        await fetchTopics(currentDomainObj.id);
+        newTopicName.value = "";
+        showAddTopicDialog.value = false;
+      }
+    } catch (error) {
+      console.error("新增专题失败:", error);
+    }
+  }
+};
+
 // 处理创建图谱
 const handleCreateGraph = (graphData) => {
   // 这里可以处理图谱创建的逻辑，例如保存图谱数据到后端
@@ -461,13 +712,17 @@ const handleCloseGraphDialog = () => {
         :domains="domains"
         :sub-domains="subDomains"
         :sub-sub-domains="subSubDomains"
+        :topics="topics"
         :graphs="graphs"
         :search-options="searchOptions"
+        :topic-search-options="topicSearchOptions"
+        :is-loading-topics="isLoadingTopics"
         :has-data="hasData"
         :entity-types="entityTypes"
         :relationship-types="relationshipTypes"
         @delete-domain="handleDeleteDomain"
         @open-add-dialog="openAddDialog"
+        @open-add-topic-dialog="openAddTopicDialog"
         @domain-click="handleDomainClick"
         @sub-domain-click="handleSubDomainClick"
         @back-to-domains="handleBackToDomains"
@@ -480,6 +735,8 @@ const handleCloseGraphDialog = () => {
         @graph-click="handleGraphClick"
         @edit-graph="handleEditGraph"
         @delete-graph="handleDeleteGraph"
+        @delete-topic="handleDeleteTopic"
+        @topic-search="handleTopicSearch"
       />
 
       <!-- 中间内容 -->
@@ -521,6 +778,17 @@ const handleCloseGraphDialog = () => {
       :new-domain-name="newDomainName"
       @add-domain="handleAddDomain"
       @cancel="handleCancelAddDomain"
+    />
+
+    <!-- 新增专题对话框 -->
+    <AddDomainDialog
+      v-model:visible="showAddTopicDialog"
+      :new-domain-name="newTopicName"
+      @add-domain="handleAddTopic"
+      @cancel="handleCancelAddTopic"
+      title="新增专题"
+      label-name="专题名称"
+      placeholder-text="请输入专题名称"
     />
   </div>
 </template>
@@ -568,5 +836,46 @@ const handleCloseGraphDialog = () => {
   .content {
     flex: 1;
   }
+}
+
+/* 自定义删除弹框样式 - 使用全局样式选择器 */
+:global(.el-message-box) {
+  width: 500px !important;
+}
+
+:global(.el-message-box__content) {
+  padding: 30px 20px !important;
+}
+
+:global(.el-message-box__btns .el-button--primary) {
+  background-color: rgba(61, 210, 176, 1) !important;
+  border-color: rgba(61, 210, 176, 1) !important;
+  color: white !important;
+}
+
+:global(.el-message-box__btns .el-button--primary:hover) {
+  background-color: rgba(61, 210, 176, 0.9) !important;
+  border-color: rgba(61, 210, 176, 0.9) !important;
+}
+
+:global(.el-message-box__btns .el-button--default) {
+  background-color: white !important;
+  border-color: #dcdfe6 !important;
+  color: #606266 !important;
+}
+
+:global(.el-message-box__btns .el-button--default:hover),
+:global(.el-message-box__btns .el-button:hover:not(.el-button--primary)) {
+  background-color: #f5f7fa !important;
+  border-color: #c0c4cc !important;
+  color: #606266 !important;
+  --el-button-hover-bg-color: #f5f7fa !important;
+  --el-button-hover-border-color: #c0c4cc !important;
+  --el-button-hover-text-color: #606266 !important;
+}
+
+/* 弹框关闭按钮样式 */
+:global(.el-message-box__headerbtn:hover .el-message-box__close) {
+  color: rgba(61, 210, 176, 1) !important;
 }
 </style>
