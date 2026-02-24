@@ -389,7 +389,7 @@
     </div>
 
     <!-- 新增按钮 -->
-    <div class="add-btn" v-if="!currentSubDomain">
+    <div class="add-btn" v-if="!currentSubDomain && enableAdd">
       <el-button
         type="success"
         size="small"
@@ -463,6 +463,10 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  enableAdd: {
+    type: Boolean,
+    default: true,
+  }
 });
 
 const emit = defineEmits([
