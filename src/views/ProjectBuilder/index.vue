@@ -46,7 +46,8 @@
         :domain-name="domainName"
         :topic-name="topicName"
         :project-name="projectName"
-        :visible="showAddGraphDialog">
+        @create-graph="handleCreateGraph"
+        v-model:visible="showGraphDialog">
     </AddGraphDialog>
 
   </div>
@@ -306,6 +307,10 @@ const saveState = () => {
   };
   localStorage.setItem("homePageState", JSON.stringify(state));
 };
+
+const openAddGraphDialog = () => {
+  showAddGraphDialog.value = true
+}
 
 // 监听状态变化，自动保存
 watch(
