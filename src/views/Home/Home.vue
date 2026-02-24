@@ -85,7 +85,7 @@ const sourceNodeId = ref(null);
 // 目标节点ID
 const targetNodeId = ref(null);
 // 当前模式：'ontology' 或 'graph'
-const currentMode = ref('ontology');
+const currentMode = ref("ontology");
 
 // ============ 历史搜索记录相关 ============
 // 存储在不同上下文中的历史记录
@@ -551,8 +551,8 @@ const handleGraphSearch = (query) => {
   // 例如过滤图谱列表
   if (query) {
     // 过滤图谱列表
-    const filteredGraphs = graphs.value.filter(graph => 
-      graph.name.toLowerCase().includes(query.toLowerCase())
+    const filteredGraphs = graphs.value.filter((graph) =>
+      graph.name.toLowerCase().includes(query.toLowerCase()),
     );
     // 这里可以更新显示的图谱列表
   }
@@ -564,8 +564,8 @@ const handleGraphSearchIconClick = async (query) => {
     // 添加图谱搜索历史
     addGraphSearchHistory(query);
     // 过滤图谱列表
-    const filteredGraphs = graphs.value.filter(graph => 
-      graph.name.toLowerCase().includes(query.toLowerCase())
+    const filteredGraphs = graphs.value.filter((graph) =>
+      graph.name.toLowerCase().includes(query.toLowerCase()),
     );
     // 这里可以更新显示的图谱列表
   }
@@ -782,7 +782,7 @@ const handleAddEntity = (position) => {
     // 默认位置，避免新节点出现在左上角
     rightClickPosition.value = {
       x: 100 + Math.random() * 400,
-      y: 100 + Math.random() * 300
+      y: 100 + Math.random() * 300,
     };
     console.log("使用默认位置:", rightClickPosition.value);
   }
@@ -801,7 +801,7 @@ const handleCreateRelationship = (sourceId) => {
     { name: "ID", type: "number", value: "" },
   ];
   addToComponentLibrary.value = true;
-  
+
   currentOperation.value = "relationship";
   isConnecting.value = true;
   sourceNodeId.value = sourceId;
@@ -810,7 +810,7 @@ const handleCreateRelationship = (sourceId) => {
 
 const handleClosePropertyPanel = () => {
   showPropertyPanel.value = false;
-  
+
   // 关闭属性面板后，清除虚线
   if (currentOperation.value === "relationship" && contentRef.value) {
     contentRef.value.resetConnectionState();
@@ -820,7 +820,7 @@ const handleClosePropertyPanel = () => {
 
 const handleCancelPropertyPanel = () => {
   showPropertyPanel.value = false;
-  
+
   // 取消属性面板后，清除虚线
   if (currentOperation.value === "relationship" && contentRef.value) {
     contentRef.value.resetConnectionState();
@@ -832,13 +832,13 @@ const handleCancelPropertyPanel = () => {
 const handleConnectionComplete = (targetId) => {
   console.log("连接完成，目标节点ID:", targetId);
   console.log("源节点ID:", sourceNodeId.value);
-  
+
   // 存储目标节点ID
   targetNodeId.value = targetId;
-  
+
   // 退出连线模式
   isConnecting.value = false;
-  
+
   // 重置关系相关属性
   relationshipName.value = "";
   relationshipType.value = "定向";
@@ -849,10 +849,10 @@ const handleConnectionComplete = (targetId) => {
     { name: "ID", type: "number", value: "" },
   ];
   addToComponentLibrary.value = true;
-  
+
   // 设置当前操作类型为关系
   currentOperation.value = "relationship";
-  
+
   // 打开属性面板
   showPropertyPanel.value = true;
   console.log("打开关系属性面板");
@@ -876,15 +876,20 @@ const handleSavePropertyPanel = (data) => {
       type: "entity",
       name: data.entityName,
       // 正确处理x或y为0的情况
-      x: rightClickPosition.value.x !== undefined ? rightClickPosition.value.x : 100 + Math.random() * 400,
-      y: rightClickPosition.value.y !== undefined ? rightClickPosition.value.y : 100 + Math.random() * 300,
+      x:
+        rightClickPosition.value.x !== undefined
+          ? rightClickPosition.value.x
+          : 100 + Math.random() * 400,
+      y:
+        rightClickPosition.value.y !== undefined
+          ? rightClickPosition.value.y
+          : 100 + Math.random() * 300,
       properties: data.entityProperties,
     };
     console.log("创建新节点，位置:", { x: newNode.x, y: newNode.y });
     graphNodes.value.push(newNode);
     console.log("新创建的节点:", newNode);
     console.log("当前graphNodes数组:", graphNodes.value);
-    
   } else if (data.currentOperation === "relationship") {
     // 将当前填写的关系名称添加到关系类型数组中（如果不存在）
     if (
@@ -893,13 +898,13 @@ const handleSavePropertyPanel = (data) => {
     ) {
       relationshipTypes.value.push(data.relationshipType);
     }
-    
+
     // 创建新的关系边并添加到图谱边数据中
     if (sourceNodeId.value && targetNodeId.value) {
       const relationshipName = data.relationshipName || "关系";
       const relationshipType = data.relationshipType || "定向";
       const properties = data.entityProperties || [];
-      
+
       // 创建第一条边：A→B
       const newEdge1 = {
         id: (Date.now() + 1).toString(),
@@ -913,7 +918,7 @@ const handleSavePropertyPanel = (data) => {
       };
       graphEdges.value.push(newEdge1);
       console.log("新创建的关系边1:", newEdge1);
-      
+
       // 如果是循环关系，创建第二条边：B→A
       if (relationshipType === "循环") {
         const newEdge2 = {
@@ -929,9 +934,9 @@ const handleSavePropertyPanel = (data) => {
         graphEdges.value.push(newEdge2);
         console.log("新创建的关系边2:", newEdge2);
       }
-      
+
       console.log("当前graphEdges数组:", graphEdges.value);
-      
+
       // 清空源节点和目标节点ID，准备下一次连线
       sourceNodeId.value = null;
       targetNodeId.value = null;
@@ -947,7 +952,7 @@ const handleSavePropertyPanel = (data) => {
   }
 
   showPropertyPanel.value = false;
-  
+
   // 保存关系后，清除虚线
   if (data.currentOperation === "relationship" && contentRef.value) {
     contentRef.value.resetConnectionState();
@@ -1083,28 +1088,29 @@ const handleCreateGraph = async (graphData) => {
       name: graphData.graphName,
       createMethod: graphData.createMethod,
       file: graphData.createMethod === "text" ? graphData.uploadedFile : null,
-      databaseName: graphData.createMethod === "database" ? graphData.databaseName : "",
+      databaseName:
+        graphData.createMethod === "database" ? graphData.databaseName : "",
       anyContent: graphData.createMethod === "any" ? graphData.anyContent : "",
     };
 
     // 这里可以处理图谱创建的逻辑，例如保存图谱数据到后端
     console.log("创建图谱:", graphDataToSend);
-    
+
     // 模拟创建成功
     // const response = await createGraph(graphDataToSend);
     // if (response.code === 200) {
-      // 创建成功后的处理
-      Message.success("图谱创建成功");
-      // 添加到图谱列表
-      const newGraph = {
-        id: Date.now(),
-        name: graphData.graphName,
-        createMethod: graphData.createMethod,
-        createdAt: new Date().toISOString(),
-      };
-      graphs.value.push(newGraph);
-      // 设置 hasData 为 true，显示关系图
-      hasData.value = true;
+    // 创建成功后的处理
+    Message.success("图谱创建成功");
+    // 添加到图谱列表
+    const newGraph = {
+      id: Date.now(),
+      name: graphData.graphName,
+      createMethod: graphData.createMethod,
+      createdAt: new Date().toISOString(),
+    };
+    graphs.value.push(newGraph);
+    // 设置 hasData 为 true，显示关系图
+    hasData.value = true;
     // } else {
     //   Message.error(response.message || "图谱创建失败");
     // }
@@ -1157,15 +1163,20 @@ const handleAddEntityType = (componentName) => {
 // 处理节点拖拽结束
 const handleNodeDragEnd = (data) => {
   console.log("Home组件接收到节点拖拽结束事件:", data);
-  console.log("接收到的nodeId类型:", typeof data.nodeId, "nodeId值:", data.nodeId);
+  console.log(
+    "接收到的nodeId类型:",
+    typeof data.nodeId,
+    "nodeId值:",
+    data.nodeId,
+  );
   console.log("当前graphNodes:", graphNodes.value);
-  
+
   // 遍历所有节点，找到并更新对应节点
   let nodeFound = false;
   for (let i = 0; i < graphNodes.value.length; i++) {
     const node = graphNodes.value[i];
     console.log(`检查节点 ${i}: id=${node.id}, 类型=${typeof node.id}`);
-    
+
     // 尝试多种匹配方式
     if (node.id === data.nodeId || String(node.id) === String(data.nodeId)) {
       console.log("找到匹配节点:", node);
@@ -1173,14 +1184,14 @@ const handleNodeDragEnd = (data) => {
       graphNodes.value[i] = {
         ...node,
         x: data.position.x,
-        y: data.position.y
+        y: data.position.y,
       };
       console.log("更新后的节点:", graphNodes.value[i]);
       nodeFound = true;
       break;
     }
   }
-  
+
   if (nodeFound) {
     // 手动触发响应式更新
     graphNodes.value = [...graphNodes.value];
@@ -1201,9 +1212,6 @@ const handleModeChange = (mode) => {
 
 <template>
   <div class="home-container">
-    <!-- 顶部导航栏 -->
-    <Header @mode-change="handleModeChange" />
-
     <!-- 主内容区域 -->
     <div class="main-content">
       <!-- 左侧侧边栏 -->
@@ -1321,7 +1329,7 @@ const handleModeChange = (mode) => {
 <style scoped>
 .home-container {
   width: 100%;
-  height: 100vh;
+  height: 90vh;
   display: flex;
   flex-direction: column;
   background-color: #f5f7fa;
