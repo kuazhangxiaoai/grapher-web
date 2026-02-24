@@ -1329,7 +1329,7 @@ const handleModeChange = (mode) => {
 <style scoped>
 .home-container {
   width: 100%;
-  height: 90vh;
+  height: calc(100vh - 72px);
   display: flex;
   flex-direction: column;
   background-color: #f5f7fa;
