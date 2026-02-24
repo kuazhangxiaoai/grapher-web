@@ -6,14 +6,15 @@
     </div>
     <nav class="nav">
       <el-menu
-        :default-active="'1'"
+          router
+        :default-active="$route.path"
         mode="horizontal"
         background-color="#fff"
         text-color="#666"
         active-text-color="#43D7B5"
       >
-        <el-menu-item index="1">本体设计</el-menu-item>
-        <el-menu-item index="2">图谱构建</el-menu-item>
+        <el-menu-item index="/home">本体设计</el-menu-item>
+        <el-menu-item index="/graphbuilder">图谱构建</el-menu-item>
         <el-menu-item index="3">探索应用</el-menu-item>
       </el-menu>
     </nav>
@@ -75,6 +76,7 @@ const loginOut = async () => {
   background-color: white;
   box-shadow: 0px 1px 0px 0px rgba(229, 230, 235, 1);
   border-bottom: 1px solid #e5e6eb;
+  z-index: 999;
 }
 
 .logo {

@@ -899,9 +899,6 @@ const handleCloseGraphDialog = () => {
 
 <template>
   <div class="home-container">
-    <!-- 顶部导航栏 -->
-    <Header />
-
     <!-- 主内容区域 -->
     <div class="main-content">
       <!-- 左侧侧边栏 -->
@@ -1000,7 +997,7 @@ const handleCloseGraphDialog = () => {
 <style scoped>
 .home-container {
   width: 100%;
-  height: 100vh;
+  height: 90vh;
   display: flex;
   flex-direction: column;
   background-color: #f5f7fa;

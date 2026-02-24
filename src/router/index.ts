@@ -36,11 +36,16 @@ const router = createRouter({
         requiresAuth: true
       }
     },
-   
     {
       path: '/',
       redirect: '/login'
+    },
+    {
+      path: "/graphbuilder",
+      name: "GraphBuilder",
+      component: ()=> import('@/views/GraphBuilder/index.vue'),
     }
+
   ]
 })
 router.beforeEach((to, from, next) => {
