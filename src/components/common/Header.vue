@@ -51,7 +51,7 @@ const handleMenuSelect = (key: string) => {
   activeMenu.value = key;
   if (key === "/home") {
     emit("mode-change", "ontology");
-  } else if (key === "2") {
+  } else if (key === "/graphbuilder") {
     emit("mode-change", "graph");
   }
 };
@@ -129,7 +129,7 @@ const loginOut = async () => {
     opacity: 1;
   }
   .el-menu-item:hover {
-    background: #fff;
+    background: #fff !important;
     font-weight: 600;
     font-size: 16px;
     opacity: 1;
