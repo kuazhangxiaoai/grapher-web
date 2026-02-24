@@ -70,7 +70,7 @@
           v-if="searchOptions.length > 0 && isSearchFocused"
           class="search-dropdown"
         >
-          <div class="dropdown-header">
+          <!-- <div class="dropdown-header">
             <span class="dropdown-title">历史搜索</span>
             <span
               v-if="searchOptions.length > 0 && !searchOptions[0].disabled"
@@ -79,7 +79,7 @@
             >
               清空
             </span>
-          </div>
+          </div> -->
           <div
             v-for="item in searchOptions"
             :key="item.value"
@@ -169,7 +169,7 @@
             v-if="topicSearchOptions.length > 0 && isSearchFocused"
             class="search-dropdown"
           >
-            <div class="dropdown-header">
+            <!-- <div class="dropdown-header">
               <span class="dropdown-title">历史搜索</span>
               <span
                 v-if="
@@ -181,7 +181,7 @@
               >
                 清空
               </span>
-            </div>
+            </div> -->
             <div
               v-for="item in topicSearchOptions"
               :key="item.value"
@@ -225,6 +225,7 @@
           v-for="(topic, index) in topics"
           :key="topic.id"
           class="domain-item"
+          @click="handleTopicClick(topic)"
         >
           <div class="domain-info">
             <span>{{ topic.name }}</span>
@@ -250,24 +251,24 @@
     </div>
 
     <!-- 子子领域详情页面 -->
-    <div v-else>
-      <!-- 图谱列表 -->
-      <div class="graph-list" v-if="!hasData">
+    <div v-else style="flex: 1; overflow: hidden">
+      <!-- 图谱构建模式 -->
+      <div v-if="currentMode === 'graph'" class="graph-container">
         <!-- 搜索框 -->
         <div class="search-container">
           <el-input
             v-model="localSearchQuery"
-            placeholder="搜索"
+            placeholder="搜索图谱"
             class="search-input"
             clearable
-            @input="handleSearch"
+            @input="handleGraphSearch"
             @focus="handleSearchFocus"
             @blur="handleSearchBlur"
-            @clear="handleSearchClear"
+            @clear="handleGraphSearchClear"
           >
             <template #suffix>
               <el-icon
-                @click.stop="handleSearchClick"
+                @click.stop="handleGraphSearchClick"
                 @mousedown.prevent
                 class="search-icon"
               >
@@ -275,6 +276,46 @@
               </el-icon>
             </template>
           </el-input>
+          <!-- 历史搜索下拉框 -->
+          <div
+            v-if="graphSearchOptions.length > 0 && isSearchFocused"
+            class="search-dropdown"
+          >
+            <!-- <div class="dropdown-header">
+              <span class="dropdown-title">历史搜索</span>
+              <span
+                v-if="graphSearchOptions.length > 0 && !graphSearchOptions[0].disabled"
+                class="clear-history"
+                @click.stop="handleClearGraphHistory"
+              >
+                清空
+              </span>
+            </div> -->
+            <div
+              v-for="item in graphSearchOptions"
+              :key="item.value"
+              class="search-item"
+              :class="{ disabled: item.disabled }"
+              @click="!item.disabled && selectSearchItem(item.value)"
+            >
+              <template v-if="localSearchQuery && !item.disabled">
+                <span
+                  v-for="(part, index) in item.value.split(
+                    new RegExp(`(${localSearchQuery})`, 'gi'),
+                  )"
+                  :key="index"
+                  :class="{
+                    highlight:
+                      part.toLowerCase() === localSearchQuery.toLowerCase(),
+                  }"
+                  >{{ part }}</span
+                >
+              </template>
+              <template v-else>
+                {{ item.value }}
+              </template>
+            </div>
+          </div>
         </div>
 
         <!-- 图谱项目 -->
@@ -289,33 +330,35 @@
               <span>{{ graph.name }}</span>
             </div>
             <div class="graph-actions">
-              <button
-                class="edit-btn"
+              <img
+                src="@/assets/images/编辑.png"
+                alt="arrow"
+                class="arrow-icon"
                 @click.stop="handleEditGraph(graph)"
                 title="编辑"
-              >
-                ✏️
-              </button>
+              />
               <button
                 class="delete-btn"
                 @click.stop="handleDeleteGraph(graph.id)"
                 title="删除"
               >
-                ×
+                <img src="@/assets/images/矩形.png" alt="delete" />
               </button>
             </div>
           </div>
         </div>
-
-        <!-- 空状态 -->
         <div v-else class="empty-list">
           <div class="list-placeholder">
+            <img
+              src="@/assets/images/Frame.png"
+              alt="empty"
+              class="empty-icon"
+            />
             <span>暂无图谱</span>
           </div>
         </div>
-
         <!-- 新建图谱按钮 -->
-        <div class="add-btn">
+        <div class="add-btn graph-addBtn">
           <el-button
             type="success"
             size="small"
@@ -327,63 +370,110 @@
         </div>
       </div>
 
-      <!-- 数据列表 -->
-      <div v-else>
-        <!-- 实体类型 -->
-        <div class="data-section">
-          <h3>实体类型</h3>
-          <div class="entity-types">
-            <div
-              v-for="(type, index) in entityTypes"
-              :key="index"
-              class="entity-type-item"
-              draggable="true"
-              @dragstart="handleDragStart($event, 'entity', type)"
-              @dragend="handleDragEnd"
-            >
-              {{ type }}
+      <!-- 本体设计模式 -->
+      <div v-else class="sub-sub-domain-container">
+        <!-- 图谱列表 -->
+        <!-- <div class="graph-list" v-if="!hasData"> -->
+        <div class="graph-list" v-if="entityTypes.length === 0">
+          <!-- 空状态 -->
+          <div class="empty-list">
+            <div class="list-placeholder">
+              <img
+                src="@/assets/images/Frame.png"
+                alt="empty"
+                class="empty-icon"
+              />
+              <span>白板中暂无容器</span>
             </div>
           </div>
         </div>
 
-        <!-- 关系类型 -->
-        <div class="data-section">
-          <h3>关系类型</h3>
-          <div class="relationship-types">
+        <!-- 数据列表 -->
+        <div v-else class="data-list-container">
+          <!-- 实体类型 -->
+          <div class="data-section">
+            <h3>实体类型</h3>
             <div
-              v-for="(type, index) in relationshipTypes"
-              :key="index"
-              class="relationship-type-item"
-              draggable="true"
-              @dragstart="handleDragStart($event, 'relationship', type)"
-              @dragend="handleDragEnd"
+              class="entity-types"
+              :class="{ 'empty-data': entityTypes.length === 0 }"
             >
-              {{ type }}
+              <span class="empty-data-msg" v-if="entityTypes.length === 0"
+                >暂无实体类型</span
+              >
+              <div
+                v-for="(type, index) in entityTypes"
+                :key="index"
+                class="entity-type-item"
+                draggable="true"
+                @dragstart="handleDragStart($event, 'entity', type)"
+                @dragend="handleDragEnd"
+              >
+                {{ type }}
+              </div>
+            </div>
+          </div>
+
+          <!-- 关系类型 -->
+          <div class="data-section">
+            <h3>关系类型</h3>
+            <div class="relationship-types">
+              <span class="empty-data-msg" v-if="relationshipTypes.length === 0"
+                >暂无关系类型</span
+              >
+              <div
+                v-for="(type, index) in relationshipTypes"
+                :key="index"
+                class="relationship-type-item"
+                draggable="true"
+                @dragstart="handleDragStart($event, 'relationship', type)"
+                @dragend="handleDragEnd"
+              >
+                {{ type }}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- 组件库 -->
-      <div class="component-library" v-if="hasData">
-        <h3>组件库</h3>
-        <el-input
-          v-model="localSearchQuery"
-          placeholder="搜索"
-          class="search-input"
-          clearable
-          @input="handleSearch"
-          @focus="handleSearchFocus"
-          @blur="handleSearchBlur"
-          :suffix-icon="Search"
-        />
-        <div class="component-item">
-          <div class="component-name">工作要点</div>
-          <button class="add-component-btn">+</button>
-        </div>
-        <div class="component-item">
-          <div class="component-name">规划要求</div>
-          <button class="add-component-btn">+</button>
+        <!-- 组件库 -->
+        <div class="component-library">
+          <div class="component-library-header">
+            <img
+              src="@/assets/images/filter_list.png"
+              alt="组件库"
+              class="component-library-icon"
+            />
+            <h3>组件库</h3>
+          </div>
+          <el-input
+            v-model="localSearchQuery"
+            placeholder="搜索"
+            class="search-input"
+            clearable
+            @input="handleSearch"
+            @focus="handleSearchFocus"
+            @blur="handleSearchBlur"
+            :suffix-icon="Search"
+            style="margin-bottom: 6px"
+          />
+          <div class="component-list">
+            <div
+              v-for="component in components"
+              :key="component.name"
+              class="component-item"
+              :class="{
+                'component-item-highlight':
+                  localSearchQuery && component.name.includes(localSearchQuery),
+              }"
+            >
+              <div class="component-name">{{ component.name }}</div>
+              <button
+                class="add-component-btn"
+                @click="handleAddComponentToEntityType(component.name)"
+              >
+                +
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -404,7 +494,7 @@
 
 <script setup>
 import { ref, watch } from "vue";
-import { Search } from "@element-plus/icons-vue";
+import { Search, Plus } from "@element-plus/icons-vue";
 
 const props = defineProps({
   allOption: {
@@ -418,6 +508,10 @@ const props = defineProps({
   currentSubDomain: {
     type: String,
     default: "",
+  },
+  currentMode: {
+    type: String,
+    default: "ontology", // 'ontology' or 'graph'
   },
   domains: {
     type: Array,
@@ -447,6 +541,10 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  graphSearchOptions: {
+    type: Array,
+    default: () => [],
+  },
   isLoadingTopics: {
     type: Boolean,
     default: false,
@@ -469,11 +567,19 @@ const props = defineProps({
   }
 });
 
+// 组件库列表
+const components = ref([
+  { name: "工作要点" },
+  { name: "规划要求" },
+  { name: "规划要求2" },
+]);
+
 const emit = defineEmits([
   "delete-domain",
   "add-domain",
   "domain-click",
   "sub-domain-click",
+  "topic-click",
   "back-to-domains",
   "back-to-sub-domains",
   "open-add-dialog",
@@ -493,6 +599,10 @@ const emit = defineEmits([
   "topic-search",
   "clear-domain-history",
   "clear-topic-history",
+  "graph-search",
+  "graph-search-icon-click",
+  "clear-graph-history",
+  "add-entity-type",
 ]);
 
 const localSearchQuery = ref("");
@@ -584,6 +694,51 @@ const handleClearTopicHistory = () => {
   }, 0);
 };
 
+// 图谱搜索处理
+const handleGraphSearch = (query) => {
+  emit("graph-search", query);
+};
+
+// 图谱搜索图标点击事件
+const handleGraphSearchClick = () => {
+  // 点击搜索图标时，确保下拉框消失
+  isSearchFocused.value = false;
+  emit("graph-search-icon-click", localSearchQuery.value);
+  // 确保输入框失去焦点
+  setTimeout(() => {
+    const inputElements = document.querySelectorAll(".search-input input");
+    inputElements.forEach((input) => {
+      input.blur();
+    });
+  }, 0);
+};
+
+// 清空图谱搜索历史
+const handleClearGraphHistory = () => {
+  emit("clear-graph-history");
+  // 清空后保持下拉框显示
+  setTimeout(() => {
+    isSearchFocused.value = true;
+  }, 0);
+};
+
+// 图谱搜索框清空事件处理
+const handleGraphSearchClear = () => {
+  // 点击删除图标时，确保下拉框消失
+  isSearchFocused.value = false;
+  // 清空搜索框内容
+  localSearchQuery.value = "";
+  // 调用图谱搜索图标点击事件，获取所有图谱列表
+  handleGraphSearchClick();
+  // 确保输入框失去焦点
+  setTimeout(() => {
+    const inputElements = document.querySelectorAll(".search-input input");
+    inputElements.forEach((input) => {
+      input.blur();
+    });
+  }, 0);
+};
+
 const selectSearchItem = (value) => {
   localSearchQuery.value = value;
   // 确保下拉框消失
@@ -593,8 +748,10 @@ const selectSearchItem = (value) => {
 
 const handleSearchFocus = () => {
   isSearchFocused.value = true;
-  // 根据当前是否在专题页面决定调用哪个搜索函数
-  if (props.currentDomain) {
+  // 根据当前模式决定调用哪个搜索函数
+  if (props.currentMode === "graph") {
+    handleGraphSearch(localSearchQuery.value);
+  } else if (props.currentDomain) {
     handleTopicSearch(localSearchQuery.value);
   } else {
     handleSearch(localSearchQuery.value);
@@ -622,6 +779,14 @@ const handleBackToSubDomains = () => {
 
 const handleSubDomainClick = (subDomain) => {
   emit("sub-domain-click", subDomain);
+};
+
+const handleTopicClick = (topic) => {
+  emit("topic-click", topic);
+};
+
+const handleAddComponentToEntityType = (componentName) => {
+  emit("add-entity-type", componentName);
 };
 
 const handleDragStart = (event, type, item) => {
@@ -710,6 +875,7 @@ const handleTopicSearchClear = () => {
   flex: 1;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .plusIcon {
@@ -740,6 +906,10 @@ const handleTopicSearchClear = () => {
   font-size: 14px;
   color: #555353;
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 70px;
 }
 
 .breadcrumb-separator {
@@ -928,12 +1098,20 @@ const handleTopicSearchClear = () => {
   font-size: 16px;
   color: #333333;
   font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
 }
 
 .domain-item:hover .domain-info span {
   font-size: 16px;
   color: #555353;
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
 }
 
 .domain-item:hover .arrow-icon {
@@ -999,7 +1177,9 @@ const handleTopicSearchClear = () => {
 .add-btn {
   margin-top: auto;
 }
-
+.graph-addBtn {
+  // height: 80px;
+}
 .add-btn .el-button {
   width: 100%;
   transition: all 0.3s;
@@ -1025,49 +1205,63 @@ const handleTopicSearchClear = () => {
 }
 
 .data-section h3 {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   color: #333;
 }
 
 .entity-types {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
+  gap: 12px;
   margin-bottom: 16px;
+  overflow-y: auto;
+  max-height: 150px;
+  padding-right: 8px;
 }
-
+.empty-data {
+  grid-template-columns: none;
+}
 .entity-type-item {
-  padding: 6px 10px;
-  background-color: #f0f9eb;
-  border: 1px solid rgba(61, 210, 176, 1);
+  padding: 8px 9px 8px 12px;
+  background: #f6fcff;
+  border: 0.8px solid rgba(224, 226, 235, 1);
   border-radius: 4px;
-  font-size: 12px;
-  color: rgba(61, 210, 176, 1);
-  text-align: center;
+  font-size: 14px;
+  color: #333;
+  font-weight: 400;
+  text-align: left;
   cursor: pointer;
   transition: all 0.3s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .entity-type-item:hover {
-  background-color: rgba(61, 210, 176, 1);
-  color: white;
+  // background-color: rgba(61, 210, 176, 1);
+  // color: white;
+  border-color: rgba(61, 210, 176, 1);
+  color: rgba(61, 210, 176, 1);
 }
 
 .relationship-types {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
+  overflow-y: auto;
+  max-height: 150px;
+  padding-right: 8px;
 }
 
 .relationship-type-item {
-  padding: 6px 10px;
-  background-color: #f5f7fa;
-  border: 1px solid #dcdfe6;
+  padding: 8px 10px;
+  background: #ffffff;
+  border: 0.8px solid rgba(224, 226, 235, 1);
   border-radius: 4px;
-  font-size: 12px;
-  color: #606266;
+  font-size: 14px;
+  color: #333;
   cursor: pointer;
   transition: all 0.3s;
   display: flex;
@@ -1079,69 +1273,109 @@ const handleTopicSearchClear = () => {
   content: "";
   width: 16px;
   height: 16px;
-  background-image: url("@/assets/images/复制.png");
+  background-image: url("@/assets/images/定向.png");
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
 }
 
 .relationship-type-item:hover {
-  background-color: #e6f7df;
   border-color: rgba(61, 210, 176, 1);
   color: rgba(61, 210, 176, 1);
 }
 
 /* 组件库 */
 .component-library {
-  margin-bottom: 20px;
+  padding-top: 20px;
+  // margin-bottom: 20px;
+  border-top: 1px solid rgba(238, 238, 238, 1);
 }
-
+.component-library-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.component-library-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
 .component-library h3 {
   font-size: 14px;
-  font-weight: 500;
-  margin-bottom: 10px;
-  color: #333;
+  font-weight: 400;
+  color: #303234;
 }
-
+.component-list {
+  overflow-y: auto;
+  max-height: 110px;
+  padding-right: 8px;
+}
 .component-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 8px;
-  margin-bottom: 8px;
-  border: 1px solid #e4e7ed;
+  margin-top: 12px;
   border-radius: 4px;
-  background-color: #f9f9f9;
+  background: #fafafa;
+  border: 1px dashed rgba(213, 215, 222, 1);
   transition: all 0.3s;
+  font-size: 14px;
+  color: rgba(153, 153, 153, 0.6);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
-.component-item:hover {
-  border-color: rgba(61, 210, 176, 1);
-  box-shadow: 0 0 0 2px rgba(103, 194, 58, 0.2);
+.component-item .component-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.component-item:hover,
+.component-item-highlight {
+  border: 1px solid rgba(61, 210, 176, 1);
+  color: rgba(61, 210, 176, 1);
+}
+.component-item:hover .add-component-btn,
+.component-item-highlight .add-component-btn {
+  color: #3dd2b0;
 }
 
 .add-component-btn {
   width: 20px;
   height: 20px;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  background-color: #f5f7fa;
-  color: #909399;
-  font-size: 14px;
-  font-weight: bold;
+  color: #c9cdd3;
+  font-size: 20px;
+  font-weight: 400;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.3s;
+  border: none;
+  background: none;
 }
 
 .add-component-btn:hover {
-  background-color: rgba(61, 210, 176, 1);
-  color: white;
-  border-color: rgba(61, 210, 176, 1);
+  color: #3dd2b0;
 }
-
+.graph-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  .empty-list {
+    padding-top: 0;
+  }
+}
 /* 图谱列表 */
 .graph-list {
   flex: 1;
@@ -1161,7 +1395,12 @@ const handleTopicSearchClear = () => {
 }
 
 .graph-items {
-  margin-bottom: 15px;
+  margin-bottom: 25px;
+  // flex: 1;
+  height: 73vh;
+  overflow-y: auto;
+  padding-right: 8px;
+  box-sizing: border-box;
 }
 
 .graph-item {
@@ -1169,28 +1408,55 @@ const handleTopicSearchClear = () => {
   align-items: center;
   justify-content: space-between;
   padding: 10px;
-  margin-bottom: 10px;
-  border: 1px solid #dcdfe6;
+  margin-bottom: 16px;
+  border: 0.8px solid rgba(224, 226, 235, 1);
   border-radius: 4px;
   background-color: white;
   transition: all 0.3s;
+  cursor: pointer;
 }
 
 .graph-item:hover {
   border-color: rgba(61, 210, 176, 1);
-  box-shadow: 0 0 0 2px rgba(103, 194, 58, 0.2);
 }
-
+.graph-item:hover .graph-info {
+  color: #000;
+  font-weight: 500;
+}
 .graph-info {
   flex: 1;
-  font-size: 14px;
-  color: #303133;
+  font-size: 16px;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
 }
 
 .graph-actions {
   display: flex;
   gap: 8px;
   align-items: center;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(10px);
+  transition: all 0.3s ease;
+  .arrow-icon {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+    margin-right: 6px;
+  }
+  .delete-btn {
+    width: 15px;
+    height: 15px;
+  }
+}
+
+.graph-item:hover .graph-actions {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
 }
 
 .edit-btn {
@@ -1219,24 +1485,43 @@ const handleTopicSearchClear = () => {
   border-radius: 4px;
   padding: 8px 12px;
 }
-
+.sub-sub-domain-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.data-list-container {
+  flex: 1;
+  .empty-data-msg {
+    font-size: 12px;
+    color: #999999;
+    text-align: center;
+    margin-top: 15px;
+  }
+}
 /* 空的列表 */
 .empty-list {
-  border: 1px solid #e4e7ed;
-  border-radius: 4px;
-  min-height: 150px;
+  flex: 1;
+  // min-height: 300px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f9f9f9;
   margin-bottom: 15px;
+  box-sizing: border-box;
+  padding-top: 80px;
 }
 
 .list-placeholder {
   display: flex;
   flex-direction: column;
   align-items: center;
-  color: #909399;
+  font-size: 12px;
+  color: #999999;
+  img {
+    width: 77px;
+    height: 90px;
+    margin-bottom: 15px;
+  }
 }
 
 .list-placeholder i {

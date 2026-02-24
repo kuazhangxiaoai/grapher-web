@@ -6,12 +6,13 @@
     </div>
     <nav class="nav">
       <el-menu
-          router
+        router
         :default-active="$route.path"
         mode="horizontal"
         background-color="#fff"
         text-color="#666"
         active-text-color="#43D7B5"
+        @select="handleMenuSelect"
       >
         <el-menu-item index="/home">本体设计</el-menu-item>
         <el-menu-item index="/project-builder">图谱构建</el-menu-item>
@@ -35,12 +36,25 @@
   </header>
 </template>
 <script setup lang="ts">
+import { ref } from "vue";
 import { useRouter } from "vue-router";
 import auth from "@/services/auth";
 import type { logout } from "../../services/auth";
 import message from "@/utils/message";
 import { ElMessageBox } from "element-plus";
 const router = useRouter();
+
+const activeMenu = ref("1");
+const emit = defineEmits(["mode-change"]);
+
+const handleMenuSelect = (key: string) => {
+  activeMenu.value = key;
+  if (key === "/home") {
+    emit("mode-change", "ontology");
+  } else if (key === "2") {
+    emit("mode-change", "graph");
+  }
+};
 
 const loginOut = async () => {
   try {

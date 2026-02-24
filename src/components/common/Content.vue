@@ -70,31 +70,32 @@
             </div>
           </div>
         </div>
-        <!-- G6关系图 -->
-        <div v-else class="relationship-graph">
+        <!-- G6关系图 - 仅在本体设计模式下显示 -->
+        <div v-else-if="currentMode === 'ontology'" class="relationship-graph">
           <div v-if="false">
-            {{ console.log("Content组件接收到的graphNodes:", graphNodes) }}
+            {{ console.log("Content组件接收到的graphNodes:", props.graphNodes) }}
+            {{ console.log("Content组件接收到的graphEdges:", props.graphEdges) }}
           </div>
           <GraphContainer
-            :nodes="graphNodes"
-            :edges="graphEdges"
+            ref="graphContainerRef"
+            :nodes="props.graphNodes"
+            :edges="props.graphEdges"
+            :is-connecting="props.isConnecting"
             @add-entity="handleAddEntity"
-            @create-relationship="handleCreateRelationship"
+            @create-relationship="(sourceId) => handleCreateRelationship(sourceId)"
+            @connection-complete="(targetId) => handleConnectionComplete(targetId)"
             @node-click="handleNodeClick"
             @edge-click="handleEdgeClick"
             @graph-click="handleGraphClick"
+            @node-drag-end="handleNodeDragEnd"
           />
         </div>
+        <!-- 图谱构建模式下的空状态 -->
+        <div v-else-if="currentMode === 'graph'" class="graph-building-mode">
+          <!-- 这里可以添加图谱构建模式的相关内容，目前仅显示空白区域 -->
+        </div>
       </div>
-      <!-- 默认内容 -->
-      <div class="content-buttons">
-        <el-button size="small">类</el-button>
-        <el-button size="small">关系</el-button>
-        <el-button size="small">实例</el-button>
-        <el-button size="small">规则</el-button>
-        <el-button size="small">函数</el-button>
-        <el-button size="small">事件</el-button>
-      </div>
+      
     </div>
   </main>
 </template>
@@ -104,16 +105,26 @@ import { ref, watch } from "vue";
 import { Plus } from "@element-plus/icons-vue";
 import GraphContainer from "@/components/graph/GraphContainer.vue";
 
+const graphContainerRef = ref(null);
+
 const props = defineProps({
   currentSubDomain: {
     type: String,
     default: "",
+  },
+  currentMode: {
+    type: String,
+    default: "ontology", // 'ontology' or 'graph'
   },
   hasData: {
     type: Boolean,
     default: false,
   },
   graphNodes: {
+    type: Array,
+    default: () => [],
+  },
+  graphEdges: {
     type: Array,
     default: () => [],
   },
@@ -125,6 +136,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  isConnecting: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits([
@@ -132,10 +147,24 @@ const emit = defineEmits([
   "create-relationship",
   "create-graph",
   "close-graph-dialog",
+  "connection-complete",
+  "node-drag-end"
 ]);
 
-// 图谱边数据
-const graphEdges = ref([]);
+// 重置连线状态，清除虚线
+const resetConnectionState = () => {
+  if (graphContainerRef.value) {
+    graphContainerRef.value.resetConnectionState();
+    console.log("Content组件调用GraphContainer的resetConnectionState方法");
+  }
+};
+
+defineExpose({
+  resetConnectionState
+});
+
+// 图谱边数据（使用从props传递过来的数据）
+// const graphEdges = ref([]);
 
 // 新建图谱相关状态
 const graphName = ref("");
@@ -150,8 +179,15 @@ const handleAddEntity = (position) => {
 };
 
 // 处理创建关系
-const handleCreateRelationship = () => {
-  emit("create-relationship");
+const handleCreateRelationship = (sourceId) => {
+  console.log("Content组件传递创建关系，源节点ID:", sourceId);
+  emit("create-relationship", sourceId);
+};
+
+// 处理连接完成
+const handleConnectionComplete = (targetId) => {
+  console.log("Content组件传递连接完成，目标节点ID:", targetId);
+  emit("connection-complete", targetId);
 };
 
 // 处理节点点击
@@ -169,11 +205,26 @@ const handleGraphClick = (event) => {
   console.log("图谱点击:", event);
 };
 
+// 处理节点拖拽结束
+const handleNodeDragEnd = (data) => {
+  console.log("Content组件接收到节点拖拽结束事件:", data);
+  emit("node-drag-end", data);
+};
+
 // 监听graphNodes的变化
 watch(
   () => props.graphNodes,
   (newValue) => {
     console.log("Content组件的graphNodes变化:", newValue);
+  },
+  { deep: true },
+);
+
+// 监听graphEdges的变化
+watch(
+  () => props.graphEdges,
+  (newValue) => {
+    console.log("Content组件的graphEdges变化:", newValue);
   },
   { deep: true },
 );
@@ -234,9 +285,9 @@ const handleConfirmCreateGraph = () => {
   background-color: #f5f8fb;
   border-radius: 4px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  background-image: radial-gradient(#e9e9e9 1px, transparent 1px);
+  background-image: radial-gradient(#e2dfdf 1px, transparent 1px);
   background-size: 20px 20px;
-  padding: 20px;
+  /* padding: 20px; */
   display: flex;
   flex-direction: column;
 }
@@ -247,10 +298,9 @@ const handleConfirmCreateGraph = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-top: 20px;
   position: relative;
   width: 100%;
-  height: calc(100% - 40px);
+  height: 100%;
 }
 
 /* 子子级页面内容 */
@@ -353,3 +403,9 @@ const handleConfirmCreateGraph = () => {
   }
 }
 </style>
+
+
+
+
+
+
