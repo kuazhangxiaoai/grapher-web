@@ -372,7 +372,7 @@
       <div v-else class="sub-sub-domain-container">
         <!-- 图谱列表 -->
         <!-- <div class="graph-list" v-if="!hasData"> -->
-        <div class="graph-list" v-if="entityTypes.length === 0">
+        <div class="graph-list" v-if="entityTypes.length === 0 && enableAdd">
           <!-- 空状态 -->
           <div class="empty-list">
             <div class="list-placeholder">
@@ -386,8 +386,8 @@
           </div>
         </div>
 
-        <!-- 数据列表 -->
-        <div v-else class="data-list-container">
+        <!-- 数据列表 当用于本体设计时，这个当作是工具面板。当用于图谱构建模块时，这个当作项目（文章）的三级列表-->
+        <div v-if="entityTypes.length > 0 && enableAdd" class="data-list-container">
           <!-- 实体类型 -->
           <div class="data-section">
             <h3>实体类型</h3>
@@ -472,14 +472,6 @@
               </button>
             </div>
           </div>
-        </div>
-        <div class="add-btn">
-          <el-button
-              type="success"
-              size="small"
-              @click="handleCreateGraphClick"
-          >
-            <el-icon class="plusIcon"><Plus /></el-icon>新建图谱</el-button>
         </div>
       </div>
     </div>

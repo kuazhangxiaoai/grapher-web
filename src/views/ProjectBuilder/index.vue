@@ -134,7 +134,7 @@ const sourceNodeId = ref(null);
 // 目标节点ID
 const targetNodeId = ref(null);
 // 当前模式：'ontology' 或 'graph'
-const currentMode = ref("ontology");
+const currentMode = ref("graph");
 
 // ============ 历史搜索记录相关 ============
 // 存储在不同上下文中的历史记录
