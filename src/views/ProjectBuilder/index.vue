@@ -39,6 +39,9 @@
         @clear-domain-history="clearDomainSearchHistory"
         @clear-topic-history="clearTopicSearchHistory"
     />
+    <div class="project-card-list-container">
+      <ProjectCard :items="projectList"></ProjectCard>
+    </div>
   </div>
 </template>
 
@@ -52,6 +55,7 @@ import Content from "@/components/common/Content.vue";
 import PropertyPanel from "@/components/common/PropertyPanel.vue";
 import AddDomainDialog from "@/components/common/AddDomainDialog.vue";
 import projectService from "@/services/project";
+import ProjectCard from "@/views/ProjectBuilder/ProjectCard.vue";
 
 // 从localStorage读取状态，或使用默认值
 const loadState = () => {
@@ -106,6 +110,7 @@ const isLoadingTopics = ref(false);
 // 存储在不同上下文中的历史记录
 const domainSearchHistory = ref([]); // 领域搜索历史
 const topicSearchHistory = ref([]); // 专题搜索历史
+const projectList = ref([]);
 
 // 从localStorage加载历史搜索记录
 const loadSearchHistory = () => {
@@ -280,7 +285,7 @@ onMounted(async () => {
 // 获取所有领域列表
 const fetchAllDomains = async () => {
   try {
-    const response = await projectService.getProjectList("");
+    const response = await projectService.getDomainList("");
     if (response && response.data) {
       allDomains.value = response.data.map((item) => ({
         id: item.fieldId,
@@ -302,7 +307,7 @@ const fetchAllDomains = async () => {
 // 搜索领域列表
 const searchDomains = async (condition = "") => {
   try {
-    const response = await projectService.getProjectList(condition);
+    const response = await projectService.getDomainList(condition);
     if (response && response.data) {
       return response.data.map((item) => ({
         id: item.fieldId,
@@ -747,5 +752,12 @@ const handleDeleteGraph = (id) => {
   left: 0;
   width: 100%;
   height: 90vh;
+}
+.project-card-list-container{
+  position: absolute;
+  top: 0;
+  left: 280px;
+  width: 165vh;
+  height: 85vh;
 }
 </style>

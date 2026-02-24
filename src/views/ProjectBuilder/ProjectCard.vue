@@ -1,10 +1,11 @@
 <template>
   <div class="card-list-container">
-
     <div class="card-list">
-      <a-card
+      <el-card
           v-for="item in items"
           :key="item.id"
+          :title="item.name"
+          :name="item.name"
           class="item-card"
       >
         <div class="card-content">
@@ -26,43 +27,23 @@
             </a-button>
           </div>
         </div>
-      </a-card>
+      </el-card>
+      <el-card class="item-card">
+        <div class="add-card-content">
+          <div class="add-project-btn">
+            <img src="../../assets/images/addProject.png" />
+          </div>
+        </div>
+      </el-card>
     </div>
 
     <!-- 新增/编辑弹窗 -->
-    <a-modal
-        v-model:visible="showModal"
-        :title="isEditMode ? '编辑项目' : '新增项目'"
-        @ok="handleSubmit"
-        @cancel="resetForm"
-    >
-      <a-form layout="vertical" :model="formData">
-        <a-form-item label="项目名称" required>
-          <a-input v-model="formData.name" placeholder="请输入项目名称" />
-        </a-form-item>
-        <a-form-item label="项目描述">
-          <a-textarea
-              v-model="formData.description"
-              placeholder="请输入项目描述"
-              :rows="3"
-          />
-        </a-form-item>
-        <a-form-item label="创建时间">
-          <a-date-picker
-              v-model="formData.createTime"
-              format="YYYY-MM-DD HH:mm:ss"
-              show-time
-              placeholder="请选择创建时间"
-          />
-        </a-form-item>
-        <a-form-item label="图数据库名称">
-          <a-select
-              v-model="formData.graph_db"
-              placeholder="请选择图数据库名称"
-              :options="availableGraphDB"></a-select>
-        </a-form-item>
-      </a-form>
-    </a-modal>
+    <AddProjectDialog
+      :domain-name="domainName"
+      :topic-name="topicName"
+      :project-name="projectName"
+      :visible="visible">
+    </AddProjectDialog>
   </div>
 </template>
 
@@ -71,8 +52,8 @@ import {ref, defineProps, defineEmits, onMounted} from 'vue';
 import { useRouter } from 'vue-router';
 import { Message, Modal } from '@arco-design/web-vue';
 import { IconPlus } from '@arco-design/web-vue/es/icon';
-import { useUserStore } from '@/stores/user';
 import apiClient from '@/services/apiClient';
+import AddProjectDialog from "@/components/common/AddProjectDialog.vue";
 
 const router = useRouter();
 // 定义组件属性
@@ -87,11 +68,7 @@ const props = defineProps<{
   addButtonText?: string;
 }>();
 
-
-
 // 初始化用户信息
-const userStore = useUserStore();
-userStore.initUser();
 
 // 定义事件
 const emit = defineEmits<{
@@ -227,9 +204,7 @@ const resetForm = () => {
 };
 
 onMounted(()=>{
-  apiClient.get('/api/user/getAvailGraphDB').then(res => {
-    availableGraphDB.value = res.data;
-  })
+
 })
 
 </script>
@@ -406,5 +381,28 @@ onMounted(()=>{
 .card-actions a-button:hover {
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.add-card-content{
+  position: relative;
+  display: flex;
+  height: 150px;
+  align-items: center;
+  justify-content: center;
+}
+
+.add-project-btn{
+  position: relative;
+  align-items: center;
+  justify-content: center;
+  width: 25px;
+  height: 25px;
+  display: flex;
+}
+
+.add-project-btn img {
+  position: relative;
+  width: 25px;
+  height: 25px;
 }
 </style>

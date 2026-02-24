@@ -29,5 +29,31 @@ export default {
     return axios.get(`/serve_api/topic/remove?topicId=${projectId}`);
   },
   /** 新增项目*/
-  addProject
+  addProject(projectName: string, topicName: string, domainName: string, userName): Promise<any> {
+    return axios.post(`/serve_api/project/addProject`,
+        {
+          projectName: projectName,
+          topicName: topicName,
+          domainName: domainName,
+          userName: userName,
+        });
+  },
+  deleteProject(projectName: string, topicName: string, domainName: string, userName: string): Promise<any> {
+    return axios.post(`/serve_api/project/removeProject`,{
+      projectName: projectName,
+      topicName: topicName,
+      domainName: domainName,
+      userName: userName,
+    });
+  },
+  getProjectList(topicName: string, domainName: string, userName: string): Promise<any> {
+    return axios.get(`/serve_api/project/projectList`,
+        {
+          params: {
+            topicName: topicName,
+            domainName: domainName,
+            userName: userName
+          }
+        });
+  }
 };

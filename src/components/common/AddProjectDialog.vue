@@ -1,7 +1,7 @@
 <template>
   <el-dialog v-model="dialogVisible" :title="title" width="500px">
     <el-form :model="form" label-width="100px" style="padding: 30px 0">
-      <el-form-item :label="labelName">
+      <el-form-item label=项目名称>
         <el-input
             v-model="form.projectName"
             :placeholder="placeholderText"
@@ -34,6 +34,7 @@
 
 <script setup>
 import {onMounted, ref, watch} from "vue";
+import {ProjectType} from "@/configs/project.ts";
 
 const props = defineProps({
   visible: {
@@ -56,17 +57,13 @@ const props = defineProps({
     type: String,
     default: "新增项目",
   },
-  labelName: {
-    type: String,
-    default: "项目名称",
-  },
   placeholderText: {
     type: String,
     default: "请输入项目名称",
   },
   projectType:{
-    type: number,
-    default: "",
+    type: ProjectType,
+    default: 1,
   },
 });
 
