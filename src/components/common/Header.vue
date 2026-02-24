@@ -14,7 +14,7 @@
         active-text-color="#43D7B5"
       >
         <el-menu-item index="/home">本体设计</el-menu-item>
-        <el-menu-item index="/graphbuilder">图谱构建</el-menu-item>
+        <el-menu-item index="/project-builder">图谱构建</el-menu-item>
         <el-menu-item index="3">探索应用</el-menu-item>
       </el-menu>
     </nav>

@@ -249,7 +249,7 @@ onMounted(async () => {
 // 获取所有领域列表
 const fetchAllDomains = async () => {
   try {
-    const response = await projectService.getProjectList("");
+    const response = await projectService.getDomainList("");
     if (response && response.data) {
       allDomains.value = response.data.map((item) => ({
         id: item.fieldId,
@@ -271,7 +271,7 @@ const fetchAllDomains = async () => {
 // 搜索领域列表
 const searchDomains = async (condition = "") => {
   try {
-    const response = await projectService.getProjectList(condition);
+    const response = await projectService.getDomainList(condition);
     if (response && response.data) {
       return response.data.map((item) => ({
         id: item.fieldId,
@@ -302,7 +302,7 @@ const handleDeleteDomain = async (id) => {
 
     console.log("用户确认删除，执行删除操作");
     // 用户确认删除
-    await projectService.deleteProject(id);
+    await projectService.deleteDomain(id);
     console.log("删除操作成功，重新获取领域列表");
     // 删除成功后，重新获取所有领域列表
     await fetchAllDomains();
@@ -323,7 +323,7 @@ const openAddDialog = () => {
 const handleAddDomain = async (name) => {
   if (name) {
     try {
-      const response = await projectService.addProject({ fieldName: name });
+      const response = await projectService.addDomain({ fieldName: name });
       if (response && response.data) {
         // 新增成功后，重新获取所有领域列表
         await fetchAllDomains();

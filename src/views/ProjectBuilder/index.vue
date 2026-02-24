@@ -1,5 +1,5 @@
 <template>
-  <div class="graphbuilder-container">
+  <div class="project-builder-container">
     <!-- 左侧侧边栏 -->
     <Sidebar
         :all-option="allOption"
@@ -740,10 +740,8 @@ const handleDeleteGraph = (id) => {
 
 </script>
 
-
-
 <style scoped lang="scss">
-.graphbuilder-container {
+.project-builder-container {
   position: relative;
   top: 0;
   left: 0;
