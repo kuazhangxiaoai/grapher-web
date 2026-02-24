@@ -1,5 +1,5 @@
 <template>
-  <el-dialog v-model="dialogVisible" :title="title" width="500px">
+  <el-dialog v-model="dialogVisible" :title="title" width="500px" @close="handleClose">
     <el-form :model="form" label-width="100px" style="padding: 30px 0">
       <el-form-item :label="labelName">
         <el-input
@@ -83,6 +83,12 @@ const handleConfirm = () => {
     dialogVisible.value = false;
     emit("update:visible", false);
   }
+};
+
+const handleClose = () => {
+  dialogVisible.value = false;
+  emit("update:visible", false);
+  emit("cancel");
 };
 </script>
 

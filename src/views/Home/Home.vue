@@ -2,12 +2,16 @@
 import { ref, onMounted, watch } from "vue";
 import { Search } from "@element-plus/icons-vue";
 import { ElMessageBox } from "element-plus";
+import { ElMessage as Message } from "element-plus";
 import Header from "@/components/common/Header.vue";
 import Sidebar from "@/components/common/Sidebar.vue";
 import Content from "@/components/common/Content.vue";
 import PropertyPanel from "@/components/common/PropertyPanel.vue";
 import AddDomainDialog from "@/components/common/AddDomainDialog.vue";
+import AddGraphDialog from "@/components/common/AddGraphDialog.vue";
 import projectService from "@/services/project";
+
+const contentRef = ref(null);
 
 // 从localStorage读取状态，或使用默认值
 const loadState = () => {
@@ -44,7 +48,7 @@ const searchOptions = ref([]);
 // 专题搜索选项
 const topicSearchOptions = ref([]);
 const showPropertyPanel = ref(false);
-const entityName = ref("人物");
+const entityName = ref("");
 const entityDescription = ref("");
 const entityProperties = ref([
   { name: "名字", type: "text", value: "" },
@@ -60,8 +64,12 @@ const relationshipTypes = ref([]);
 const currentOperation = ref("");
 // 关系名称
 const relationshipName = ref("");
+// 关系类型
+const relationshipType = ref("定向");
 // 图谱节点
 const graphNodes = ref([]);
+// 图谱边数据
+const graphEdges = ref([]);
 // 图谱列表
 const graphs = ref([]);
 // 显示图谱创建对话框
@@ -70,22 +78,37 @@ const showGraphDialog = ref(false);
 const rightClickPosition = ref({ x: 0, y: 0 });
 // 专题列表加载状态
 const isLoadingTopics = ref(false);
+// 连线模式状态
+const isConnecting = ref(false);
+// 源节点ID
+const sourceNodeId = ref(null);
+// 目标节点ID
+const targetNodeId = ref(null);
+// 当前模式：'ontology' 或 'graph'
+const currentMode = ref('ontology');
 
 // ============ 历史搜索记录相关 ============
 // 存储在不同上下文中的历史记录
 const domainSearchHistory = ref([]); // 领域搜索历史
 const topicSearchHistory = ref([]); // 专题搜索历史
+const graphSearchHistory = ref([]); // 图谱搜索历史
+// 图谱搜索选项
+const graphSearchOptions = ref([]);
 
 // 从localStorage加载历史搜索记录
 const loadSearchHistory = () => {
   const savedDomainHistory = localStorage.getItem("domainSearchHistory");
   const savedTopicHistory = localStorage.getItem("topicSearchHistory");
+  const savedGraphHistory = localStorage.getItem("graphSearchHistory");
 
   if (savedDomainHistory) {
     domainSearchHistory.value = JSON.parse(savedDomainHistory);
   }
   if (savedTopicHistory) {
     topicSearchHistory.value = JSON.parse(savedTopicHistory);
+  }
+  if (savedGraphHistory) {
+    graphSearchHistory.value = JSON.parse(savedGraphHistory);
   }
 };
 
@@ -98,6 +121,10 @@ const saveSearchHistory = () => {
   localStorage.setItem(
     "topicSearchHistory",
     JSON.stringify(topicSearchHistory.value),
+  );
+  localStorage.setItem(
+    "graphSearchHistory",
+    JSON.stringify(graphSearchHistory.value),
   );
 };
 
@@ -137,6 +164,24 @@ const addTopicSearchHistory = (query) => {
   saveSearchHistory();
 };
 
+// 添加图谱搜索历史记录
+const addGraphSearchHistory = (query) => {
+  if (!query || query.trim() === "") return;
+
+  const trimmedQuery = query.trim();
+  // 移除已存在的相同记录
+  graphSearchHistory.value = graphSearchHistory.value.filter(
+    (item) => item !== trimmedQuery,
+  );
+  // 添加到开头
+  graphSearchHistory.value.unshift(trimmedQuery);
+  // 限制最多10条记录
+  if (graphSearchHistory.value.length > 10) {
+    graphSearchHistory.value = graphSearchHistory.value.slice(0, 10);
+  }
+  saveSearchHistory();
+};
+
 // 清除领域搜索历史
 const clearDomainSearchHistory = () => {
   domainSearchHistory.value = [];
@@ -151,6 +196,14 @@ const clearTopicSearchHistory = () => {
   saveSearchHistory();
   // 更新专题搜索下拉框为历史记录（空状态）
   updateTopicSearchOptions();
+};
+
+// 清除图谱搜索历史
+const clearGraphSearchHistory = () => {
+  graphSearchHistory.value = [];
+  saveSearchHistory();
+  // 更新图谱搜索下拉框为历史记录（空状态）
+  updateGraphSearchOptions();
 };
 
 // 更新领域搜索下拉框选项（显示历史记录）
@@ -174,6 +227,18 @@ const updateTopicSearchOptions = () => {
     }));
   } else {
     topicSearchOptions.value = [{ value: "暂无搜索历史", disabled: true }];
+  }
+};
+
+// 更新图谱搜索下拉框选项（显示历史记录）
+const updateGraphSearchOptions = () => {
+  if (graphSearchHistory.value.length > 0) {
+    graphSearchOptions.value = graphSearchHistory.value.map((item) => ({
+      value: item,
+      isHistory: true,
+    }));
+  } else {
+    graphSearchOptions.value = [{ value: "暂无搜索历史", disabled: true }];
   }
 };
 // ============ 历史搜索记录相关结束 ============
@@ -231,6 +296,7 @@ onMounted(async () => {
   // 初始化搜索下拉框选项
   updateDomainSearchOptions();
   updateTopicSearchOptions();
+  updateGraphSearchOptions();
 
   // 调用接口获取所有领域列表
   await fetchAllDomains();
@@ -479,6 +545,34 @@ const handleTopicSearchIconClick = async (query) => {
   }
 };
 
+// 图谱搜索处理
+const handleGraphSearch = (query) => {
+  // 这里可以添加实时搜索逻辑
+  // 例如过滤图谱列表
+  if (query) {
+    // 过滤图谱列表
+    const filteredGraphs = graphs.value.filter(graph => 
+      graph.name.toLowerCase().includes(query.toLowerCase())
+    );
+    // 这里可以更新显示的图谱列表
+  }
+};
+
+// 图谱搜索图标点击事件
+const handleGraphSearchIconClick = async (query) => {
+  if (query) {
+    // 添加图谱搜索历史
+    addGraphSearchHistory(query);
+    // 过滤图谱列表
+    const filteredGraphs = graphs.value.filter(graph => 
+      graph.name.toLowerCase().includes(query.toLowerCase())
+    );
+    // 这里可以更新显示的图谱列表
+  }
+  // 更新图谱搜索下拉框选项
+  updateGraphSearchOptions();
+};
+
 const handleBackToDomains = () => {
   currentDomain.value = "";
   currentSubDomain.value = "";
@@ -672,25 +766,96 @@ const handleSubDomainClick = (subDomain) => {
   }
 };
 
+// 处理专题点击，设置当前子领域为专题名称
+const handleTopicClick = (topic) => {
+  currentSubDomain.value = topic.name;
+  // 清空子子领域，因为专题是子领域的一种
+  subSubDomains.value = [];
+};
+
 const handleAddEntity = (position) => {
   currentOperation.value = "entity";
-  if (position) {
+  if (position && (position.x !== undefined || position.y !== undefined)) {
     rightClickPosition.value = position;
+    console.log("设置右键点击位置:", position);
+  } else {
+    // 默认位置，避免新节点出现在左上角
+    rightClickPosition.value = {
+      x: 100 + Math.random() * 400,
+      y: 100 + Math.random() * 300
+    };
+    console.log("使用默认位置:", rightClickPosition.value);
   }
   showPropertyPanel.value = true;
 };
 
-const handleCreateRelationship = () => {
+const handleCreateRelationship = (sourceId) => {
+  console.log("开始创建关系，源节点ID:", sourceId);
+  // 重置关系相关属性
+  relationshipName.value = "";
+  relationshipType.value = "定向";
+  entityDescription.value = "";
+  entityProperties.value = [
+    { name: "名字", type: "text", value: "" },
+    { name: "日期", type: "date", value: "" },
+    { name: "ID", type: "number", value: "" },
+  ];
+  addToComponentLibrary.value = true;
+  
   currentOperation.value = "relationship";
-  showPropertyPanel.value = true;
+  isConnecting.value = true;
+  sourceNodeId.value = sourceId;
+  console.log("进入连线模式");
 };
 
 const handleClosePropertyPanel = () => {
   showPropertyPanel.value = false;
+  
+  // 关闭属性面板后，清除虚线
+  if (currentOperation.value === "relationship" && contentRef.value) {
+    contentRef.value.resetConnectionState();
+    console.log("关闭属性面板后，调用resetConnectionState方法清除虚线");
+  }
 };
 
 const handleCancelPropertyPanel = () => {
   showPropertyPanel.value = false;
+  
+  // 取消属性面板后，清除虚线
+  if (currentOperation.value === "relationship" && contentRef.value) {
+    contentRef.value.resetConnectionState();
+    console.log("取消属性面板后，调用resetConnectionState方法清除虚线");
+  }
+};
+
+// 处理连接完成
+const handleConnectionComplete = (targetId) => {
+  console.log("连接完成，目标节点ID:", targetId);
+  console.log("源节点ID:", sourceNodeId.value);
+  
+  // 存储目标节点ID
+  targetNodeId.value = targetId;
+  
+  // 退出连线模式
+  isConnecting.value = false;
+  
+  // 重置关系相关属性
+  relationshipName.value = "";
+  relationshipType.value = "定向";
+  entityDescription.value = "";
+  entityProperties.value = [
+    { name: "名字", type: "text", value: "" },
+    { name: "日期", type: "date", value: "" },
+    { name: "ID", type: "number", value: "" },
+  ];
+  addToComponentLibrary.value = true;
+  
+  // 设置当前操作类型为关系
+  currentOperation.value = "relationship";
+  
+  // 打开属性面板
+  showPropertyPanel.value = true;
+  console.log("打开关系属性面板");
 };
 
 const handleSavePropertyPanel = (data) => {
@@ -711,26 +876,65 @@ const handleSavePropertyPanel = (data) => {
       type: "entity",
       name: data.entityName,
       // 正确处理x或y为0的情况
-      x:
-        rightClickPosition.value.x !== undefined
-          ? rightClickPosition.value.x
-          : 100 + Math.random() * 400, // 使用右键点击位置，或随机位置作为备选
-      y:
-        rightClickPosition.value.y !== undefined
-          ? rightClickPosition.value.y
-          : 100 + Math.random() * 300,
+      x: rightClickPosition.value.x !== undefined ? rightClickPosition.value.x : 100 + Math.random() * 400,
+      y: rightClickPosition.value.y !== undefined ? rightClickPosition.value.y : 100 + Math.random() * 300,
       properties: data.entityProperties,
     };
+    console.log("创建新节点，位置:", { x: newNode.x, y: newNode.y });
     graphNodes.value.push(newNode);
     console.log("新创建的节点:", newNode);
     console.log("当前graphNodes数组:", graphNodes.value);
+    
   } else if (data.currentOperation === "relationship") {
     // 将当前填写的关系名称添加到关系类型数组中（如果不存在）
     if (
-      data.relationshipName &&
-      !relationshipTypes.value.includes(data.relationshipName)
+      data.relationshipType &&
+      !relationshipTypes.value.includes(data.relationshipType)
     ) {
-      relationshipTypes.value.push(data.relationshipName);
+      relationshipTypes.value.push(data.relationshipType);
+    }
+    
+    // 创建新的关系边并添加到图谱边数据中
+    if (sourceNodeId.value && targetNodeId.value) {
+      const relationshipName = data.relationshipName || "关系";
+      const relationshipType = data.relationshipType || "定向";
+      const properties = data.entityProperties || [];
+      
+      // 创建第一条边：A→B
+      const newEdge1 = {
+        id: (Date.now() + 1).toString(),
+        source: sourceNodeId.value.toString(),
+        target: targetNodeId.value.toString(),
+        data: {
+          name: relationshipName,
+          type: relationshipType,
+          properties: properties,
+        },
+      };
+      graphEdges.value.push(newEdge1);
+      console.log("新创建的关系边1:", newEdge1);
+      
+      // 如果是循环关系，创建第二条边：B→A
+      if (relationshipType === "循环") {
+        const newEdge2 = {
+          id: Date.now().toString(),
+          source: targetNodeId.value.toString(),
+          target: sourceNodeId.value.toString(),
+          data: {
+            name: relationshipName,
+            type: relationshipType,
+            properties: properties,
+          },
+        };
+        graphEdges.value.push(newEdge2);
+        console.log("新创建的关系边2:", newEdge2);
+      }
+      
+      console.log("当前graphEdges数组:", graphEdges.value);
+      
+      // 清空源节点和目标节点ID，准备下一次连线
+      sourceNodeId.value = null;
+      targetNodeId.value = null;
     }
   }
 
@@ -743,6 +947,12 @@ const handleSavePropertyPanel = (data) => {
   }
 
   showPropertyPanel.value = false;
+  
+  // 保存关系后，清除虚线
+  if (data.currentOperation === "relationship" && contentRef.value) {
+    contentRef.value.resetConnectionState();
+    console.log("保存关系后，调用resetConnectionState方法清除虚线");
+  }
 };
 
 const handleAddProperty = () => {
@@ -850,25 +1060,69 @@ const handleAddTopic = async (name) => {
   }
 };
 
+// 图谱创建相关状态
+const isConfirmButtonDisabled = ref(false);
+
 // 处理创建图谱
-const handleCreateGraph = (graphData) => {
-  // 这里可以处理图谱创建的逻辑，例如保存图谱数据到后端
-  console.log("创建图谱:", graphData);
-  // 添加到图谱列表
-  const newGraph = {
-    id: Date.now(),
-    name: graphData.name,
-    createMethod: graphData.createMethod,
-    createdAt: new Date().toISOString(),
-  };
-  graphs.value.push(newGraph);
-  // 设置 hasData 为 true，显示关系图
-  hasData.value = true;
+const handleCreateGraph = async (graphData) => {
+  if (!graphData.graphName) {
+    Message.warning("请输入图谱名称");
+    return;
+  }
+
+  if (!graphData.createMethod) {
+    Message.warning("请选择创建方式");
+    return;
+  }
+
+  isConfirmButtonDisabled.value = true;
+
+  try {
+    // 构造图谱数据
+    const graphDataToSend = {
+      name: graphData.graphName,
+      createMethod: graphData.createMethod,
+      file: graphData.createMethod === "text" ? graphData.uploadedFile : null,
+      databaseName: graphData.createMethod === "database" ? graphData.databaseName : "",
+      anyContent: graphData.createMethod === "any" ? graphData.anyContent : "",
+    };
+
+    // 这里可以处理图谱创建的逻辑，例如保存图谱数据到后端
+    console.log("创建图谱:", graphDataToSend);
+    
+    // 模拟创建成功
+    // const response = await createGraph(graphDataToSend);
+    // if (response.code === 200) {
+      // 创建成功后的处理
+      Message.success("图谱创建成功");
+      // 添加到图谱列表
+      const newGraph = {
+        id: Date.now(),
+        name: graphData.graphName,
+        createMethod: graphData.createMethod,
+        createdAt: new Date().toISOString(),
+      };
+      graphs.value.push(newGraph);
+      // 设置 hasData 为 true，显示关系图
+      hasData.value = true;
+    // } else {
+    //   Message.error(response.message || "图谱创建失败");
+    // }
+  } catch (error) {
+    Message.error("图谱创建失败，请稍后重试");
+  } finally {
+    isConfirmButtonDisabled.value = false;
+  }
 };
 
 // 处理创建图谱点击
 const handleCreateGraphClick = () => {
   showGraphDialog.value = true;
+};
+
+// 处理取消创建图谱
+const handleCancelCreateGraph = () => {
+  showGraphDialog.value = false;
 };
 
 // 处理图谱点击
@@ -891,16 +1145,64 @@ const handleDeleteGraph = (id) => {
   graphs.value = graphs.value.filter((graph) => graph.id !== id);
 };
 
-// 处理关闭图谱对话框
-const handleCloseGraphDialog = () => {
-  showGraphDialog.value = false;
+// 处理添加组件到实体类型
+const handleAddEntityType = (componentName) => {
+  // 检查实体类型中是否已存在该组件名称
+  if (!entityTypes.value.includes(componentName)) {
+    // 添加到实体类型中
+    entityTypes.value.push(componentName);
+  }
+};
+
+// 处理节点拖拽结束
+const handleNodeDragEnd = (data) => {
+  console.log("Home组件接收到节点拖拽结束事件:", data);
+  console.log("接收到的nodeId类型:", typeof data.nodeId, "nodeId值:", data.nodeId);
+  console.log("当前graphNodes:", graphNodes.value);
+  
+  // 遍历所有节点，找到并更新对应节点
+  let nodeFound = false;
+  for (let i = 0; i < graphNodes.value.length; i++) {
+    const node = graphNodes.value[i];
+    console.log(`检查节点 ${i}: id=${node.id}, 类型=${typeof node.id}`);
+    
+    // 尝试多种匹配方式
+    if (node.id === data.nodeId || String(node.id) === String(data.nodeId)) {
+      console.log("找到匹配节点:", node);
+      // 更新节点位置
+      graphNodes.value[i] = {
+        ...node,
+        x: data.position.x,
+        y: data.position.y
+      };
+      console.log("更新后的节点:", graphNodes.value[i]);
+      nodeFound = true;
+      break;
+    }
+  }
+  
+  if (nodeFound) {
+    // 手动触发响应式更新
+    graphNodes.value = [...graphNodes.value];
+    console.log("触发响应式更新");
+    // 手动保存状态
+    saveState();
+    console.log("保存状态到localStorage");
+  } else {
+    console.log("未找到对应节点，节点位置未更新");
+  }
+};
+
+// 处理模式变化
+const handleModeChange = (mode) => {
+  currentMode.value = mode;
 };
 </script>
 
 <template>
   <div class="home-container">
     <!-- 顶部导航栏 -->
-    <Header />
+    <Header @mode-change="handleModeChange" />
 
     <!-- 主内容区域 -->
     <div class="main-content">
@@ -909,6 +1211,7 @@ const handleCloseGraphDialog = () => {
         :all-option="allOption"
         :current-domain="currentDomain"
         :current-sub-domain="currentSubDomain"
+        :current-mode="currentMode"
         :domains="domains"
         :sub-domains="subDomains"
         :sub-sub-domains="subSubDomains"
@@ -916,6 +1219,7 @@ const handleCloseGraphDialog = () => {
         :graphs="graphs"
         :search-options="searchOptions"
         :topic-search-options="topicSearchOptions"
+        :graph-search-options="graphSearchOptions"
         :is-loading-topics="isLoadingTopics"
         :has-data="hasData"
         :entity-types="entityTypes"
@@ -937,27 +1241,35 @@ const handleCloseGraphDialog = () => {
         @delete-graph="handleDeleteGraph"
         @delete-topic="handleDeleteTopic"
         @topic-search="handleTopicSearch"
+        @topic-click="handleTopicClick"
         @search-icon-click="handleSearchIconClick"
         @topic-search-icon-click="handleTopicSearchIconClick"
         @clear-domain-history="clearDomainSearchHistory"
         @clear-topic-history="clearTopicSearchHistory"
+        @clear-graph-history="clearGraphSearchHistory"
+        @graph-search="handleGraphSearch"
+        @graph-search-icon-click="handleGraphSearchIconClick"
+        @add-entity-type="handleAddEntityType"
       />
 
       <!-- 中间内容 -->
       <Content
+        ref="contentRef"
         :current-sub-domain="currentSubDomain"
+        :current-mode="currentMode"
         :has-data="hasData"
         :graph-nodes="graphNodes"
+        :graph-edges="graphEdges"
         :entity-properties="entityProperties"
-        :show-graph-dialog="showGraphDialog"
         @add-entity="handleAddEntity"
+        :is-connecting="isConnecting"
         @create-relationship="handleCreateRelationship"
+        @connection-complete="handleConnectionComplete"
         @drop="handleDrop"
         @node-mouse-down="handleNodeMouseDown"
         @mouse-move="handleMouseMove"
         @mouse-up="handleMouseUp"
-        @create-graph="handleCreateGraph"
-        @close-graph-dialog="handleCloseGraphDialog"
+        @node-drag-end="handleNodeDragEnd"
       />
 
       <!-- 右侧属性面板 -->
@@ -968,6 +1280,7 @@ const handleCloseGraphDialog = () => {
         :entity-description="entityDescription"
         :entity-properties="entityProperties"
         :relationship-name="relationshipName"
+        :relationship-type="relationshipType"
         :add-to-component-library="addToComponentLibrary"
         @close="handleClosePropertyPanel"
         @cancel="handleCancelPropertyPanel"
@@ -993,6 +1306,14 @@ const handleCloseGraphDialog = () => {
       title="新增专题"
       label-name="专题名称"
       placeholder-text="请输入专题名称"
+    />
+
+    <!-- 新建图谱对话框 -->
+    <AddGraphDialog
+      v-model:visible="showGraphDialog"
+      :is-confirm-button-disabled="isConfirmButtonDisabled"
+      @create-graph="handleCreateGraph"
+      @cancel="handleCancelCreateGraph"
     />
   </div>
 </template>

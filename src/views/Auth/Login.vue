@@ -99,10 +99,12 @@ const validateForm = (): boolean => {
 
 const handleLogin = async () => {
   if (!validateForm()) return;
-
+  if(localStorage.getItem("homePageState")){
+    localStorage.removeItem("homePageState");
+  }
+  
   errorMessage.value = "";
   isLoading.value = true;
-
   try {
     let formdata = new FormData();
     formdata.append("userName", credentials.username);

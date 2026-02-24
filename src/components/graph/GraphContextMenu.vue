@@ -12,7 +12,7 @@
       <span>新增实体</span>
     </div>
     <div v-if="isNodeClick" class="menu-item" @click="handleCreateRelationship">
-      <el-icon><Link /></el-icon>
+      <el-icon><Plus /></el-icon>
       <span>创建关系</span>
     </div>
   </div>
@@ -57,22 +57,25 @@ const handleCreateRelationship = () => {
 }
 
 .menu-item {
-  padding: 8px 12px;
+  padding: 12px 20px;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
-  color: #606266;
+  font-size: 16px;
+  color: #44D6B6;
   transition: all 0.3s;
+  border:1px solid #44D6B6;
+  border-radius: 4px;
 }
 
 .menu-item:hover {
-  background-color: #f5f7fa;
-  color: #409eff;
+  background: rgba(67,215,181,0.12);
 }
 
 .menu-item el-icon {
   font-size: 14px;
+  color: #44D6B6;
+  font-weight: bold;
 }
 </style>

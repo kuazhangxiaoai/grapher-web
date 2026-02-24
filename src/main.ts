@@ -20,6 +20,13 @@ import Prism from 'prismjs';
 import router from './router'
 import Icon from '@/plugins/icon'
 import Directive from '@/plugins/directive'
+
+// 引入mock配置
+import mockConfig from '@/config/mock'
+if (import.meta.env.DEV && mockConfig.ENABLE_MOCK) {
+  import('@/mock')
+}
+
 // 创建 app 实例
 const app = createApp(App)
 VMdPreview.use(vuepressTheme, { Prism });

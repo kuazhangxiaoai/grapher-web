@@ -3,7 +3,7 @@
     <div class="property-panel">
       <div class="property-panel-header">
         <div class="header-left">
-          <el-icon><Menu /></el-icon>
+          <img src="@/assets/images/面板设置.png" alt="属性面板图标" />
           <h3>属性面板</h3>
         </div>
       </div>
@@ -12,13 +12,17 @@
         <div v-if="currentOperation === 'entity'">
           <div class="property-item">
             <label>实体名称</label>
-            <el-input v-model="localEntityName" placeholder="请输入"></el-input>
+            <el-input v-model="localEntityName" placeholder="请输入~"></el-input>
           </div>
           <div class="property-item">
             <label>定义描述</label>
             <el-input
               v-model="localEntityDescription"
               placeholder="请输入~"
+              type="textarea"
+              :maxlength="60"
+              resize="none"
+              :rows="3"
             ></el-input>
           </div>
           <div class="property-item">
@@ -31,11 +35,11 @@
             <div class="properties-list">
               <div
                 v-for="(property, index) in localEntityProperties"
-                :key="index"
+                :key="'prop-' + index + '-' + (property.name || index) + '-' + Date.now()"
                 class="property-row"
               >
-                <div class="property-name">{{ property.name }}</div>
-                <el-select v-model="property.type" style="width: 100%">
+                <div class="property-name">{{ property.name || '未命名属性' }}</div>
+                <el-select v-model="property.type" style="width: 100%" :popper-append-to-body="false">
                   <el-option label="文本" value="text"></el-option>
                   <el-option label="日期" value="date"></el-option>
                   <el-option label="数字" value="number"></el-option>
@@ -50,10 +54,11 @@
               size="small"
               class="add-property-btn"
               @click="handleAddProperty"
-              >+ 新增属性</el-button
             >
+              <el-icon class="plusIcon"><Plus /></el-icon> 新增属性
+            </el-button>
           </div>
-          <div class="property-item">
+          <div class="property-item lines">
             <label>加入组件库</label>
             <el-switch
               v-model="localAddToComponentLibrary"
@@ -68,22 +73,26 @@
             <label>关系名称</label>
             <el-input
               v-model="localRelationshipName"
-              placeholder="请输入"
+              placeholder="请输入~"
             ></el-input>
           </div>
           <div class="property-item">
             <label>定义描述</label>
             <el-input
-              v-model="localEntityDescription"
+              v-model="localRelationshipDescription"
               placeholder="请输入~"
+              type="textarea"
+              :maxlength="60"
+              resize="none"
+              :rows="3"
             ></el-input>
           </div>
           <div class="property-item">
             <label>关系类型</label>
-            <el-select v-model="localRelationshipType" style="width: 100%">
-              <el-option label="定向" value="directed"></el-option>
-              <el-option label="双向" value="bidirectional"></el-option>
-              <el-option label="循环" value="circular"></el-option>
+            <el-select v-model="localRelationshipType" style="width: 100%" :popper-append-to-body="false">
+              <el-option label="定向" value="定向"></el-option>
+              <el-option label="双向" value="双向"></el-option>
+              <el-option label="循环" value="循环"></el-option>
             </el-select>
           </div>
           <div class="property-item">
@@ -96,11 +105,11 @@
             <div class="properties-list">
               <div
                 v-for="(property, index) in localEntityProperties"
-                :key="index"
+                :key="'prop-' + index + '-' + (property.name || index) + '-' + Date.now()"
                 class="property-row"
               >
-                <div class="property-name">{{ property.name }}</div>
-                <el-select v-model="property.type" style="width: 100%">
+                <div class="property-name">{{ property.name || '未命名属性' }}</div>
+                <el-select v-model="property.type" style="width: 100%" :popper-append-to-body="false">
                   <el-option label="文本" value="text"></el-option>
                   <el-option label="日期" value="date"></el-option>
                   <el-option label="数字" value="number"></el-option>
@@ -115,10 +124,11 @@
               size="small"
               class="add-property-btn"
               @click="handleAddProperty"
-              >+ 新增属性</el-button
             >
+              <el-icon class="plusIcon"><Plus /></el-icon> 新增属性
+            </el-button>
           </div>
-          <div class="property-item">
+          <div class="property-item lines">
             <label>加入组件库</label>
             <el-switch
               v-model="localAddToComponentLibrary"
@@ -147,11 +157,47 @@
       </div>
     </div>
   </aside>
+
+  <!-- 新增属性对话框 -->
+  <el-dialog
+    v-model="addPropertyDialogVisible"
+    title="新增属性"
+    width="460px"
+    :close-on-click-modal="false"
+    :close-on-press-escape="false"
+  >
+    <el-form :model="newProperty" label-width="80px">
+      <el-form-item label="属性名称" required>
+        <el-input 
+          v-model="newProperty.name" 
+          placeholder="请输入属性名称"
+          clearable
+        ></el-input>
+      </el-form-item>
+      <el-form-item label="属性类型">
+        <el-select v-model="newProperty.type" style="width: 100%">
+          <el-option label="文本" value="text"></el-option>
+          <el-option label="日期" value="date"></el-option>
+          <el-option label="数字" value="number"></el-option>
+          <el-option label="布尔" value="boolean"></el-option>
+          <el-option label="对象" value="object"></el-option>
+          <el-option label="数组" value="array"></el-option>
+        </el-select>
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <span class="dialog-footer">
+        <el-button class="cancel-btn" @click="addPropertyDialogVisible = false">取消</el-button>
+        <el-button class="confirm-btn" type="primary" @click="handleConfirmAddProperty">确定</el-button>
+      </span>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup>
-import { ref, watch } from "vue";
-import { Menu } from "@element-plus/icons-vue";
+import { ref, watch, nextTick, onMounted, onUnmounted } from "vue";
+import { Plus } from "@element-plus/icons-vue";
+import { ElMessage } from "element-plus";
 
 const props = defineProps({
   showPropertyPanel: {
@@ -178,9 +224,13 @@ const props = defineProps({
     type: String,
     default: "",
   },
+  relationshipDescription: {
+    type: String,
+    default: "",
+  },
   relationshipType: {
     type: String,
-    default: "directed",
+    default: "定向",
   },
   addToComponentLibrary: {
     type: Boolean,
@@ -190,55 +240,100 @@ const props = defineProps({
 
 const emit = defineEmits(["close", "cancel", "save", "add-property"]);
 
+// 本地状态
 const localEntityName = ref(props.entityName);
 const localEntityDescription = ref(props.entityDescription);
-const localEntityProperties = ref([...props.entityProperties]);
+const localEntityProperties = ref([]);
 const localRelationshipName = ref(props.relationshipName);
+const localRelationshipDescription = ref(props.relationshipDescription);
 const localRelationshipType = ref(props.relationshipType);
 const localAddToComponentLibrary = ref(props.addToComponentLibrary);
 
-// 监听属性变化，同步更新本地状态
+// 新增属性对话框相关
+const addPropertyDialogVisible = ref(false);
+const newProperty = ref({ name: "", type: "text" });
+
+// 标记是否正在添加属性，避免被props更新覆盖
+const isAddingProperty = ref(false);
+
+// 初始化属性列表
+localEntityProperties.value = props.entityProperties.map(prop => ({ ...prop }));
+
+// 监听属性变化，同步更新本地状态（但跳过添加属性时的更新）
+watch(
+  () => props.entityProperties,
+  (newValue) => {
+    // 如果正在添加属性，跳过这次更新
+    if (isAddingProperty.value) {
+      console.log('Skipping props update during property addition');
+      return;
+    }
+    // 深拷贝新值
+    localEntityProperties.value = newValue.map(prop => ({ ...prop }));
+    console.log('Properties updated from props:', localEntityProperties.value);
+  },
+  { deep: true }
+);
+
+// 监听showPropertyPanel变化，当它变为true时，重新从props中获取最新的值
+watch(
+  () => props.showPropertyPanel,
+  (newValue) => {
+    if (newValue) {
+      isAddingProperty.value = false; // 重置添加状态
+      localEntityName.value = props.entityName;
+      localEntityDescription.value = props.entityDescription;
+      localEntityProperties.value = props.entityProperties.map(prop => ({ ...prop }));
+      localRelationshipName.value = props.relationshipName;
+      localRelationshipDescription.value = props.relationshipDescription;
+      localRelationshipType.value = props.relationshipType;
+      localAddToComponentLibrary.value = props.addToComponentLibrary;
+      console.log('Panel opened with properties:', localEntityProperties.value);
+    }
+  }
+);
+
+// 监听其他props的变化
 watch(
   () => props.entityName,
   (newValue) => {
     localEntityName.value = newValue;
-  },
+  }
 );
 
 watch(
   () => props.entityDescription,
   (newValue) => {
     localEntityDescription.value = newValue;
-  },
-);
-
-watch(
-  () => props.entityProperties,
-  (newValue) => {
-    localEntityProperties.value = [...newValue];
-  },
-  { deep: true },
+  }
 );
 
 watch(
   () => props.relationshipName,
   (newValue) => {
     localRelationshipName.value = newValue;
-  },
+  }
+);
+
+watch(
+  () => props.relationshipDescription,
+  (newValue) => {
+    localRelationshipDescription.value = newValue;
+  }
 );
 
 watch(
   () => props.addToComponentLibrary,
   (newValue) => {
     localAddToComponentLibrary.value = newValue;
-  },
+  }
 );
 
 watch(
   () => props.relationshipType,
   (newValue) => {
     localRelationshipType.value = newValue;
-  },
+  }
 );
 
 const handleClosePropertyPanel = () => {
@@ -255,8 +350,9 @@ const handleSavePropertyPanel = () => {
     currentOperation: props.currentOperation,
     entityName: localEntityName.value,
     entityDescription: localEntityDescription.value,
-    entityProperties: localEntityProperties.value,
+    entityProperties: localEntityProperties.value.map(prop => ({ ...prop })),
     relationshipName: localRelationshipName.value,
+    relationshipDescription: localRelationshipDescription.value,
     relationshipType: localRelationshipType.value,
     addToComponentLibrary: localAddToComponentLibrary.value,
   };
@@ -264,37 +360,115 @@ const handleSavePropertyPanel = () => {
 };
 
 const handleAddProperty = () => {
-  localEntityProperties.value.push({ name: "", type: "text", value: "" });
-  emit("add-property");
+  // 重置新属性数据
+  newProperty.value = { name: "", type: "text" };
+  // 打开对话框
+  addPropertyDialogVisible.value = true;
 };
+
+const handleConfirmAddProperty = async () => {
+  // 验证属性名是否为空
+  if (!newProperty.value.name || newProperty.value.name.trim() === "") {
+    ElMessage.warning('请输入属性名称');
+    return;
+  }
+  
+  // 设置添加状态，防止被props更新覆盖
+  isAddingProperty.value = true;
+  
+  // 创建新属性对象
+  const newProp = {
+    name: newProperty.value.name.trim(),
+    type: newProperty.value.type,
+    value: ""
+  };
+  
+  console.log('Adding new property:', newProp);
+  console.log('Before addition:', JSON.parse(JSON.stringify(localEntityProperties.value)));
+  
+  // 直接添加到本地数组
+  localEntityProperties.value.push(newProp);
+  
+  console.log('After addition:', JSON.parse(JSON.stringify(localEntityProperties.value)));
+  
+  // 等待 DOM 更新
+  await nextTick();
+  
+  // 触发添加属性事件，传递新属性数据
+  emit("add-property", newProp);
+  
+  // 关闭对话框
+  addPropertyDialogVisible.value = false;
+  
+  // 重置新属性数据
+  newProperty.value = { name: "", type: "text" };
+  
+  // 成功提示
+  ElMessage.success('属性添加成功');
+  
+  // 3秒后重置添加状态
+  setTimeout(() => {
+    isAddingProperty.value = false;
+  }, 3000);
+  
+  console.log('Final properties:', JSON.parse(JSON.stringify(localEntityProperties.value)));
+};
+
+// 点击外部关闭属性面板
+const handleClickOutside = (event) => {
+  // 检查点击目标是否在属性面板内部
+  const propertyPanel = document.querySelector('.property-panel');
+  // 检查点击目标是否在新增属性弹框内部
+  const dialog = document.querySelector('.el-dialog');
+  // 检查点击目标是否在关系连线（虚线）内部
+  const connectionLine = document.querySelector('.connection-line');
+  // 检查点击目标是否在画布内部
+  const graphContainer = document.querySelector('.graph-container');
+  // 只有当点击目标不在属性面板、弹框、连线和画布内部时才关闭
+  if (propertyPanel && 
+      !propertyPanel.contains(event.target) && 
+      (!dialog || !dialog.contains(event.target)) && 
+      (!connectionLine || !connectionLine.contains(event.target)) &&
+      (!graphContainer || !graphContainer.contains(event.target))) {
+    emit('close');
+  }
+};
+
+// 生命周期钩子
+onMounted(() => {
+  // 添加全局点击事件监听器
+  document.addEventListener('click', handleClickOutside);
+});
+
+onUnmounted(() => {
+  // 移除全局点击事件监听器
+  document.removeEventListener('click', handleClickOutside);
+});
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 /* 右侧面板 */
 .right-panel {
-  width: 300px;
+  width: 280px;
   background-color: white;
-  box-shadow: -2px 0 4px rgba(0, 0, 0, 0.1);
   overflow: hidden;
 }
 
 .property-panel {
   position: fixed;
-  top: 60px;
+  top: 70px;
   right: 0;
-  width: 300px;
-  height: calc(100vh - 60px);
+  width: 280px;
+  height: calc(100vh - 70px);
   background-color: white;
-  border-left: 1px solid #e4e7ed;
-  box-shadow: -2px 0 4px rgba(0, 0, 0, 0.1);
+  box-shadow: -2px 0 4px rgba(0, 0, 0, 0.02);
   display: flex;
   flex-direction: column;
   z-index: 1000;
 }
 
 .property-panel-header {
-  padding: 12px 16px;
-  border-bottom: 1px solid #e4e7ed;
+  padding: 20px 24px;
   display: flex;
   align-items: center;
   background-color: white;
@@ -304,6 +478,10 @@ const handleAddProperty = () => {
   display: flex;
   align-items: center;
   gap: 8px;
+  img{
+    width: 21px;
+    height: 21px;
+  }
 }
 
 .header-left el-icon {
@@ -312,27 +490,61 @@ const handleAddProperty = () => {
 }
 
 .property-panel-header h3 {
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 18px;
+  color: #333333;
+  font-weight: 600;
   margin: 0;
-  color: #333;
 }
 
 .property-panel-body {
   flex: 1;
-  padding: 16px;
+  padding:0 24px 24px 24px;
   overflow-y: auto;
 }
 
 .property-item {
   margin-bottom: 20px;
+  
+  :deep(.el-input__wrapper) {
+    background: #F6FCFF;
+    border: 0.8px solid rgba(224,226,235,1);
+    border-radius: 4px;
+    height: 40px;
+    box-sizing: border-box;
+    box-shadow: none;
+  }
+  
+  :deep(.el-input__inner) {
+    font-size: 14px;
+    color: #333333;
+  }
+  
+  :deep(.el-textarea__inner) {
+    font-size: 14px;
+    color: #000000;
+    background: #ffffff;
+    border: 0.8px solid rgba(224,226,235,1);
+    border-radius: 4px;
+    box-shadow: none;
+    resize: none;
+  }
+  
+  :deep(.el-input__inner::placeholder) {
+    font-size: 14px;
+    color: #999;
+  }
+  :deep(.el-textarea__inner::placeholder) {
+    font-size: 13px;
+    color: #999;
+  }
 }
 
 .property-item label {
   display: block;
-  font-size: 12px;
-  color: #606266;
+  font-size: 14px;
+  color: #000000;
   margin-bottom: 8px;
+  font-weight: 500;
 }
 
 .property-label {
@@ -343,53 +555,132 @@ const handleAddProperty = () => {
 }
 
 .property-count {
-  font-size: 12px;
-  color: #67c23a;
-  background-color: #f0f9eb;
-  padding: 2px 6px;
+  font-size: 14px;
+  color: #3DD2B0;
+  background: rgba(61,210,176,0.10);
   border-radius: 10px;
+  padding: 1px 10px;
 }
 
 .properties-list {
   margin-bottom: 12px;
+  min-height: 40px;
+  max-height: 300px;
+  overflow-y: auto;
 }
 
 .property-row {
   margin-bottom: 12px;
+  background: #F4F8FC;
+  border-radius: 4px;
+  padding: 6px 12px 10px 12px;
+  
+  :deep(.el-select__wrapper) {
+    background: #FFFFFF;
+    border: 0.5px solid rgba(224,226,235,1);
+    border-radius: 4px;
+    height: 32px;
+    box-sizing: border-box;
+    box-shadow: none;
+    font-size: 12px;
+    color: #999999;
+  }
+  
+  :deep(.el-select__caret) {
+    font-size: 12px;
+  }
+}
+
+.lines {
+  padding-top: 15px;
+  border-top: 1px solid rgba(238,238,238,1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+:deep(.el-switch.is-checked .el-switch__core) {
+  background-color: #3DD2B0;
+  border-color: #3DD2B0;
 }
 
 .property-name {
-  font-size: 12px;
-  color: #606266;
+  font-size: 14px;
+  color: #333333;
   margin-bottom: 4px;
+  font-weight: 500;
+  word-break: break-all;
 }
 
 .add-property-btn {
   width: 100%;
-  margin-top: 8px;
+  
+  .plusIcon {
+    margin-right: 5px;
+    color: #999;
+    font-size: 12px;
+  }
+}
+
+.el-button--small {
+  border-radius: 4px;
+  font-size: 14px;
+  padding: 16px 11px;
+}
+
+.el-button--primary {
+  background-color: #ffffff;
+  font-size: 14px;
+  color: #999999;
+  border: 1px dashed rgba(213,215,222,1);
+  font-weight: 400;
+}
+
+.el-button--primary:hover {
+  background-color: #3DD2B0;
+  color: #FFFFFF;
+}
+
+.el-button--primary:hover .plusIcon {
+  color: #FFFFFF;
 }
 
 .property-panel-footer {
   padding: 16px;
-  border-top: 1px solid #e4e7ed;
   display: flex;
   align-items: center;
   justify-content: space-between;
   background-color: white;
+  border-top: 1px solid #f0f0f0;
 }
 
 .close-btn {
   flex: 1;
+  background: #F0F0F0;
+  border-radius: 4px;
+  border: none;
+  font-size: 14px;
+  color: #666666;
   margin-right: 8px;
 }
 
 .delete-btn {
   flex: 1;
+  background: #E54949;
+  border-radius: 4px;
+  border: none;
+  font-size: 14px;
+  color: #fff;
   margin-right: 8px;
 }
 
 .save-btn {
   flex: 2;
+  background: #3DD2B0;
+  border-radius: 4px;
+  border: none;
+  font-size: 14px;
+  color: #fff;
 }
 
 .el-select {
@@ -407,11 +698,99 @@ const handleAddProperty = () => {
 /* 响应式设计 */
 @media (max-width: 768px) {
   .right-panel {
-    width: 250px;
+    width: 280px;
   }
 
   .property-panel {
-    width: 250px;
+    width: 280px;
   }
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.confirm-btn {
+  background-color: rgba(61, 210, 176, 1) !important;
+  border-color: rgba(61, 210, 176, 1) !important;
+  color: white !important;
+}
+
+.confirm-btn:hover {
+  background-color: rgba(61, 210, 176, 0.9) !important;
+  border-color: rgba(61, 210, 176, 0.9) !important;
+}
+
+.cancel-btn {
+  background-color: white !important;
+  border-color: #dcdfe6 !important;
+  color: #606266 !important;
+}
+
+.cancel-btn:hover {
+  background-color: #f5f7fa !important;
+  border-color: #c0c4cc !important;
+  color: #606266 !important;
+}
+
+/* 弹框关闭按钮样式 */
+.el-dialog__headerbtn:hover .el-dialog__close {
+  color: rgba(61, 210, 176, 1) !important;
+}
+
+/* 确保样式能够正确应用 */
+:global(.el-dialog__headerbtn:hover .el-dialog__close) {
+  color: rgba(61, 210, 176, 1) !important;
+}
+</style>
+
+<style lang="scss">
+/* 全局样式 */
+.el-select-dropdown__item {
+  font-size: 13px;
+  color: #333333;
+}
+
+.el-select-dropdown__item:hover {
+  background-color: rgba(61,210,176,0.10) !important;
+}
+
+.el-select-dropdown__item.selected,
+.el-select-dropdown__item.is-selected {
+  color: #3DD2B0 !important;
+  background-color: rgba(61,210,176,0.10) !important;
+}
+
+/* 对话框样式 */
+.el-dialog__title {
+  font-size: 16px;
+  font-weight: 500;
+  color: #333;
+}
+
+.el-dialog__body {
+  padding: 20px 20px 10px;
+}
+
+.el-dialog__footer {
+  padding: 10px 20px 20px;
+  border-top: none;
+}
+
+.el-form-item__label {
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
+}
+
+.el-form-item.is-required .el-form-item__label:before {
+  color: #E54949;
+}
+
+/* 修复 rows 属性警告 */
+.el-textarea__inner {
+  resize: none;
 }
 </style>

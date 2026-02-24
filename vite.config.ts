@@ -3,12 +3,36 @@ import { fileURLToPath, URL } from "node:url";
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import cesium from "vite-plugin-cesium";
+import { viteMockServe } from "vite-plugin-mock";
+import mockConfig from "./src/config/mock";
+
 export default defineConfig({
   define: {
     __IS_PLAYER_MODE__: JSON.stringify(process.env.VITE_APP_MODE === "player"),
   },
   base: "/",
-  plugins: [vue(), cesium()],
+  plugins: [
+    vue(),
+    cesium(),
+    ...(mockConfig.ENABLE_MOCK
+      ? [
+          viteMockServe({
+            // mock文件存放目录
+            mockPath: "./src/mock/modules",
+            // 启用mock插件
+            enable: true,
+            // 开发环境启用
+            localEnabled: true,
+            // 生产环境禁用
+            prodEnabled: false,
+            // 自动读取mock文件
+            watchFiles: true,
+            // 支持热更新
+            hotReload: true,
+          }),
+        ]
+      : []),
+  ],
   server: {
     host: "0.0.0.0", // 本地ip地址
     port: 5173,

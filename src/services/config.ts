@@ -1,6 +1,8 @@
 import axios from 'axios'
 import message from '@/utils/message'
 import router from '@/router';
+import mockConfig from '@/config/mock';
+
 const instance = axios.create({ timeout: 1000 * 300 })
 // 请求拦截器：添加 Authorization 头
 instance.interceptors.request.use(

@@ -3,6 +3,7 @@
     class="graph-container"
     @contextmenu="handleContextMenu"
     @click="handleClick"
+    @mousemove="handleMouseMove"
   >
     <div ref="graphRef" class="graph-canvas"></div>
     <GraphContextMenu
@@ -13,35 +14,60 @@
       @create-relationship="handleCreateRelationship"
       @close="showContextMenu = false"
     />
+    <!-- 自定义连线指示器 -->
+    <svg v-if="isConnectingMode || connectionCompleted" class="connection-line" :style="svgStyle">
+      <line
+        :x1="connectionStart.x"
+        :y1="connectionStart.y"
+        :x2="connectionEnd.x"
+        :y2="connectionEnd.y"
+        stroke="#44D6B6"
+        stroke-width="2"
+        stroke-dasharray="5,5"
+        marker-end="url(#arrow)"
+      />
+      <defs>
+        <marker
+          id="arrow"
+          markerWidth="10"
+          markerHeight="10"
+          refX="9"
+          refY="5"
+          orient="auto"
+        >
+          <path d="M0,0 L10,5 L0,10 L2,5" fill="#44D6B6" />
+        </marker>
+      </defs>
+    </svg>
     <div class="zoom-controls">
       <button class="zoom-btn" @click="zoomIn">
-        <span class="zoom-icon">+</span>
+        <img src="@/assets/images/放大.png" alt="放大" class="zoom-icon" />
       </button>
       <div class="zoom-level">{{ zoomLevel }}%</div>
       <button class="zoom-btn" @click="zoomOut">
-        <span class="zoom-icon">-</span>
+        <img src="@/assets/images/缩小.png" alt="缩小" class="zoom-icon" />
       </button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch, nextTick, shallowRef } from "vue";
+import { ref, onMounted, onUnmounted, watch, nextTick, shallowRef, computed } from "vue";
 import { Graph } from "@antv/g6";
 import GraphContextMenu from "./GraphContextMenu.vue";
 
 // 内边距配置常量
 const PADDING = {
-  width: 20, // 宽度计算时的内边距（单边）
-  label: 28, // 标签最大宽度的内边距（双边）
-  vertical: 18, // 标签垂直内边距
-  horizontal: 12, // 标签水平内边距
-  baseHeight: 60, // 基础高度（标题 + 分隔线 + 内边距）
-  lineHeight: 18, // 每行属性高度
-  minWidth: 180, // 最小宽度
-  maxWidth: 400, // 最大宽度
-  minHeight: 70, // 最小高度
-  maxHeight: 400, // 最大高度
+  width: 20,
+  label: 28,
+  vertical: 18,
+  horizontal: 12,
+  baseHeight: 60,
+  lineHeight: 18,
+  minWidth: 180,
+  maxWidth: 400,
+  minHeight: 70,
+  maxHeight: 400,
 };
 
 const props = defineProps({
@@ -57,6 +83,10 @@ const props = defineProps({
     type: Boolean,
     default: true,
   },
+  isConnecting: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits([
@@ -67,7 +97,15 @@ const emit = defineEmits([
   "graph-click",
   "node-drag",
   "node-drag-end",
+  "connection-complete",
 ]);
+
+// 自定义连线模式的状态
+const isConnectingMode = ref(false);
+const connectionCompleted = ref(false);
+const connectionStart = ref({ x: 0, y: 0 });
+const connectionEnd = ref({ x: 0, y: 0 });
+const sourceNodeId = ref(null);
 
 const graphRef = ref(null);
 const graph = shallowRef(null);
@@ -81,6 +119,24 @@ const zoomLevel = ref(100);
 const savedZoom = ref(1);
 const savedCenter = ref({ x: 0, y: 0 });
 
+// 保存节点位置的本地状态
+const nodePositions = ref(new Map());
+
+// 计算SVG样式
+const svgStyle = computed(() => {
+  if (!graphRef.value) return {};
+  const rect = graphRef.value.getBoundingClientRect();
+  return {
+    position: 'absolute',
+    top: '0',
+    left: '0',
+    width: `${rect.width}px`,
+    height: `${rect.height}px`,
+    pointerEvents: 'none',
+    zIndex: 1000,
+  };
+});
+
 // 计算文本宽度
 const calculateTextWidth = (text, fontSize = 12) => {
   const canvas = document.createElement("canvas");
@@ -89,17 +145,54 @@ const calculateTextWidth = (text, fontSize = 12) => {
   return context.measureText(text).width;
 };
 
+// 计算点到矩形边框的最近点
+const getPointOnRect = (point, rect) => {
+  const { x, y, width, height } = rect;
+  const rectCenterX = x;
+  const rectCenterY = y;
+  const rectHalfWidth = width / 2;
+  const rectHalfHeight = height / 2;
+  
+  // 计算点相对于矩形中心的位置
+  const relativeX = point.x - rectCenterX;
+  const relativeY = point.y - rectCenterY;
+  
+  // 计算归一化的方向向量
+  const maxRatio = Math.max(Math.abs(relativeX) / rectHalfWidth, Math.abs(relativeY) / rectHalfHeight);
+  
+  if (maxRatio === 0) {
+    // 点在矩形中心，返回右边界中点
+    return { x: rectCenterX + rectHalfWidth, y: rectCenterY };
+  }
+  
+  // 计算矩形边框上的点
+  const normalizedX = relativeX / maxRatio;
+  const normalizedY = relativeY / maxRatio;
+  
+  return { x: rectCenterX + normalizedX, y: rectCenterY + normalizedY };
+};
+
+// 获取节点的矩形信息
+const getNodeRect = (node) => {
+  // 计算节点大小
+  const nodeSize = calculateNodeSize({ data: node });
+  return {
+    x: node.x,
+    y: node.y,
+    width: nodeSize.width,
+    height: nodeSize.height
+  };
+};
+
 // 计算节点所需尺寸
 const calculateNodeSize = (nodeData) => {
   const data = nodeData.data || {};
   const name = data.name || "未命名";
   const properties = data.properties || {};
 
-  // 计算名称宽度（名称字体稍大）
   const nameFontSize = 14;
   const nameWidth = calculateTextWidth(name, nameFontSize) + PADDING.width * 2;
 
-  // 计算属性最大宽度
   let maxPropertyWidth = 0;
 
   if (Array.isArray(properties)) {
@@ -131,15 +224,12 @@ const calculateNodeSize = (nodeData) => {
     });
   }
 
-  // 计算总宽度 = 名称宽度和属性最大宽度中的较大值
   const contentWidth = Math.max(nameWidth, maxPropertyWidth);
   const totalWidth = Math.max(
     PADDING.minWidth,
     Math.min(PADDING.maxWidth, contentWidth),
   );
 
-  // 计算高度
-  // 计算属性行数
   let propertyLines = 0;
 
   if (Array.isArray(properties)) {
@@ -148,7 +238,6 @@ const calculateNodeSize = (nodeData) => {
     propertyLines = Object.keys(properties).length;
   }
 
-  // 总高度 = 基础高度 + 属性行数 * 行高
   const contentHeight = PADDING.baseHeight + propertyLines * PADDING.lineHeight;
   const totalHeight = Math.max(
     PADDING.minHeight,
@@ -204,24 +293,20 @@ const initGraph = () => {
     return;
   }
 
-  // 获取画布尺寸
   const width = graphRef.value.clientWidth;
   const height = graphRef.value.clientHeight;
   console.log("画布尺寸:", { width, height });
 
-  // 销毁旧的图谱实例（如果存在）
   if (graph.value) {
     graph.value.destroy();
     graph.value = null;
   }
 
   try {
-    // 转换节点数据 - 根据内容计算尺寸
     const formattedNodes = props.nodes.map((node) => {
       const nodeX = node.x || width / 2;
       const nodeY = node.y || height / 2;
 
-      // 计算节点所需尺寸
       const nodeSize = calculateNodeSize({
         data: {
           name: node.name || "节点",
@@ -233,8 +318,13 @@ const initGraph = () => {
         },
       });
 
-      return {
-        id: node.id.toString(),
+      // 确保节点 ID 与 Home 组件中的格式一致
+      const nodeId = typeof node.id === 'string' ? node.id : node.id.toString();
+      console.log(`节点原始ID: ${node.id}, 类型: ${typeof node.id}, 转换后ID: ${nodeId}, 类型: ${typeof nodeId}`);
+      
+      const formattedNode = {
+        id: nodeId,
+        type: "rect",
         data: {
           name: node.name || "节点",
           type: node.type || "人物",
@@ -250,7 +340,6 @@ const initGraph = () => {
           stroke: "#43D7B5",
           lineWidth: 2,
           radius: 4,
-          // 宽度和高度都自适应
           size: [nodeSize.width, nodeSize.height],
           shadowColor: "rgba(78,89,105,0.25)",
           shadowBlur: 10,
@@ -258,11 +347,13 @@ const initGraph = () => {
           shadowOffsetY: 8,
         },
       };
+      
+      console.log("格式化节点:", formattedNode);
+      return formattedNode;
     });
 
     console.log("格式化后的节点数据:", formattedNodes);
 
-    // 创建新的G6实例
     const graphInstance = new Graph({
       container: graphRef.value,
       width: width,
@@ -278,7 +369,6 @@ const initGraph = () => {
           stroke: "#43D7B5",
           lineWidth: 2,
           radius: 4,
-          // 宽度和高度都自适应
           size: (data) => {
             const nodeSize = calculateNodeSize(data);
             return [nodeSize.width, nodeSize.height];
@@ -291,7 +381,6 @@ const initGraph = () => {
           labelPlacement: "center",
           labelBackground: false,
           labelFontSize: (data) => {
-            // 根据名称长度动态调整字体大小
             const name = data.data?.name || "";
             if (name.length > 20) return 13;
             if (name.length > 15) return 14;
@@ -301,20 +390,45 @@ const initGraph = () => {
           labelLineHeight: PADDING.lineHeight,
           labelPadding: [PADDING.vertical, PADDING.horizontal],
           labelTextBaseline: "middle",
-          // 关键：根据节点宽度动态调整标签最大宽度
           labelMaxWidth: (data) => {
             const nodeSize = calculateNodeSize(data);
-            return nodeSize.width - PADDING.label; // 减去内边距
+            return nodeSize.width - PADDING.label;
+          },
+          cursor: "pointer",
+        },
+      },
+      // 注册节点类型
+      register: {
+        node: {
+          rect: {
+            shape: "rect",
           },
         },
       },
       edge: {
-        type: "line",
+        type: (data) => {
+          // 检查是否存在双向连线
+          const source = data.source;
+          const target = data.target;
+          const hasReverseEdge = props.edges.some(edge => 
+            edge.source === target && edge.target === source
+          );
+          // 如果存在双向连线，使用二次贝塞尔曲线
+          return hasReverseEdge ? "quadratic" : "line";
+        },
         style: (data) => {
-          const relationshipType = data.data?.type || "directed";
+          const relationshipType = data.data?.type || "定向";
+          const source = data.source;
+          const target = data.target;
+          
+          // 检查是否存在双向连线
+          const hasReverseEdge = props.edges.some(edge => 
+            edge.source === target && edge.target === source
+          );
+          
           const style = {
             lineWidth: 2,
-            stroke: "#409eff",
+            stroke: "#44D6B6",
             label: true,
             labelText: data.data?.name || "",
             labelPlacement: "center",
@@ -322,13 +436,47 @@ const initGraph = () => {
             labelFontSize: 14,
           };
 
-          if (relationshipType === "directed") {
+          if (relationshipType === "定向") {
             style.endArrow = true;
-          } else if (relationshipType === "bidirectional") {
+          } else if (relationshipType === "双向") {
             style.startArrow = true;
             style.endArrow = true;
-          } else if (relationshipType === "circular") {
+          } else if (relationshipType === "循环") {
             style.endArrow = true;
+          }
+
+          // 为双向连线添加控制点数，使它们分开显示
+          if (hasReverseEdge) {
+            // 安全计算控制点数，避免sourcePoint或targetPoint不存在的情况
+            let centerX = 0;
+            let centerY = 0;
+            
+            // 尝试获取节点位置
+            const sourceNode = props.nodes.find(node => String(node.id) === String(source));
+            const targetNode = props.nodes.find(node => String(node.id) === String(target));
+            
+            if (sourceNode && targetNode) {
+              // 使用节点的实际位置
+              centerX = (sourceNode.x + targetNode.x) / 2;
+              centerY = (sourceNode.y + targetNode.y) / 2;
+            } else if (data.sourcePoint && data.targetPoint) {
+              // 使用G6提供的节点位置
+              centerX = (data.sourcePoint.x + data.targetPoint.x) / 2;
+              centerY = (data.sourcePoint.y + data.targetPoint.y) / 2;
+            } else {
+              // 使用默认值，避免错误
+              centerX = 0;
+              centerY = 0;
+            }
+            
+            // 为不同方向的连线设置不同的控制点数
+            if (source < target) {
+              // A→B 方向，向上偏移
+              style.controlPoints = [{ x: centerX, y: centerY - 30 }];
+            } else {
+              // B→A 方向，向下偏移
+              style.controlPoints = [{ x: centerX, y: centerY + 30 }];
+            }
           }
 
           return style;
@@ -381,14 +529,10 @@ const initGraph = () => {
     graph.value = graphInstance;
     console.log("G6实例创建成功");
 
-    // 渲染图谱
     graph.value.render();
     console.log("图谱渲染成功");
 
-    // 恢复缩放状态（如果有保存的话）
     restoreViewState();
-
-    // 绑定事件
     bindEvents();
   } catch (error) {
     console.error("初始化G6图谱时出错:", error);
@@ -403,7 +547,6 @@ const saveViewState = () => {
   try {
     savedZoom.value = graph.value.getZoom ? graph.value.getZoom() : 1;
 
-    // 尝试获取当前视图中心
     const canvas = graph.value.getCanvas ? graph.value.getCanvas() : null;
     if (canvas) {
       const bbox = canvas.getBounds();
@@ -433,7 +576,6 @@ const restoreViewState = () => {
       center: savedCenter.value,
     });
 
-    // 设置缩放
     if (graph.value.setZoom) {
       graph.value.setZoom(savedZoom.value);
     } else if (graph.value.zoomTo) {
@@ -454,18 +596,72 @@ const restoreViewState = () => {
 const bindEvents = () => {
   if (!graph.value) return;
 
-  // 窗口大小变化事件
   window.addEventListener("resize", handleResize);
 
-  // 节点点击事件
   graph.value.on("node:click", (event) => {
-    const node = event.item;
-    const model = node.getModel();
-    console.log("节点点击:", model);
-    emit("node-click", model);
+    console.log("节点点击事件触发:", event);
+    console.log("当前连线模式状态:", isConnectingMode.value);
+    console.log("当前源节点ID:", sourceNodeId.value);
+    
+    if (isConnectingMode.value) {
+      console.log("在连线模式中，尝试完成连线");
+      // 如果在连线模式，尝试完成连线
+      if (event.item) {
+        console.log("点击了有效节点项");
+        const model = event.item.getModel();
+        console.log("点击节点的model:", model);
+        console.log("点击节点ID:", model.id);
+        console.log("源节点ID:", sourceNodeId.value);
+        console.log("节点ID是否不同:", String(model.id) !== String(sourceNodeId.value));
+        
+        if (String(model.id) !== String(sourceNodeId.value)) {
+          // 完成连线
+          console.log("完成连线，目标节点:", model.id);
+          // 固定连线终点到目标节点位置
+          const targetNode = props.nodes.find(node => String(node.id) === String(model.id));
+          if (targetNode) {
+            // 更新连线起点：根据目标节点位置计算源节点边框上的点
+            const sourceNode = props.nodes.find(node => String(node.id) === String(sourceNodeId.value));
+            if (sourceNode) {
+              const sourceNodeRect = getNodeRect(sourceNode);
+              connectionStart.value = getPointOnRect({ x: targetNode.x, y: targetNode.y }, sourceNodeRect);
+            }
+            
+            // 使用目标节点边框上的点作为连线终点
+            const targetNodeRect = getNodeRect(targetNode);
+            connectionEnd.value = getPointOnRect(connectionStart.value, targetNodeRect);
+          }
+          emit("connection-complete", model.id);
+          // 标记连线完成，保持显示但不再跟随鼠标移动
+          connectionCompleted.value = true;
+          isConnectingMode.value = false;
+          console.log("连线完成，保持显示，不再跟随鼠标移动");
+          console.log("连线完成后状态:", { isConnectingMode: isConnectingMode.value, connectionCompleted: connectionCompleted.value, sourceNodeId: sourceNodeId.value });
+        } else {
+          console.log("点击了源节点本身，忽略");
+        }
+      } else {
+        console.log("event.item为null，无法完成连线");
+      }
+    } else if (!props.isConnecting) {
+      // 正常节点点击
+      console.log("正常节点点击模式");
+      let clickedNode = null;
+      try {
+        if (event.item) {
+          const model = event.item.getModel();
+          clickedNode = props.nodes.find(node => String(node.id) === String(model.id));
+        }
+      } catch (error) {
+        console.warn("获取点击节点失败:", error);
+      }
+      
+      if (clickedNode) {
+        emit("node-click", clickedNode);
+      }
+    }
   });
 
-  // 边点击事件
   graph.value.on("edge:click", (event) => {
     const edge = event.item;
     const model = edge.getModel();
@@ -473,16 +669,18 @@ const bindEvents = () => {
     emit("edge-click", model);
   });
 
-  // 画布点击事件
   graph.value.on("canvas:click", () => {
     console.log("画布点击");
+    if (isConnectingMode.value) {
+      // 如果在连线模式，取消连线
+      cancelConnection();
+    }
     emit("graph-click");
   });
 
-  // 节点拖拽开始事件
   graph.value.on("node:dragstart", (event) => {
     console.log("节点拖拽开始", event);
-    saveViewState(); // 保存当前视图状态
+    saveViewState();
 
     const node = event.item;
     if (!node) return;
@@ -497,7 +695,6 @@ const bindEvents = () => {
     });
   });
 
-  // 节点拖拽中事件
   graph.value.on("node:drag", (event) => {
     const node = event.item;
     if (!node) return;
@@ -514,25 +711,190 @@ const bindEvents = () => {
     });
   });
 
-  // 节点拖拽结束事件
-  graph.value.on("node:dragend", (event) => {
-    console.log("节点拖拽结束", event);
-
-    const node = event.item;
-    if (!node) return;
-
-    const model = node.getModel();
-    const position = { x: model.style.x, y: model.style.y };
-    console.log("节点拖拽结束:", model.id, position);
-
-    emit("node-drag-end", {
-      nodeId: model.id,
-      position: position,
-      data: model.data,
-    });
+  // 增强的节点拖拽结束事件处理
+  graph.value.on("node:dragend", function(event) {
+    console.log("===== 节点拖拽结束事件开始 =====");
+    console.log("事件对象:", event);
+    
+    // 尝试使用不同的方式获取节点对象
+    let node = null;
+    if (event.item) {
+      node = event.item;
+      console.log("从event.item获取节点对象");
+    } else if (event.target) {
+      node = event.target;
+      console.log("从event.target获取节点对象");
+    }
+    
+    if (node) {
+      // 尝试使用不同的方式获取节点模型
+      let model = null;
+      if (node.getModel) {
+        model = node.getModel();
+        console.log("使用getModel()获取节点模型");
+      } else if (node.model) {
+        model = node.model;
+        console.log("从node.model获取节点模型");
+      } else if (event.model) {
+        model = event.model;
+        console.log("从event.model获取节点模型");
+      } else if (node.parentNode && node.parentNode.getModel) {
+        // 尝试从父节点获取模型
+        model = node.parentNode.getModel();
+        console.log("从父节点获取节点模型");
+      } else if (node.id) {
+        // 尝试根据节点ID从图谱数据中查找
+        console.log("尝试根据节点ID从图谱数据中查找");
+        try {
+          const graphData = graph.value.getData();
+          const nodes = graphData.nodes || [];
+          model = nodes.find(n => n.id === node.id);
+          if (model) {
+            console.log("根据节点ID从图谱数据中找到模型");
+          }
+        } catch (error) {
+          console.error("根据节点ID查找模型失败:", error);
+        }
+      }
+      
+      if (model) {
+        // 尝试使用不同的方式获取节点位置
+        let position = { x: 0, y: 0 };
+        if (event.x !== undefined && event.y !== undefined) {
+          position = { x: event.x, y: event.y };
+          console.log("从event中获取节点位置");
+        } else if (model.style && model.style.x !== undefined && model.style.y !== undefined) {
+          position = { x: model.style.x, y: model.style.y };
+          console.log("从model.style中获取节点位置");
+        } else if (model.x !== undefined && model.y !== undefined) {
+          position = { x: model.x, y: model.y };
+          console.log("从model中获取节点位置");
+        } else if (node.attrs && node.attrs.x !== undefined && node.attrs.y !== undefined) {
+          position = { x: node.attrs.x, y: node.attrs.y };
+          console.log("从node.attrs中获取节点位置");
+        }
+        
+        console.log("节点ID:", model.id);
+        console.log("节点位置:", position);
+        
+        // 保存节点位置到本地状态
+        const nodeId = typeof model.id === 'string' ? model.id : model.id.toString();
+        nodePositions.value.set(nodeId, position);
+        console.log(`保存节点位置到本地: ${nodeId} -> x=${position.x}, y=${position.y}`);
+        console.log(`本地保存的节点位置数量: ${nodePositions.value.size}`);
+        
+        // 直接发送事件
+        console.log("准备发送node-drag-end事件");
+        emit("node-drag-end", {
+          nodeId: model.id,
+          position: position,
+          data: model.data
+        });
+        console.log("发送node-drag-end事件成功");
+      } else {
+        console.error("无法获取节点模型");
+        console.log("节点对象详情:", node);
+        console.log("节点对象属性:", Object.keys(node));
+        
+        // 尝试获取节点的位置信息
+        let position = { x: 0, y: 0 };
+        if (event.x !== undefined && event.y !== undefined) {
+          position = { x: event.x, y: event.y };
+          console.log("从event中获取节点位置");
+        } else if (node.attrs && node.attrs.x !== undefined && node.attrs.y !== undefined) {
+          position = { x: node.attrs.x, y: node.attrs.y };
+          console.log("从node.attrs中获取节点位置");
+        } else if (node.getBBox) {
+          try {
+            const bbox = node.getBBox();
+            position = { x: bbox.centerX, y: bbox.centerY };
+            console.log("从node.getBBox()中获取节点位置");
+          } catch (error) {
+            console.error("获取节点边界框失败:", error);
+          }
+        }
+        
+        console.log("获取到的节点位置:", position);
+        
+        // 尝试获取节点ID
+        let nodeId = null;
+        if (node.id) {
+          nodeId = node.id;
+          console.log("从node.id获取节点ID");
+        } else if (node.cfg && node.cfg.id) {
+          nodeId = node.cfg.id;
+          console.log("从node.cfg.id获取节点ID");
+        }
+        
+        if (nodeId && (position.x !== 0 || position.y !== 0)) {
+          console.log("使用获取到的节点ID和位置");
+          nodePositions.value.set(nodeId, position);
+          console.log(`保存节点位置到本地: ${nodeId} -> x=${position.x}, y=${position.y}`);
+          
+          // 尝试获取节点数据
+          let nodeData = {};
+          try {
+            const graphData = graph.value.getData();
+            const nodes = graphData.nodes || [];
+            const nodeDataObj = nodes.find(n => n.id === nodeId);
+            if (nodeDataObj) {
+              nodeData = nodeDataObj.data || {};
+            }
+          } catch (error) {
+            console.error("获取节点数据失败:", error);
+          }
+          
+          emit("node-drag-end", {
+            nodeId: nodeId,
+            position: position,
+            data: nodeData
+          });
+          console.log("发送node-drag-end事件成功（使用节点ID和位置）");
+        } else {
+          console.log("无法获取节点ID或位置，尝试其他方法");
+          
+          // 尝试获取当前选中的节点
+          try {
+            console.log("尝试获取当前选中的节点");
+            const selectedItems = graph.value.getStates('selected');
+            console.log("当前选中的项目:", selectedItems);
+            if (selectedItems && selectedItems.length > 0) {
+              const selectedNode = selectedItems[0];
+              if (selectedNode.getModel) {
+                model = selectedNode.getModel();
+                if (model) {
+                  console.log("从选中节点获取模型成功");
+                  position = { x: event.x || model.style.x || model.x || 0, y: event.y || model.style.y || model.y || 0 };
+                  const nodeId = typeof model.id === 'string' ? model.id : model.id.toString();
+                  nodePositions.value.set(nodeId, position);
+                  console.log(`保存选中节点位置到本地: ${nodeId} -> x=${position.x}, y=${position.y}`);
+                  
+                  emit("node-drag-end", {
+                    nodeId: model.id,
+                    position: position,
+                    data: model.data
+                  });
+                  console.log("发送node-drag-end事件成功（使用选中节点）");
+                }
+              }
+            }
+          } catch (error) {
+            console.error("获取选中节点失败:", error);
+          }
+        }
+      }
+    } else {
+      console.error("无法获取节点对象");
+      // 尝试直接从事件中获取位置信息
+      if (event.x !== undefined && event.y !== undefined) {
+        console.log("尝试直接从事件中获取位置信息");
+        console.log("事件位置:", { x: event.x, y: event.y });
+      }
+    }
+    
+    console.log("===== 节点拖拽结束事件结束 =====");
   });
 
-  // 鼠标进入节点时改变光标
   graph.value.on("node:mouseenter", (event) => {
     const node = event.item;
     if (node) {
@@ -540,7 +902,6 @@ const bindEvents = () => {
     }
   });
 
-  // 鼠标离开节点时恢复状态
   graph.value.on("node:mouseleave", (event) => {
     const node = event.item;
     if (node) {
@@ -548,43 +909,171 @@ const bindEvents = () => {
     }
   });
 
-  // 监听缩放事件，更新缩放比例显示
   graph.value.on("canvas:zoom", () => {
     if (graph.value) {
       const currentZoom = graph.value.getZoom();
       zoomLevel.value = Math.round(currentZoom * 100);
-      savedZoom.value = currentZoom; // 保存缩放状态
+      savedZoom.value = currentZoom;
     }
   });
 
-  // 监听画布拖拽事件，保存视图状态
   graph.value.on("canvas:dragend", () => {
     saveViewState();
   });
 };
+
+// 鼠标移动事件处理
+const handleMouseMove = (event) => {
+  if (isConnectingMode.value && graphRef.value) {
+    const rect = graphRef.value.getBoundingClientRect();
+    // 计算鼠标在容器内的相对坐标
+    const mouseX = event.clientX - rect.left;
+    const mouseY = event.clientY - rect.top;
+    
+    // 检测鼠标是否在其他节点上
+    let targetNode = null;
+    let targetPos = { x: mouseX, y: mouseY };
+    
+    for (const node of props.nodes) {
+      if (String(node.id) !== String(sourceNodeId.value)) {
+        const nodeRect = getNodeRect(node);
+        const nodeHalfWidth = nodeRect.width / 2;
+        const nodeHalfHeight = nodeRect.height / 2;
+        if (mouseX >= node.x - nodeHalfWidth &&
+            mouseX <= node.x + nodeHalfWidth &&
+            mouseY >= node.y - nodeHalfHeight &&
+            mouseY <= node.y + nodeHalfHeight) {
+          targetNode = node;
+          targetPos = { x: node.x, y: node.y };
+          break;
+        }
+      }
+    }
+    
+    // 更新连线起点：根据目标位置计算源节点边框上的点
+    const sourceNode = props.nodes.find(node => String(node.id) === String(sourceNodeId.value));
+    if (sourceNode) {
+      const sourceNodeRect = getNodeRect(sourceNode);
+      connectionStart.value = getPointOnRect(targetPos, sourceNodeRect);
+    }
+    
+    if (targetNode) {
+      // 如果鼠标在其他节点上，计算目标节点边框上的点
+      const targetNodeRect = getNodeRect(targetNode);
+      connectionEnd.value = getPointOnRect(connectionStart.value, targetNodeRect);
+    } else {
+      // 如果鼠标不在节点上，使用鼠标坐标作为终点
+      connectionEnd.value = {
+        x: mouseX,
+        y: mouseY,
+      };
+    }
+  }
+};
+
+// 取消连线
+const cancelConnection = () => {
+  isConnectingMode.value = false;
+  connectionCompleted.value = false;
+  sourceNodeId.value = null;
+};
+
+// 存储当前点击的节点 ID
+const clickedNodeId = ref(null);
 
 // 处理右键点击事件
 const handleContextMenu = (event) => {
   console.log("右键点击事件触发");
   event.preventDefault();
 
-  const target = event.target;
-  if (
-    target &&
-    (target.classList.contains("g6-node") || target.closest(".g6-node"))
-  ) {
-    isNodeClick.value = true;
-    console.log("通过事件目标检测到节点点击，设置isNodeClick为true");
-  } else {
-    isNodeClick.value = false;
-    console.log("通过事件目标检测到画布点击，设置isNodeClick为false");
+  let isNode = false;
+  let nodeId = null;
+  let clickedNode = null;
+  
+  if (graphRef.value && graph.value) {
+    const rect = graphRef.value.getBoundingClientRect();
+    const canvasX = event.clientX - rect.left;
+    const canvasY = event.clientY - rect.top;
+    
+    console.log("画布坐标:", { canvasX, canvasY });
+    
+    // 考虑缩放因素，将屏幕坐标转换为图谱坐标
+    let transformedX = canvasX;
+    let transformedY = canvasY;
+    
+    try {
+      if (graph.value.getCanvasByViewport) {
+        const point = graph.value.getCanvasByViewport([canvasX, canvasY]);
+        transformedX = point[0] || canvasX;
+        transformedY = point[1] || canvasY;
+        console.log("转换后的坐标:", { transformedX, transformedY });
+      }
+    } catch (error) {
+      console.warn("坐标转换失败:", error);
+    }
+    
+    // 使用G6的API来检测点击的节点
+    try {
+      // 获取所有节点 - G6 v5 API
+      const graphData = graph.value.getData();
+      const nodes = graphData.nodes || [];
+      console.log("G6节点数量:", nodes.length);
+      
+      for (const node of nodes) {
+        const size = node.style.size || [180, 100];
+        const halfWidth = size[0] / 2;
+        const halfHeight = size[1] / 2;
+        
+        // 检查点击位置是否在节点范围内
+        if (transformedX >= node.style.x - halfWidth &&
+            transformedX <= node.style.x + halfWidth &&
+            transformedY >= node.style.y - halfHeight &&
+            transformedY <= node.style.y + halfHeight) {
+          isNode = true;
+          nodeId = node.id;
+          clickedNode = node;
+          console.log("点击的节点ID:", nodeId);
+          break;
+        }
+      }
+    } catch (error) {
+      console.warn("使用G6 API检测节点失败:", error);
+      
+      // 降级方案：使用props中的节点数据
+      for (const node of props.nodes) {
+        if (node.x !== undefined && node.y !== undefined) {
+          const nodeWidth = 200;
+          const nodeHeight = 100;
+          const nodeLeft = node.x - nodeWidth / 2;
+          const nodeTop = node.y - nodeHeight / 2;
+          const nodeRight = node.x + nodeWidth / 2;
+          const nodeBottom = node.y + nodeHeight / 2;
+          
+          if (transformedX >= nodeLeft && transformedX <= nodeRight && transformedY >= nodeTop && transformedY <= nodeBottom) {
+            isNode = true;
+            nodeId = node.id;
+            clickedNode = node;
+            console.log("点击位置在节点边界框内(降级方案):", node.id);
+            break;
+          }
+        }
+      }
+    }
   }
+  
+  // 重要：设置isNodeClick的值，决定右键菜单显示哪些选项
+  isNodeClick.value = isNode;
+  clickedNodeId.value = nodeId;
+  console.log("最终 isNodeClick 设置为:", isNodeClick.value);
+  console.log("点击的节点 ID:", clickedNodeId.value);
 
+  // 设置右键菜单位置
   contextMenuPosition.value = {
     x: event.clientX,
     y: event.clientY,
   };
 
+  // 计算画布位置（用于新增实体）
   if (graphRef.value) {
     const rect = graphRef.value.getBoundingClientRect();
     const canvasX = event.clientX - rect.left;
@@ -610,27 +1099,96 @@ const handleContextMenu = (event) => {
           x: canvasX,
           y: canvasY,
         };
-        isNodeClick.value = false;
       }
     } else {
       clickCanvasPosition.value = {
         x: canvasX,
         y: canvasY,
       };
-      isNodeClick.value = false;
     }
-  } else {
-    isNodeClick.value = false;
   }
 
+  // 显示右键菜单
   showContextMenu.value = true;
   console.log("右键点击位置:", clickCanvasPosition.value);
   console.log("显示上下文菜单，isNodeClick:", isNodeClick.value);
 };
 
 // 处理点击事件
-const handleClick = () => {
+const handleClick = (event) => {
+  console.log("handleClick被调用");
+  console.log("事件类型:", event.type);
+  console.log("事件目标:", event.target);
+  console.log("当前连线模式状态:", isConnectingMode.value);
+  
   showContextMenu.value = false;
+  
+  // 处理连线模式下的节点点击
+  if (isConnectingMode.value && graphRef.value && graph.value) {
+    console.log("在连线模式中，处理点击事件");
+    const rect = graphRef.value.getBoundingClientRect();
+    const canvasX = event.clientX - rect.left;
+    const canvasY = event.clientY - rect.top;
+    console.log("点击的画布坐标:", { canvasX, canvasY });
+    
+    // 检测点击是否在节点上
+    try {
+      console.log("尝试使用props.nodes检测点击");
+      console.log("props.nodes数量:", props.nodes.length);
+      
+      for (const node of props.nodes) {
+        console.log("检查节点:", node.id);
+        console.log("节点坐标:", { x: node.x, y: node.y });
+        
+        // 使用默认节点大小进行检测
+        const nodeWidth = 180;
+        const nodeHeight = 100;
+        const halfWidth = nodeWidth / 2;
+        const halfHeight = nodeHeight / 2;
+        const nodeLeft = node.x - halfWidth;
+        const nodeRight = node.x + halfWidth;
+        const nodeTop = node.y - halfHeight;
+        const nodeBottom = node.y + halfHeight;
+        
+        console.log("节点边界:", { left: nodeLeft, right: nodeRight, top: nodeTop, bottom: nodeBottom });
+        console.log("点击是否在节点内:", 
+          canvasX >= nodeLeft && canvasX <= nodeRight && canvasY >= nodeTop && canvasY <= nodeBottom);
+        
+        if (canvasX >= nodeLeft &&
+            canvasX <= nodeRight &&
+            canvasY >= nodeTop &&
+            canvasY <= nodeBottom) {
+          // 点击在节点上
+          console.log("点击在节点", node.id, "上");
+          if (String(node.id) !== String(sourceNodeId.value)) {
+            // 完成连线
+            console.log("完成连线，目标节点:", node.id);
+            // 更新连线起点：根据目标节点位置计算源节点边框上的点
+            const sourceNode = props.nodes.find(n => String(n.id) === String(sourceNodeId.value));
+            if (sourceNode) {
+              const sourceNodeRect = getNodeRect(sourceNode);
+              connectionStart.value = getPointOnRect({ x: node.x, y: node.y }, sourceNodeRect);
+            }
+            
+            // 固定连线终点到目标节点边框上的点
+            const targetNodeRect = getNodeRect(node);
+            connectionEnd.value = getPointOnRect(connectionStart.value, targetNodeRect);
+            emit("connection-complete", node.id);
+            // 标记连线完成，保持显示但不再跟随鼠标移动
+            connectionCompleted.value = true;
+            isConnectingMode.value = false;
+            console.log("连线完成，保持显示，不再跟随鼠标移动");
+            console.log("连线完成后状态:", { isConnectingMode: isConnectingMode.value, connectionCompleted: connectionCompleted.value, sourceNodeId: sourceNodeId.value });
+          } else {
+            console.log("点击了源节点本身，忽略");
+          }
+          break;
+        }
+      }
+    } catch (error) {
+      console.warn("检测节点点击失败:", error);
+    }
+  }
 };
 
 // 处理窗口大小变化
@@ -641,9 +1199,9 @@ const handleResize = () => {
   const height = graphRef.value.clientHeight;
 
   try {
-    saveViewState(); // 保存当前视图状态
+    saveViewState();
     graph.value.resize(width, height);
-    restoreViewState(); // 恢复视图状态
+    restoreViewState();
     console.log("图谱大小调整成功:", { width, height });
   } catch (error) {
     console.error("调整图谱大小时出错:", error);
@@ -661,18 +1219,25 @@ const renderGraph = () => {
   }
 
   try {
-    // 保存当前视图状态
     saveViewState();
 
-    // 转换节点数据 - 根据内容计算尺寸
+    const width = graphRef.value.clientWidth;
+    const height = graphRef.value.clientHeight;
+
     const formattedNodes = props.nodes.map((node) => {
-      const width = graphRef.value.clientWidth;
-      const height = graphRef.value.clientHeight;
+      // 检查本地是否保存了节点位置
+      const nodeId = typeof node.id === 'string' ? node.id : node.id.toString();
+      let nodeX = node.x || width / 2;
+      let nodeY = node.y || height / 2;
+      
+      // 如果本地保存了节点位置，使用保存的位置
+      if (nodePositions.value.has(nodeId)) {
+        const savedPosition = nodePositions.value.get(nodeId);
+        nodeX = savedPosition.x;
+        nodeY = savedPosition.y;
+        console.log(`使用本地保存的节点位置: ${nodeId} -> x=${nodeX}, y=${nodeY}`);
+      }
 
-      const nodeX = node.x || width / 2;
-      const nodeY = node.y || height / 2;
-
-      // 计算节点所需尺寸
       const nodeSize = calculateNodeSize({
         data: {
           name: node.name || "节点",
@@ -684,8 +1249,11 @@ const renderGraph = () => {
         },
       });
 
-      return {
-        id: node.id.toString(),
+      console.log(`renderGraph节点原始ID: ${node.id}, 类型: ${typeof node.id}, 转换后ID: ${nodeId}, 类型: ${typeof nodeId}`);
+      
+      const formattedNode = {
+        id: nodeId,
+        type: "rect",
         data: {
           name: node.name || "节点",
           type: node.type || "人物",
@@ -701,7 +1269,6 @@ const renderGraph = () => {
           stroke: "#43D7B5",
           lineWidth: 2,
           radius: 4,
-          // 宽度和高度都自适应
           size: [nodeSize.width, nodeSize.height],
           shadowColor: "rgba(78,89,105,0.18)",
           shadowBlur: 10,
@@ -709,20 +1276,19 @@ const renderGraph = () => {
           shadowOffsetY: 8,
         },
       };
+      
+      console.log("renderGraph格式化节点:", formattedNode);
+      return formattedNode;
     });
 
     console.log("更新节点数据:", formattedNodes);
 
-    // 更新图谱数据
     graph.value.setData({
       nodes: formattedNodes,
       edges: props.edges,
     });
 
-    // 重新渲染
     graph.value.render();
-
-    // 恢复视图状态
     restoreViewState();
 
     console.log("图谱重新渲染成功");
@@ -746,9 +1312,38 @@ const handleAddEntity = () => {
   showContextMenu.value = false;
 };
 
-// 处理创建关系
+// 处理创建关系 - 使用自定义连线模式
 const handleCreateRelationship = () => {
-  emit("create-relationship");
+  console.log("触发创建关系，源节点 ID:", clickedNodeId.value);
+  
+  // 获取源节点
+  const sourceNode = props.nodes.find(node => String(node.id) === String(clickedNodeId.value));
+  
+  if (sourceNode && graphRef.value && graph.value) {
+    // 设置连线起始点
+    isConnectingMode.value = true;
+    connectionCompleted.value = false;
+    sourceNodeId.value = clickedNodeId.value;
+    
+    // 使用节点边框上的点作为连线起点（相对于容器）
+    const sourceNodeRect = getNodeRect(sourceNode);
+    // 初始化终点为起点，使用相同的点
+    const initialEndPoint = {
+      x: sourceNode.x + 100, // 初始终点向右偏移100px
+      y: sourceNode.y
+    };
+    connectionStart.value = getPointOnRect(initialEndPoint, sourceNodeRect);
+    
+    // 初始化终点为起点
+    connectionEnd.value = { ...connectionStart.value };
+    
+    console.log("连线起点:", connectionStart.value);
+    console.log("源节点坐标:", sourceNode.x, sourceNode.y);
+  } else {
+    console.warn("找不到源节点或graph未初始化");
+  }
+  
+  emit("create-relationship", clickedNodeId.value);
   showContextMenu.value = false;
 };
 
@@ -772,7 +1367,7 @@ const zoomIn = () => {
     }
 
     zoomLevel.value = Math.round(newZoom * 100);
-    savedZoom.value = newZoom; // 保存缩放状态
+    savedZoom.value = newZoom;
   } catch (error) {
     console.error("放大操作失败:", error);
   }
@@ -798,7 +1393,7 @@ const zoomOut = () => {
     }
 
     zoomLevel.value = Math.round(newZoom * 100);
-    savedZoom.value = newZoom; // 保存缩放状态
+    savedZoom.value = newZoom;
   } catch (error) {
     console.error("缩小操作失败:", error);
   }
@@ -825,12 +1420,24 @@ onMounted(() => {
   });
 });
 
+// 重置连线状态，清除虚线
+const resetConnectionState = () => {
+  isConnectingMode.value = false;
+  connectionCompleted.value = false;
+  sourceNodeId.value = null;
+  console.log("连线状态已重置，虚线已清除");
+};
+
 // 组件卸载时清理资源
 onUnmounted(() => {
   if (graph.value) {
     graph.value.destroy();
   }
   window.removeEventListener("resize", handleResize);
+});
+
+defineExpose({
+  resetConnectionState
 });
 </script>
 
@@ -845,32 +1452,34 @@ onUnmounted(() => {
 .graph-canvas {
   width: 100%;
   height: 100%;
-  background-color: white;
-  border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  background-image: radial-gradient(#e0e0e0 1px, transparent 1px);
-  background-size: 20px 20px;
+}
+
+.connection-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 1000;
 }
 
 .zoom-controls {
   position: absolute;
-  bottom: 20px;
-  right: 20px;
+  bottom: 25px;
+  right: 28px;
   display: flex;
   align-items: center;
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  padding: 4px;
+  border-radius: 40px;
+  padding:1px;
+  background: #FFFFFF;
+  border: 0.5px solid rgba(226,226,226,1);
+  box-shadow: 0px 8px 10px 0px rgba(78,89,105,0.18);
 }
 
 .zoom-btn {
   width: 36px;
   height: 36px;
   border: none;
-  background: #f5f5f5;
-  border-radius: 4px;
+  background: none;
   font-size: 14px;
   font-weight: bold;
   cursor: pointer;
@@ -881,41 +1490,29 @@ onUnmounted(() => {
   position: relative;
 }
 
-.zoom-btn::before {
-  content: "🔍";
-  position: absolute;
-  font-size: 12px;
-  opacity: 0.7;
-}
-
 .zoom-icon {
   position: relative;
   z-index: 1;
-}
-
-.zoom-btn:hover {
-  background: #e0e0e0;
+  width:18px;
+  height:18px;
 }
 
 .zoom-level {
-  width: 60px;
+  width: 50px;
   height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
-  color: #666;
-  border-left: 1px solid #ddd;
-  border-right: 1px solid #ddd;
+  font-size: 14px;
+  color: #333;
+  font-weight: bold;
   margin: 0 2px;
-  min-width: 60px;
+  min-width: 50px;
 }
 
-/* 关键修改：完全移除节点固定尺寸设置 */
 :deep(.g6-node-rect) {
   cursor: move !important;
   filter: drop-shadow(0px 8px 10px rgba(78, 89, 105, 0.25));
-  /* 尺寸完全由JavaScript计算自适应 */
 }
 
 :deep(.g6-node) {
@@ -931,7 +1528,6 @@ onUnmounted(() => {
   cursor: default;
 }
 
-/* 确保节点标签完全自适应 */
 :deep(.g6-node-label) {
   word-wrap: break-word !important;
   white-space: pre-wrap !important;
@@ -943,7 +1539,6 @@ onUnmounted(() => {
   text-align: center !important;
 }
 
-/* 确保节点内容区域自适应 */
 :deep(.g6-node-content) {
   display: flex !important;
   align-items: center !important;
