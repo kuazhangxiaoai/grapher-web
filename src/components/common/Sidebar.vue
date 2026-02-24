@@ -358,15 +358,13 @@
           </div>
         </div>
         <!-- 新建图谱按钮 -->
-        <div class="add-btn graph-addBtn">
+        <div class="add-btn">
           <el-button
-            type="success"
-            size="small"
-            @click="handleCreateGraphClick"
+              type="success"
+              size="small"
+              @click="handleCreateGraphClick"
           >
-            <el-icon class="plusIcon"><Plus /></el-icon>
-            新建图谱
-          </el-button>
+            <el-icon class="plusIcon"><Plus /></el-icon>新建图谱</el-button>
         </div>
       </div>
 
@@ -435,7 +433,7 @@
         </div>
 
         <!-- 组件库 -->
-        <div class="component-library">
+        <div class="component-library" v-if="enableAdd">
           <div class="component-library-header">
             <img
               src="@/assets/images/filter_list.png"
@@ -474,6 +472,14 @@
               </button>
             </div>
           </div>
+        </div>
+        <div class="add-btn">
+          <el-button
+              type="success"
+              size="small"
+              @click="handleCreateGraphClick"
+          >
+            <el-icon class="plusIcon"><Plus /></el-icon>新建图谱</el-button>
         </div>
       </div>
     </div>
@@ -584,6 +590,7 @@ const emit = defineEmits([
   "back-to-sub-domains",
   "open-add-dialog",
   "open-add-topic-dialog",
+  "open-add-graph-dialog",
   "search",
   "search-icon-click",
   "topic-search-icon-click",
@@ -635,6 +642,10 @@ const openAddDialog = () => {
 const openAddTopicDialog = () => {
   emit("open-add-topic-dialog");
 };
+
+const openAddGraphDialog = () => {
+  emit("open-add-graph-dialog");
+}
 
 const handleDeleteTopic = (id) => {
   emit("delete-topic", id);
@@ -850,6 +861,7 @@ const handleTopicSearchClear = () => {
     });
   }, 0);
 };
+
 </script>
 
 <style scoped lang="scss">

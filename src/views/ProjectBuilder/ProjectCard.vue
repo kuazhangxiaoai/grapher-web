@@ -28,22 +28,15 @@
           </div>
         </div>
       </el-card>
-      <el-card class="item-card">
+      <el-card class="item-card" @click="handleAddClick">
         <div class="add-card-content">
           <div class="add-project-btn">
             <img src="../../assets/images/addProject.png" />
           </div>
         </div>
       </el-card>
+      <AddProjectDialog :visible="openAddProjectDialog"></AddProjectDialog>
     </div>
-
-    <!-- 新增/编辑弹窗 -->
-    <AddProjectDialog
-      :domain-name="domainName"
-      :topic-name="topicName"
-      :project-name="projectName"
-      :visible="visible">
-    </AddProjectDialog>
   </div>
 </template>
 
@@ -53,7 +46,6 @@ import { useRouter } from 'vue-router';
 import { Message, Modal } from '@arco-design/web-vue';
 import { IconPlus } from '@arco-design/web-vue/es/icon';
 import apiClient from '@/services/apiClient';
-import AddProjectDialog from "@/components/common/AddProjectDialog.vue";
 
 const router = useRouter();
 // 定义组件属性
@@ -82,6 +74,7 @@ const emit = defineEmits<{
 const showModal = ref(false);
 const isEditMode = ref(false);
 const availableGraphDB = ref([] as string[]);
+const openAddProjectDialog = ref(false);
 
 // 表单数据
 const formData = ref({
@@ -185,9 +178,7 @@ const handleSubmit = () => {
 
 // 处理添加项目点击
 const handleAddClick = () => {
-  if (props.items.length < 20) {
-    showModal.value = true;
-  }
+  openAddProjectDialog.value = true;
 };
 
 // 重置表单
@@ -216,16 +207,6 @@ onMounted(()=>{
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
 }
 
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 30px;
-  padding: 20px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
 
 .header h1 {
   margin: 0;
@@ -238,11 +219,6 @@ onMounted(()=>{
   background-clip: text;
 }
 
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
 
 .user-info {
   display: flex;
@@ -254,44 +230,6 @@ onMounted(()=>{
   font-size: 14px;
   color: #1890ff;
   box-shadow: 0 1px 3px rgba(24, 144, 255, 0.2);
-}
-
-.username {
-  font-weight: 500;
-}
-
-.logout-button {
-  font-size: 13px;
-  padding: 4px 12px;
-  color: #ff4d4f;
-  border-radius: 16px;
-  transition: all 0.3s ease;
-}
-
-.logout-button:hover {
-  background: rgba(255, 77, 79, 0.1);
-  color: #ff4d4f;
-  transform: translateY(-1px);
-}
-
-.add-button {
-  font-weight: 500;
-  border-radius: 8px;
-  padding: 8px 20px;
-  font-size: 14px;
-  transition: all 0.3s ease;
-}
-
-.add-button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3);
-}
-
-.limit-hint {
-  margin-left: 12px;
-  font-size: 12px;
-  color: #ff4d4f;
-  line-height: 32px;
 }
 
 .card-list {
