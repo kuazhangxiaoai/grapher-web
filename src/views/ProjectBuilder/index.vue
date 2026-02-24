@@ -16,7 +16,7 @@
         :has-data="hasData"
         :entity-types="entityTypes"
         :relationship-types="relationshipTypes"
-        :enable-add="false"
+        :current-mode="currentMode"
         @delete-domain="handleDeleteDomain"
         @open-add-dialog="openAddDialog"
         @open-add-topic-dialog="openAddTopicDialog"
