@@ -41,9 +41,9 @@ const router = createRouter({
       redirect: '/login'
     },
     {
-      path: "/project-builder",
-      name: "ProjectBuilder",
-      component: ()=> import('@/views/ProjectBuilder/index.vue'),
+      path: "/graph-builder",
+      name: "GraphBuilder",
+      component: ()=> import('@/views/GraphBuilder/index.vue'),
     }
 
   ]

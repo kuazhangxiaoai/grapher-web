@@ -15,7 +15,7 @@
         @select="handleMenuSelect"
       >
         <el-menu-item index="/home">本体设计</el-menu-item>
-        <el-menu-item index="/project-builder">图谱构建</el-menu-item>
+        <el-menu-item index="/graph-builder">图谱构建</el-menu-item>
         <el-menu-item index="3">探索应用</el-menu-item>
       </el-menu>
     </nav>

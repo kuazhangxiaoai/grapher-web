@@ -1,4 +1,5 @@
 import axios from "./config";
+
 export default {
   /** 获取领域列表 */
   getDomainList(data: String): Promise<any> {
@@ -28,6 +29,35 @@ export default {
   deleteTopic(projectId: number): Promise<any> {
     return axios.get(`/serve_api/topic/remove?topicId=${projectId}`);
   },
-  /** 新增项目*/
-  addProject
+  /** create graph*/
+  addGraph(graphName: string, topicName: string, domainName: string, userName:string, type): Promise<any> {
+    return axios.post(`/serve_api/project/addGraph`,
+        {
+          graphName: graphName,
+          topicName: topicName,
+          domainName: domainName,
+          userName: userName,
+        });
+  },
+  /**delete graph*/
+  deleteGraph(graphName: string, topicName: string, domainName: string, userName: string): Promise<any> {
+
+    return axios.post(`/serve_api/graph/removeGraph`,{
+      graphName: graphName,
+      topicName: topicName,
+      domainName: domainName,
+      userName: userName,
+    });
+  },
+  /**get graph list*/
+  getGraphList(topicName: string, domainName: string, userName: string): Promise<any> {
+    return axios.get(`/serve_api/project/getGraphList`,
+        {
+          params: {
+            topicName: topicName,
+            domainName: domainName,
+            userName: userName
+          }
+        });
+  }
 };

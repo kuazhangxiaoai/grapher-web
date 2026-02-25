@@ -358,15 +358,14 @@
           </div>
         </div>
         <!-- 新建图谱按钮 -->
-        <div class="add-btn graph-addBtn">
+        <div class="add-btn">
           <el-button
             type="success"
             size="small"
             @click="handleCreateGraphClick"
           >
-            <el-icon class="plusIcon"><Plus /></el-icon>
-            新建图谱
-          </el-button>
+            <el-icon class="plusIcon"><Plus /></el-icon>新建图谱</el-button
+          >
         </div>
       </div>
 
@@ -388,8 +387,8 @@
           </div>
         </div>
 
-        <!-- 数据列表 -->
-        <div v-else class="data-list-container">
+        <!-- 数据列表 当用于本体设计时，这个当作是工具面板。当用于图谱构建模块时，这个当作项目（文章）的三级列表-->
+        <div v-if="entityTypes.length > 0" class="data-list-container">
           <!-- 实体类型 -->
           <div class="data-section">
             <h3>实体类型</h3>
@@ -479,7 +478,7 @@
     </div>
 
     <!-- 新增按钮 -->
-    <div class="add-btn" v-if="!currentSubDomain && enableAdd">
+    <div class="add-btn" v-if="!currentSubDomain">
       <el-button
         type="success"
         size="small"
@@ -561,10 +560,6 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
-  enableAdd: {
-    type: Boolean,
-    default: true,
-  },
 });
 
 // 组件库列表
@@ -584,6 +579,7 @@ const emit = defineEmits([
   "back-to-sub-domains",
   "open-add-dialog",
   "open-add-topic-dialog",
+  "open-add-graph-dialog",
   "search",
   "search-icon-click",
   "topic-search-icon-click",
@@ -634,6 +630,10 @@ const openAddDialog = () => {
 
 const openAddTopicDialog = () => {
   emit("open-add-topic-dialog");
+};
+
+const openAddGraphDialog = () => {
+  emit("open-add-graph-dialog");
 };
 
 const handleDeleteTopic = (id) => {
