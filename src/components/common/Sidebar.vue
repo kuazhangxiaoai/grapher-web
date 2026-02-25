@@ -360,11 +360,12 @@
         <!-- 新建图谱按钮 -->
         <div class="add-btn">
           <el-button
-              type="success"
-              size="small"
-              @click="handleCreateGraphClick"
+            type="success"
+            size="small"
+            @click="handleCreateGraphClick"
           >
-            <el-icon class="plusIcon"><Plus /></el-icon>新建图谱</el-button>
+            <el-icon class="plusIcon"><Plus /></el-icon>新建图谱</el-button
+          >
         </div>
       </div>
 
@@ -477,7 +478,7 @@
     </div>
 
     <!-- 新增按钮 -->
-    <div class="add-btn" v-if="!currentSubDomain ">
+    <div class="add-btn" v-if="!currentSubDomain">
       <el-button
         type="success"
         size="small"
@@ -633,7 +634,7 @@ const openAddTopicDialog = () => {
 
 const openAddGraphDialog = () => {
   emit("open-add-graph-dialog");
-}
+};
 
 const handleDeleteTopic = (id) => {
   emit("delete-topic", id);
@@ -849,7 +850,6 @@ const handleTopicSearchClear = () => {
     });
   }, 0);
 };
-
 </script>
 
 <style scoped lang="scss">
@@ -1066,9 +1066,10 @@ const handleTopicSearchClear = () => {
 .domain-list {
   flex: 1;
   border-radius: 4px;
-  padding: 2px 0;
+  padding: 2px 6px 2px 0px;
   margin-bottom: 15px;
   overflow-y: auto;
+  box-sizing: border-box;
 }
 
 .domain-item {
