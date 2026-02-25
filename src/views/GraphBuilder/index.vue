@@ -48,7 +48,9 @@
         @create-graph="handleCreateGraph"
         @cancel="handleCancelCreateGraph"
     />
-
+    <div class="text-container">
+      <TextProcessor :src="textUrl"></TextProcessor>
+    </div>
   </div>
 </template>
 
@@ -59,17 +61,22 @@ import { ElMessage as Message } from "element-plus";
 import Sidebar from "@/components/common/Sidebar.vue";
 import AddGraphDialog from "@/components/common/AddGraphDialog.vue";
 import projectService from "@/services/graph.ts"
+import TextProcessor from "@/components/common/TextProcessor.vue";
+import {useConverter} from "@/mock/modules/converter.ts";
 const contentRef = ref(null);
-
+const textUrl = ref(null);
+const {graphTypeString2Integer} = useConverter()
 // 从localStorage读取状态，或使用默认值
 const loadState = () => {
-  const savedState = localStorage.getItem("homePageState");
+  const savedState = localStorage.getItem("GrapherPageState");
   if (savedState) {
     return JSON.parse(savedState);
   }
   return {
     currentDomain: "",
+    currentDomainId: "",
     currentSubDomain: "",
+    currentSubDomainId: "",
     domains: [],
     subDomains: [],
     subSubDomains: [],
@@ -81,7 +88,9 @@ const loadState = () => {
 
 const allOption = ref("全部");
 const currentDomain = ref("");
+const currentDomainId = ref("");
 const currentSubDomain = ref("");
+const currentSubDomainId = ref("");
 const domains = ref([]);
 const subDomains = ref([]);
 const subSubDomains = ref([]);
@@ -295,7 +304,9 @@ const updateGraphSearchOptions = () => {
 const saveState = () => {
   const state = {
     currentDomain: currentDomain.value,
+    currentDomainId: currentDomainId.value,
     currentSubDomain: currentSubDomain.value,
+    currentSubDomainId: currentSubDomain.value,
     domains: domains.value,
     subDomains: subDomains.value,
     subSubDomains: subSubDomains.value,
@@ -303,7 +314,7 @@ const saveState = () => {
     graphs: graphs.value,
     graphNodes: graphNodes.value,
   };
-  localStorage.setItem("homePageState", JSON.stringify(state));
+  localStorage.setItem("GrapherPageState", JSON.stringify(state));
 };
 
 const openAddGraphDialog = () => {
@@ -335,7 +346,9 @@ const allDomains = ref([]);
 onMounted(async () => {
   const savedState = loadState();
   currentDomain.value = savedState.currentDomain;
+  currentDomainId.value = savedState.currentDomainId;
   currentSubDomain.value = savedState.currentSubDomain;
+  currentSubDomainId.value = savedState.currentSubDomainId;
   subDomains.value = savedState.subDomains;
   subSubDomains.value = savedState.subSubDomains;
   hasData.value = savedState.hasData;
@@ -674,6 +687,7 @@ const topicSearchQuery = ref("");
 // 处理领域点击，获取该领域下的专题列表
 const handleDomainClick = async (domain) => {
   currentDomain.value = domain.name;
+  currentDomainId.value = domain.id;
   currentSubDomain.value = "";
 
   // 立即清空topics列表，避免显示上一个领域的专题数据
@@ -689,45 +703,14 @@ const handleDomainClick = async (domain) => {
   // 切换到专题页面，更新下拉框显示专题搜索历史
   updateTopicSearchOptions();
 
-  // 根据选择的领域设置子领域
-  if (domain.name === "服务") {
-    subDomains.value = [
-      { name: "政务服务", count: 0 },
-      { name: "会议", count: 0 },
-      { name: "工作总线", count: 0 },
-      { name: "规划编制", count: 0 },
-    ];
-  } else if (domain.name === "名城") {
-    subDomains.value = [
-      { name: "历史文化", count: 0 },
-      { name: "城市规划", count: 0 },
-      { name: "基础设施", count: 0 },
-      { name: "公共服务", count: 0 },
-    ];
-  } else if (domain.name === "规划知识") {
-    subDomains.value = [
-      { name: "规划理论", count: 0 },
-      { name: "规划法规", count: 0 },
-      { name: "规划案例", count: 0 },
-      { name: "规划技术", count: 0 },
-    ];
-  } else if (domain.name === "空间通讯") {
-    subDomains.value = [
-      { name: "空间数据", count: 0 },
-      { name: "通讯网络", count: 0 },
-      { name: "空间分析", count: 0 },
-      { name: "通讯技术", count: 0 },
-    ];
-  } else {
-    subDomains.value = [];
-  }
+  saveState()
 };
 
 // 获取专题列表
 const fetchTopics = async (fieldId, condition = "") => {
   try {
     const currentDomainObj = domains.value.find(
-        (domain) => domain.name === currentDomain.value,
+        (domain) => domain.id === currentDomainId.value,
     );
     if (!currentDomainObj) return;
 
@@ -807,38 +790,8 @@ const handleTopicSearch = (query) => {
 
 const handleSubDomainClick = (subDomain) => {
   currentSubDomain.value = subDomain.name;
-  // 根据选择的子领域设置子子领域
-  if (subDomain.name === "规划理论") {
-    subSubDomains.value = [
-      { name: "城市规划理论" },
-      { name: "区域规划理论" },
-      { name: "可持续发展理论" },
-      { name: "智能城市理论" },
-    ];
-  } else if (subDomain.name === "规划法规") {
-    subSubDomains.value = [
-      { name: "城市规划法" },
-      { name: "土地管理法" },
-      { name: "环境保护法" },
-      { name: "建筑法" },
-    ];
-  } else if (subDomain.name === "规划案例") {
-    subSubDomains.value = [
-      { name: "国内案例" },
-      { name: "国际案例" },
-      { name: "成功案例" },
-      { name: "失败案例" },
-    ];
-  } else if (subDomain.name === "规划技术") {
-    subSubDomains.value = [
-      { name: "GIS技术" },
-      { name: "遥感技术" },
-      { name: "大数据分析" },
-      { name: "人工智能" },
-    ];
-  } else {
-    subSubDomains.value = [];
-  }
+  currentSubDomainId.value = subDomain.id;
+  saveState()
 };
 
 const handleCreateRelationship = (sourceId) => {
@@ -1126,7 +1079,7 @@ const handleCreateGraph = async (graphData) => {
     Message.warning("请输入图谱名称");
     return;
   }
-
+  const state = loadState()
   if (!graphData.createMethod) {
     Message.warning("请选择创建方式");
     return;
@@ -1136,10 +1089,12 @@ const handleCreateGraph = async (graphData) => {
 
   try {
     // 构造图谱数据
+
     const graphDataToSend = {
-      name: graphData.graphName,
-      createMethod: graphData.createMethod,
-      file: graphData.createMethod === "text" ? graphData.uploadedFile : null,
+      articleName: graphData.graphName,
+      createMethod: graphTypeString2Integer(graphData.createMethod).toString(),
+      topicId: state.currentSubDomainId,
+      uploadedFile: graphData.createMethod === "text" ? graphData.uploadedFile : null,
       databaseName: graphData.createMethod === "database" ? graphData.databaseName : "",
       anyContent: graphData.createMethod === "any" ? graphData.anyContent : "",
     };
@@ -1148,10 +1103,10 @@ const handleCreateGraph = async (graphData) => {
     console.log("创建图谱:", graphDataToSend);
 
     // 模拟创建成功
-    const response = await createGraph(graphDataToSend);
-    // if (response.code === 200) {
+    const response = await projectService.addArticle(graphDataToSend)
+    if (response.code === 200) Message.success("图谱创建成功");
     // 创建成功后的处理
-    Message.success("图谱创建成功");
+
     // 添加到图谱列表
     const newGraph = {
       id: Date.now(),
@@ -1264,6 +1219,7 @@ const handleModeChange = (mode) => {
 <style scoped lang="scss">
 .project-builder-container {
   position: relative;
+  display: flex;
   top: 0;
   left: 0;
   width: 100%;
@@ -1275,5 +1231,12 @@ const handleModeChange = (mode) => {
   left: 280px;
   width: 165vh;
   height: 85vh;
+}
+.text-container{
+  position: relative;
+  width: 40%;
+  height: 100%;
+  top: 0;
+  left: 0;
 }
 </style>

@@ -29,29 +29,31 @@ export default {
   deleteTopic(projectId: number): Promise<any> {
     return axios.get(`/serve_api/topic/remove?topicId=${projectId}`);
   },
-  /** create graph*/
-  addGraph(graphName: string, topicName: string, domainName: string, userName:string, type): Promise<any> {
-    return axios.post(`/serve_api/project/addGraph`,
-        {
-          graphName: graphName,
-          topicName: topicName,
-          domainName: domainName,
-          userName: userName,
-        });
+  /** create Article*/
+  addArticle(graphData): Promise<any> {
+    //raphName: string, topicId: string, createMethod: string, file: any
+    const formData = new FormData();
+    formData.append("articleName", graphData.articleName);
+    formData.append("createMethod", graphData.createMethod);
+    formData.append("fileSize", "123");
+    formData.append("topicId", graphData.topicId);
+    formData.append("multipartFile", graphData.uploadedFile);
+    return axios.post(`/serve_api/article/addArticle`,
+        formData, {headers: { 'Content-Type': 'multipart/form-data'}});
   },
-  /**delete graph*/
-  deleteGraph(graphName: string, topicName: string, domainName: string, userName: string): Promise<any> {
+  /**delete Article*/
+  deleteArticle(graphName: string, topicName: string, domainName: string, userName: string): Promise<any> {
 
-    return axios.post(`/serve_api/graph/removeGraph`,{
+    return axios.post(`/serve_api/article/removeArticle`,{
       graphName: graphName,
       topicName: topicName,
       domainName: domainName,
       userName: userName,
     });
   },
-  /**get graph list*/
-  getGraphList(topicName: string, domainName: string, userName: string): Promise<any> {
-    return axios.get(`/serve_api/project/getGraphList`,
+  /**get Article list*/
+  getArticleList(topicName: string, domainName: string, userName: string): Promise<any> {
+    return axios.get(`/serve_api/article/getArticleList`,
         {
           params: {
             topicName: topicName,
