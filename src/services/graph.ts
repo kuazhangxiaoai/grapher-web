@@ -1,4 +1,5 @@
 import axios from "./config";
+
 export default {
   /** 获取领域列表 */
   getDomainList(data: String): Promise<any> {
@@ -28,26 +29,29 @@ export default {
   deleteTopic(projectId: number): Promise<any> {
     return axios.get(`/serve_api/topic/remove?topicId=${projectId}`);
   },
-  /** 新增项目*/
-  addProject(projectName: string, topicName: string, domainName: string, userName): Promise<any> {
-    return axios.post(`/serve_api/project/addProject`,
+  /** create graph*/
+  addGraph(graphName: string, topicName: string, domainName: string, userName:string, type): Promise<any> {
+    return axios.post(`/serve_api/project/addGraph`,
         {
-          projectName: projectName,
+          graphName: graphName,
           topicName: topicName,
           domainName: domainName,
           userName: userName,
         });
   },
-  deleteProject(projectName: string, topicName: string, domainName: string, userName: string): Promise<any> {
-    return axios.post(`/serve_api/project/removeProject`,{
-      projectName: projectName,
+  /**delete graph*/
+  deleteGraph(graphName: string, topicName: string, domainName: string, userName: string): Promise<any> {
+
+    return axios.post(`/serve_api/graph/removeGraph`,{
+      graphName: graphName,
       topicName: topicName,
       domainName: domainName,
       userName: userName,
     });
   },
-  getProjectList(topicName: string, domainName: string, userName: string): Promise<any> {
-    return axios.get(`/serve_api/project/projectList`,
+  /**get graph list*/
+  getGraphList(topicName: string, domainName: string, userName: string): Promise<any> {
+    return axios.get(`/serve_api/project/getGraphList`,
         {
           params: {
             topicName: topicName,

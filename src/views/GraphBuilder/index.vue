@@ -43,12 +43,11 @@
     />
     <!-- 新增/编辑弹窗 -->
     <AddGraphDialog
-        :domain-name="domainName"
-        :topic-name="topicName"
-        :project-name="projectName"
+        v-model:visible="showGraphDialog"
+        :is-confirm-button-disabled="isConfirmButtonDisabled"
         @create-graph="handleCreateGraph"
-        v-model:visible="showGraphDialog">
-    </AddGraphDialog>
+        @cancel="handleCancelCreateGraph"
+    />
 
   </div>
 </template>
@@ -59,8 +58,7 @@ import { ElMessageBox } from "element-plus";
 import { ElMessage as Message } from "element-plus";
 import Sidebar from "@/components/common/Sidebar.vue";
 import AddGraphDialog from "@/components/common/AddGraphDialog.vue";
-import projectService from "@/services/project";
-
+import projectService from "@/services/graph.ts"
 const contentRef = ref(null);
 
 // 从localStorage读取状态，或使用默认值
@@ -1142,8 +1140,7 @@ const handleCreateGraph = async (graphData) => {
       name: graphData.graphName,
       createMethod: graphData.createMethod,
       file: graphData.createMethod === "text" ? graphData.uploadedFile : null,
-      databaseName:
-          graphData.createMethod === "database" ? graphData.databaseName : "",
+      databaseName: graphData.createMethod === "database" ? graphData.databaseName : "",
       anyContent: graphData.createMethod === "any" ? graphData.anyContent : "",
     };
 
@@ -1151,7 +1148,7 @@ const handleCreateGraph = async (graphData) => {
     console.log("创建图谱:", graphDataToSend);
 
     // 模拟创建成功
-    // const response = await createGraph(graphDataToSend);
+    const response = await createGraph(graphDataToSend);
     // if (response.code === 200) {
     // 创建成功后的处理
     Message.success("图谱创建成功");

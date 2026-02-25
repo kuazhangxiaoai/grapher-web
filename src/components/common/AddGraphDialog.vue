@@ -35,6 +35,9 @@
           </template>
         </el-upload>
       </el-form-item>
+      <el-form-item v-if="form.createMethod == 'text'" label="发表时间">
+        <el-date-picker v-model="form.publishDate" type="date" placeholder="请选择发表时间"></el-date-picker>
+      </el-form-item>
       <el-form-item v-if="form.createMethod === 'database'" label="数据库选择">
         <el-select
           v-model="form.databaseName"
@@ -69,7 +72,6 @@
 import { ref, watch } from "vue";
 
 const dialogClassName = 'add-graph-dialog';
-
 const props = defineProps({
   visible: {
     type: Boolean,
@@ -94,6 +96,7 @@ const form = ref({
   uploadedFile: null,
   databaseName: "",
   anyContent: "",
+  publishDate: "",
 });
 
 // 监听 visible 属性变化，当弹框显示时重置表单

@@ -9,7 +9,7 @@ import Content from "@/components/common/Content.vue";
 import PropertyPanel from "@/components/common/PropertyPanel.vue";
 import AddDomainDialog from "@/components/common/AddDomainDialog.vue";
 import AddGraphDialog from "@/components/common/AddGraphDialog.vue";
-import projectService from "@/services/project";
+import projectService from "@/services/graph.ts";
 
 const contentRef = ref(null);
 
