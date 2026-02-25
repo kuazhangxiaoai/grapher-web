@@ -267,6 +267,20 @@ const calculateNodeSize = (nodeData) => {
 
 // 格式化节点标签文本
 const formatLabelText = (data) => {
+  // 类型映射：英文 -> 中文
+  const typeMap = {
+    text: "文本",
+    number: "数字",
+    date: "日期",
+    boolean: "布尔",
+    array: "数组",
+    object: "对象",
+    string: "字符串",
+    integer: "整数",
+    float: "浮点数",
+    datetime: "日期时间",
+  };
+
   const nodeData = data.data || {};
   const name = nodeData.name || "未命名";
   const properties = nodeData.properties || {};
@@ -278,19 +292,21 @@ const formatLabelText = (data) => {
       if (typeof property === "object" && property !== null) {
         const propName = property.name || `属性${index + 1}`;
         const propType = property.type || "text";
-        text += `${propName}: ${propType}\n`;
+        const chineseType = typeMap[propType] || propType;
+        text += `${propName}           ${chineseType}\n`;
       } else {
-        text += `属性${index + 1}: ${property}\n`;
+        text += `属性${index + 1}          ${property}\n`;
       }
     });
   } else if (typeof properties === "object" && properties !== null) {
     Object.entries(properties).forEach(([key, value]) => {
       if (typeof value === "object" && value !== null && value.type) {
-        text += `${key}: ${value.type}\n`;
+        const chineseType = typeMap[value.type] || value.type;
+        text += `${key}          ${chineseType}\n`;
       } else if (typeof value === "object" && value !== null) {
-        text += `${key}: ${JSON.stringify(value)}\n`;
+        text += `${key}          ${JSON.stringify(value)}\n`;
       } else {
-        text += `${key}: ${value}\n`;
+        text += `${key}          ${value}\n`;
       }
     });
   } else {
@@ -356,7 +372,7 @@ const initGraph = () => {
           fill: "#fff",
           stroke: "#43D7B5",
           lineWidth: 2,
-          radius: 4,
+          radius: 8,
           size: [nodeSize.width, nodeSize.height],
           shadowColor: "rgba(78,89,105,0.25)",
           shadowBlur: 10,
@@ -385,7 +401,7 @@ const initGraph = () => {
           fill: "#fff",
           stroke: "#43D7B5",
           lineWidth: 2,
-          radius: 4,
+          radius: 8,
           size: (data) => {
             const nodeSize = calculateNodeSize(data);
             return [nodeSize.width, nodeSize.height];
@@ -1474,7 +1490,7 @@ const renderGraph = () => {
           fill: "#fff",
           stroke: "#43D7B5",
           lineWidth: 2,
-          radius: 4,
+          radius: 8,
           size: [nodeSize.width, nodeSize.height],
           shadowColor: "rgba(78,89,105,0.18)",
           shadowBlur: 10,
