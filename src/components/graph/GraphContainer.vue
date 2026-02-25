@@ -15,7 +15,11 @@
       @close="showContextMenu = false"
     />
     <!-- 自定义连线指示器 -->
-    <svg v-if="isConnectingMode || connectionCompleted" class="connection-line" :style="svgStyle">
+    <svg
+      v-if="isConnectingMode || connectionCompleted"
+      class="connection-line"
+      :style="svgStyle"
+    >
       <line
         :x1="connectionStart.x"
         :y1="connectionStart.y"
@@ -52,7 +56,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch, nextTick, shallowRef, computed } from "vue";
+import {
+  ref,
+  onMounted,
+  onUnmounted,
+  watch,
+  nextTick,
+  shallowRef,
+  computed,
+} from "vue";
 import { Graph } from "@antv/g6";
 import GraphContextMenu from "./GraphContextMenu.vue";
 
@@ -127,12 +139,12 @@ const svgStyle = computed(() => {
   if (!graphRef.value) return {};
   const rect = graphRef.value.getBoundingClientRect();
   return {
-    position: 'absolute',
-    top: '0',
-    left: '0',
+    position: "absolute",
+    top: "0",
+    left: "0",
     width: `${rect.width}px`,
     height: `${rect.height}px`,
-    pointerEvents: 'none',
+    pointerEvents: "none",
     zIndex: 1000,
   };
 });
@@ -152,23 +164,26 @@ const getPointOnRect = (point, rect) => {
   const rectCenterY = y;
   const rectHalfWidth = width / 2;
   const rectHalfHeight = height / 2;
-  
+
   // 计算点相对于矩形中心的位置
   const relativeX = point.x - rectCenterX;
   const relativeY = point.y - rectCenterY;
-  
+
   // 计算归一化的方向向量
-  const maxRatio = Math.max(Math.abs(relativeX) / rectHalfWidth, Math.abs(relativeY) / rectHalfHeight);
-  
+  const maxRatio = Math.max(
+    Math.abs(relativeX) / rectHalfWidth,
+    Math.abs(relativeY) / rectHalfHeight,
+  );
+
   if (maxRatio === 0) {
     // 点在矩形中心，返回右边界中点
     return { x: rectCenterX + rectHalfWidth, y: rectCenterY };
   }
-  
+
   // 计算矩形边框上的点
   const normalizedX = relativeX / maxRatio;
   const normalizedY = relativeY / maxRatio;
-  
+
   return { x: rectCenterX + normalizedX, y: rectCenterY + normalizedY };
 };
 
@@ -180,7 +195,7 @@ const getNodeRect = (node) => {
     x: node.x,
     y: node.y,
     width: nodeSize.width,
-    height: nodeSize.height
+    height: nodeSize.height,
   };
 };
 
@@ -319,9 +334,11 @@ const initGraph = () => {
       });
 
       // 确保节点 ID 与 Home 组件中的格式一致
-      const nodeId = typeof node.id === 'string' ? node.id : node.id.toString();
-      console.log(`节点原始ID: ${node.id}, 类型: ${typeof node.id}, 转换后ID: ${nodeId}, 类型: ${typeof nodeId}`);
-      
+      const nodeId = typeof node.id === "string" ? node.id : node.id.toString();
+      console.log(
+        `节点原始ID: ${node.id}, 类型: ${typeof node.id}, 转换后ID: ${nodeId}, 类型: ${typeof nodeId}`,
+      );
+
       const formattedNode = {
         id: nodeId,
         type: "rect",
@@ -347,7 +364,7 @@ const initGraph = () => {
           shadowOffsetY: 8,
         },
       };
-      
+
       console.log("格式化节点:", formattedNode);
       return formattedNode;
     });
@@ -410,8 +427,8 @@ const initGraph = () => {
           // 检查是否存在双向连线
           const source = data.source;
           const target = data.target;
-          const hasReverseEdge = props.edges.some(edge => 
-            edge.source === target && edge.target === source
+          const hasReverseEdge = props.edges.some(
+            (edge) => edge.source === target && edge.target === source,
           );
           // 如果存在双向连线，使用二次贝塞尔曲线
           return hasReverseEdge ? "quadratic" : "line";
@@ -420,12 +437,12 @@ const initGraph = () => {
           const relationshipType = data.data?.type || "定向";
           const source = data.source;
           const target = data.target;
-          
+
           // 检查是否存在双向连线
-          const hasReverseEdge = props.edges.some(edge => 
-            edge.source === target && edge.target === source
+          const hasReverseEdge = props.edges.some(
+            (edge) => edge.source === target && edge.target === source,
           );
-          
+
           const style = {
             lineWidth: 2,
             stroke: "#44D6B6",
@@ -450,11 +467,15 @@ const initGraph = () => {
             // 安全计算控制点数，避免sourcePoint或targetPoint不存在的情况
             let centerX = 0;
             let centerY = 0;
-            
+
             // 尝试获取节点位置
-            const sourceNode = props.nodes.find(node => String(node.id) === String(source));
-            const targetNode = props.nodes.find(node => String(node.id) === String(target));
-            
+            const sourceNode = props.nodes.find(
+              (node) => String(node.id) === String(source),
+            );
+            const targetNode = props.nodes.find(
+              (node) => String(node.id) === String(target),
+            );
+
             if (sourceNode && targetNode) {
               // 使用节点的实际位置
               centerX = (sourceNode.x + targetNode.x) / 2;
@@ -468,7 +489,7 @@ const initGraph = () => {
               centerX = 0;
               centerY = 0;
             }
-            
+
             // 为不同方向的连线设置不同的控制点数
             if (source < target) {
               // A→B 方向，向上偏移
@@ -602,7 +623,7 @@ const bindEvents = () => {
     console.log("节点点击事件触发:", event);
     console.log("当前连线模式状态:", isConnectingMode.value);
     console.log("当前源节点ID:", sourceNodeId.value);
-    
+
     if (isConnectingMode.value) {
       console.log("在连线模式中，尝试完成连线");
       // 如果在连线模式，尝试完成连线
@@ -612,31 +633,48 @@ const bindEvents = () => {
         console.log("点击节点的model:", model);
         console.log("点击节点ID:", model.id);
         console.log("源节点ID:", sourceNodeId.value);
-        console.log("节点ID是否不同:", String(model.id) !== String(sourceNodeId.value));
-        
+        console.log(
+          "节点ID是否不同:",
+          String(model.id) !== String(sourceNodeId.value),
+        );
+
         if (String(model.id) !== String(sourceNodeId.value)) {
           // 完成连线
           console.log("完成连线，目标节点:", model.id);
           // 固定连线终点到目标节点位置
-          const targetNode = props.nodes.find(node => String(node.id) === String(model.id));
+          const targetNode = props.nodes.find(
+            (node) => String(node.id) === String(model.id),
+          );
           if (targetNode) {
             // 更新连线起点：根据目标节点位置计算源节点边框上的点
-            const sourceNode = props.nodes.find(node => String(node.id) === String(sourceNodeId.value));
+            const sourceNode = props.nodes.find(
+              (node) => String(node.id) === String(sourceNodeId.value),
+            );
             if (sourceNode) {
               const sourceNodeRect = getNodeRect(sourceNode);
-              connectionStart.value = getPointOnRect({ x: targetNode.x, y: targetNode.y }, sourceNodeRect);
+              connectionStart.value = getPointOnRect(
+                { x: targetNode.x, y: targetNode.y },
+                sourceNodeRect,
+              );
             }
-            
+
             // 使用目标节点边框上的点作为连线终点
             const targetNodeRect = getNodeRect(targetNode);
-            connectionEnd.value = getPointOnRect(connectionStart.value, targetNodeRect);
+            connectionEnd.value = getPointOnRect(
+              connectionStart.value,
+              targetNodeRect,
+            );
           }
           emit("connection-complete", model.id);
           // 标记连线完成，保持显示但不再跟随鼠标移动
           connectionCompleted.value = true;
           isConnectingMode.value = false;
           console.log("连线完成，保持显示，不再跟随鼠标移动");
-          console.log("连线完成后状态:", { isConnectingMode: isConnectingMode.value, connectionCompleted: connectionCompleted.value, sourceNodeId: sourceNodeId.value });
+          console.log("连线完成后状态:", {
+            isConnectingMode: isConnectingMode.value,
+            connectionCompleted: connectionCompleted.value,
+            sourceNodeId: sourceNodeId.value,
+          });
         } else {
           console.log("点击了源节点本身，忽略");
         }
@@ -650,12 +688,14 @@ const bindEvents = () => {
       try {
         if (event.item) {
           const model = event.item.getModel();
-          clickedNode = props.nodes.find(node => String(node.id) === String(model.id));
+          clickedNode = props.nodes.find(
+            (node) => String(node.id) === String(model.id),
+          );
         }
       } catch (error) {
         console.warn("获取点击节点失败:", error);
       }
-      
+
       if (clickedNode) {
         emit("node-click", clickedNode);
       }
@@ -712,10 +752,10 @@ const bindEvents = () => {
   });
 
   // 增强的节点拖拽结束事件处理
-  graph.value.on("node:dragend", function(event) {
+  graph.value.on("node:dragend", function (event) {
     console.log("===== 节点拖拽结束事件开始 =====");
     console.log("事件对象:", event);
-    
+
     // 尝试使用不同的方式获取节点对象
     let node = null;
     if (event.item) {
@@ -725,7 +765,7 @@ const bindEvents = () => {
       node = event.target;
       console.log("从event.target获取节点对象");
     }
-    
+
     if (node) {
       // 尝试使用不同的方式获取节点模型
       let model = null;
@@ -748,7 +788,7 @@ const bindEvents = () => {
         try {
           const graphData = graph.value.getData();
           const nodes = graphData.nodes || [];
-          model = nodes.find(n => n.id === node.id);
+          model = nodes.find((n) => n.id === node.id);
           if (model) {
             console.log("根据节点ID从图谱数据中找到模型");
           }
@@ -756,52 +796,67 @@ const bindEvents = () => {
           console.error("根据节点ID查找模型失败:", error);
         }
       }
-      
+
       if (model) {
         // 尝试使用不同的方式获取节点位置
         let position = { x: 0, y: 0 };
         if (event.x !== undefined && event.y !== undefined) {
           position = { x: event.x, y: event.y };
           console.log("从event中获取节点位置");
-        } else if (model.style && model.style.x !== undefined && model.style.y !== undefined) {
+        } else if (
+          model.style &&
+          model.style.x !== undefined &&
+          model.style.y !== undefined
+        ) {
           position = { x: model.style.x, y: model.style.y };
           console.log("从model.style中获取节点位置");
         } else if (model.x !== undefined && model.y !== undefined) {
           position = { x: model.x, y: model.y };
           console.log("从model中获取节点位置");
-        } else if (node.attrs && node.attrs.x !== undefined && node.attrs.y !== undefined) {
+        } else if (
+          node.attrs &&
+          node.attrs.x !== undefined &&
+          node.attrs.y !== undefined
+        ) {
           position = { x: node.attrs.x, y: node.attrs.y };
           console.log("从node.attrs中获取节点位置");
         }
-        
+
         console.log("节点ID:", model.id);
         console.log("节点位置:", position);
-        
+
         // 保存节点位置到本地状态
-        const nodeId = typeof model.id === 'string' ? model.id : model.id.toString();
+        const nodeId =
+          typeof model.id === "string" ? model.id : model.id.toString();
         nodePositions.value.set(nodeId, position);
-        console.log(`保存节点位置到本地: ${nodeId} -> x=${position.x}, y=${position.y}`);
+        console.log(
+          `保存节点位置到本地: ${nodeId} -> x=${position.x}, y=${position.y}`,
+        );
         console.log(`本地保存的节点位置数量: ${nodePositions.value.size}`);
-        
+
         // 直接发送事件
         console.log("准备发送node-drag-end事件");
         emit("node-drag-end", {
           nodeId: model.id,
           position: position,
-          data: model.data
+          data: model.data,
         });
         console.log("发送node-drag-end事件成功");
       } else {
         console.error("无法获取节点模型");
         console.log("节点对象详情:", node);
         console.log("节点对象属性:", Object.keys(node));
-        
+
         // 尝试获取节点的位置信息
         let position = { x: 0, y: 0 };
         if (event.x !== undefined && event.y !== undefined) {
           position = { x: event.x, y: event.y };
           console.log("从event中获取节点位置");
-        } else if (node.attrs && node.attrs.x !== undefined && node.attrs.y !== undefined) {
+        } else if (
+          node.attrs &&
+          node.attrs.x !== undefined &&
+          node.attrs.y !== undefined
+        ) {
           position = { x: node.attrs.x, y: node.attrs.y };
           console.log("从node.attrs中获取节点位置");
         } else if (node.getBBox) {
@@ -813,9 +868,9 @@ const bindEvents = () => {
             console.error("获取节点边界框失败:", error);
           }
         }
-        
+
         console.log("获取到的节点位置:", position);
-        
+
         // 尝试获取节点ID
         let nodeId = null;
         if (node.id) {
@@ -825,38 +880,40 @@ const bindEvents = () => {
           nodeId = node.cfg.id;
           console.log("从node.cfg.id获取节点ID");
         }
-        
+
         if (nodeId && (position.x !== 0 || position.y !== 0)) {
           console.log("使用获取到的节点ID和位置");
           nodePositions.value.set(nodeId, position);
-          console.log(`保存节点位置到本地: ${nodeId} -> x=${position.x}, y=${position.y}`);
-          
+          console.log(
+            `保存节点位置到本地: ${nodeId} -> x=${position.x}, y=${position.y}`,
+          );
+
           // 尝试获取节点数据
           let nodeData = {};
           try {
             const graphData = graph.value.getData();
             const nodes = graphData.nodes || [];
-            const nodeDataObj = nodes.find(n => n.id === nodeId);
+            const nodeDataObj = nodes.find((n) => n.id === nodeId);
             if (nodeDataObj) {
               nodeData = nodeDataObj.data || {};
             }
           } catch (error) {
             console.error("获取节点数据失败:", error);
           }
-          
+
           emit("node-drag-end", {
             nodeId: nodeId,
             position: position,
-            data: nodeData
+            data: nodeData,
           });
           console.log("发送node-drag-end事件成功（使用节点ID和位置）");
         } else {
           console.log("无法获取节点ID或位置，尝试其他方法");
-          
+
           // 尝试获取当前选中的节点
           try {
             console.log("尝试获取当前选中的节点");
-            const selectedItems = graph.value.getStates('selected');
+            const selectedItems = graph.value.getStates("selected");
             console.log("当前选中的项目:", selectedItems);
             if (selectedItems && selectedItems.length > 0) {
               const selectedNode = selectedItems[0];
@@ -864,15 +921,23 @@ const bindEvents = () => {
                 model = selectedNode.getModel();
                 if (model) {
                   console.log("从选中节点获取模型成功");
-                  position = { x: event.x || model.style.x || model.x || 0, y: event.y || model.style.y || model.y || 0 };
-                  const nodeId = typeof model.id === 'string' ? model.id : model.id.toString();
+                  position = {
+                    x: event.x || model.style.x || model.x || 0,
+                    y: event.y || model.style.y || model.y || 0,
+                  };
+                  const nodeId =
+                    typeof model.id === "string"
+                      ? model.id
+                      : model.id.toString();
                   nodePositions.value.set(nodeId, position);
-                  console.log(`保存选中节点位置到本地: ${nodeId} -> x=${position.x}, y=${position.y}`);
-                  
+                  console.log(
+                    `保存选中节点位置到本地: ${nodeId} -> x=${position.x}, y=${position.y}`,
+                  );
+
                   emit("node-drag-end", {
                     nodeId: model.id,
                     position: position,
-                    data: model.data
+                    data: model.data,
                   });
                   console.log("发送node-drag-end事件成功（使用选中节点）");
                 }
@@ -891,7 +956,7 @@ const bindEvents = () => {
         console.log("事件位置:", { x: event.x, y: event.y });
       }
     }
-    
+
     console.log("===== 节点拖拽结束事件结束 =====");
   });
 
@@ -929,40 +994,94 @@ const handleMouseMove = (event) => {
     // 计算鼠标在容器内的相对坐标
     const mouseX = event.clientX - rect.left;
     const mouseY = event.clientY - rect.top;
-    
+
+    // 转换屏幕坐标为图谱坐标，考虑缩放因素
+    let graphX = mouseX;
+    let graphY = mouseY;
+
+    try {
+      if (graph.value && graph.value.getCanvasByViewport) {
+        const point = graph.value.getCanvasByViewport([mouseX, mouseY]);
+        graphX = point[0] || mouseX;
+        graphY = point[1] || mouseY;
+      }
+    } catch (error) {
+      console.warn("坐标转换失败:", error);
+    }
+
     // 检测鼠标是否在其他节点上
     let targetNode = null;
-    let targetPos = { x: mouseX, y: mouseY };
-    
+    let targetGraphPos = { x: graphX, y: graphY };
+
     for (const node of props.nodes) {
       if (String(node.id) !== String(sourceNodeId.value)) {
         const nodeRect = getNodeRect(node);
         const nodeHalfWidth = nodeRect.width / 2;
         const nodeHalfHeight = nodeRect.height / 2;
-        if (mouseX >= node.x - nodeHalfWidth &&
-            mouseX <= node.x + nodeHalfWidth &&
-            mouseY >= node.y - nodeHalfHeight &&
-            mouseY <= node.y + nodeHalfHeight) {
+        if (
+          graphX >= node.x - nodeHalfWidth &&
+          graphX <= node.x + nodeHalfWidth &&
+          graphY >= node.y - nodeHalfHeight &&
+          graphY <= node.y + nodeHalfHeight
+        ) {
           targetNode = node;
-          targetPos = { x: node.x, y: node.y };
+          targetGraphPos = { x: node.x, y: node.y };
           break;
         }
       }
     }
-    
+
     // 更新连线起点：根据目标位置计算源节点边框上的点
-    const sourceNode = props.nodes.find(node => String(node.id) === String(sourceNodeId.value));
+    const sourceNode = props.nodes.find(
+      (node) => String(node.id) === String(sourceNodeId.value),
+    );
     if (sourceNode) {
       const sourceNodeRect = getNodeRect(sourceNode);
-      connectionStart.value = getPointOnRect(targetPos, sourceNodeRect);
+      const startGraphPos = getPointOnRect(targetGraphPos, sourceNodeRect);
+
+      // 将图谱坐标转换为屏幕坐标
+      let startScreenPos = startGraphPos;
+      try {
+        if (graph.value && graph.value.getViewportByCanvas) {
+          const point = graph.value.getViewportByCanvas([
+            startGraphPos.x,
+            startGraphPos.y,
+          ]);
+          startScreenPos = {
+            x: point[0] || startGraphPos.x,
+            y: point[1] || startGraphPos.y,
+          };
+        }
+      } catch (error) {
+        console.warn("坐标转换失败:", error);
+      }
+      connectionStart.value = startScreenPos;
     }
-    
+
     if (targetNode) {
       // 如果鼠标在其他节点上，计算目标节点边框上的点
       const targetNodeRect = getNodeRect(targetNode);
-      connectionEnd.value = getPointOnRect(connectionStart.value, targetNodeRect);
+      const endGraphPos = getPointOnRect(connectionStart.value, targetNodeRect);
+
+      // 将图谱坐标转换为屏幕坐标
+      let endScreenPos = endGraphPos;
+      try {
+        if (graph.value && graph.value.getViewportByCanvas) {
+          const point = graph.value.getViewportByCanvas([
+            endGraphPos.x,
+            endGraphPos.y,
+          ]);
+          endScreenPos = {
+            x: point[0] || endGraphPos.x,
+            y: point[1] || endGraphPos.y,
+          };
+        }
+      } catch (error) {
+        console.warn("坐标转换失败:", error);
+      }
+      connectionEnd.value = endScreenPos;
     } else {
-      // 如果鼠标不在节点上，使用鼠标坐标作为终点
+      // 如果鼠标不在节点上，使用原始鼠标坐标作为终点（屏幕坐标）
       connectionEnd.value = {
         x: mouseX,
         y: mouseY,
@@ -989,18 +1108,18 @@ const handleContextMenu = (event) => {
   let isNode = false;
   let nodeId = null;
   let clickedNode = null;
-  
+
   if (graphRef.value && graph.value) {
     const rect = graphRef.value.getBoundingClientRect();
     const canvasX = event.clientX - rect.left;
     const canvasY = event.clientY - rect.top;
-    
+
     console.log("画布坐标:", { canvasX, canvasY });
-    
+
     // 考虑缩放因素，将屏幕坐标转换为图谱坐标
     let transformedX = canvasX;
     let transformedY = canvasY;
-    
+
     try {
       if (graph.value.getCanvasByViewport) {
         const point = graph.value.getCanvasByViewport([canvasX, canvasY]);
@@ -1011,24 +1130,26 @@ const handleContextMenu = (event) => {
     } catch (error) {
       console.warn("坐标转换失败:", error);
     }
-    
+
     // 使用G6的API来检测点击的节点
     try {
       // 获取所有节点 - G6 v5 API
       const graphData = graph.value.getData();
       const nodes = graphData.nodes || [];
       console.log("G6节点数量:", nodes.length);
-      
+
       for (const node of nodes) {
         const size = node.style.size || [180, 100];
         const halfWidth = size[0] / 2;
         const halfHeight = size[1] / 2;
-        
+
         // 检查点击位置是否在节点范围内
-        if (transformedX >= node.style.x - halfWidth &&
-            transformedX <= node.style.x + halfWidth &&
-            transformedY >= node.style.y - halfHeight &&
-            transformedY <= node.style.y + halfHeight) {
+        if (
+          transformedX >= node.style.x - halfWidth &&
+          transformedX <= node.style.x + halfWidth &&
+          transformedY >= node.style.y - halfHeight &&
+          transformedY <= node.style.y + halfHeight
+        ) {
           isNode = true;
           nodeId = node.id;
           clickedNode = node;
@@ -1038,7 +1159,7 @@ const handleContextMenu = (event) => {
       }
     } catch (error) {
       console.warn("使用G6 API检测节点失败:", error);
-      
+
       // 降级方案：使用props中的节点数据
       for (const node of props.nodes) {
         if (node.x !== undefined && node.y !== undefined) {
@@ -1048,8 +1169,13 @@ const handleContextMenu = (event) => {
           const nodeTop = node.y - nodeHeight / 2;
           const nodeRight = node.x + nodeWidth / 2;
           const nodeBottom = node.y + nodeHeight / 2;
-          
-          if (transformedX >= nodeLeft && transformedX <= nodeRight && transformedY >= nodeTop && transformedY <= nodeBottom) {
+
+          if (
+            transformedX >= nodeLeft &&
+            transformedX <= nodeRight &&
+            transformedY >= nodeTop &&
+            transformedY <= nodeBottom
+          ) {
             isNode = true;
             nodeId = node.id;
             clickedNode = node;
@@ -1060,7 +1186,7 @@ const handleContextMenu = (event) => {
       }
     }
   }
-  
+
   // 重要：设置isNodeClick的值，决定右键菜单显示哪些选项
   isNodeClick.value = isNode;
   clickedNodeId.value = nodeId;
@@ -1120,26 +1246,41 @@ const handleClick = (event) => {
   console.log("事件类型:", event.type);
   console.log("事件目标:", event.target);
   console.log("当前连线模式状态:", isConnectingMode.value);
-  
+
   showContextMenu.value = false;
-  
+
   // 处理连线模式下的节点点击
   if (isConnectingMode.value && graphRef.value && graph.value) {
     console.log("在连线模式中，处理点击事件");
     const rect = graphRef.value.getBoundingClientRect();
     const canvasX = event.clientX - rect.left;
     const canvasY = event.clientY - rect.top;
-    console.log("点击的画布坐标:", { canvasX, canvasY });
-    
+
+    // 转换屏幕坐标为图谱坐标，考虑缩放因素
+    let graphX = canvasX;
+    let graphY = canvasY;
+
+    try {
+      if (graph.value && graph.value.getCanvasByViewport) {
+        const point = graph.value.getCanvasByViewport([canvasX, canvasY]);
+        graphX = point[0] || canvasX;
+        graphY = point[1] || canvasY;
+      }
+    } catch (error) {
+      console.warn("坐标转换失败:", error);
+    }
+
+    console.log("点击的画布坐标:", { canvasX, canvasY, graphX, graphY });
+
     // 检测点击是否在节点上
     try {
       console.log("尝试使用props.nodes检测点击");
       console.log("props.nodes数量:", props.nodes.length);
-      
+
       for (const node of props.nodes) {
         console.log("检查节点:", node.id);
         console.log("节点坐标:", { x: node.x, y: node.y });
-        
+
         // 使用默认节点大小进行检测
         const nodeWidth = 180;
         const nodeHeight = 100;
@@ -1149,36 +1290,97 @@ const handleClick = (event) => {
         const nodeRight = node.x + halfWidth;
         const nodeTop = node.y - halfHeight;
         const nodeBottom = node.y + halfHeight;
-        
-        console.log("节点边界:", { left: nodeLeft, right: nodeRight, top: nodeTop, bottom: nodeBottom });
-        console.log("点击是否在节点内:", 
-          canvasX >= nodeLeft && canvasX <= nodeRight && canvasY >= nodeTop && canvasY <= nodeBottom);
-        
-        if (canvasX >= nodeLeft &&
-            canvasX <= nodeRight &&
-            canvasY >= nodeTop &&
-            canvasY <= nodeBottom) {
+
+        console.log("节点边界:", {
+          left: nodeLeft,
+          right: nodeRight,
+          top: nodeTop,
+          bottom: nodeBottom,
+        });
+        console.log(
+          "点击是否在节点内:",
+          graphX >= nodeLeft &&
+            graphX <= nodeRight &&
+            graphY >= nodeTop &&
+            graphY <= nodeBottom,
+        );
+
+        if (
+          graphX >= nodeLeft &&
+          graphX <= nodeRight &&
+          graphY >= nodeTop &&
+          graphY <= nodeBottom
+        ) {
           // 点击在节点上
           console.log("点击在节点", node.id, "上");
           if (String(node.id) !== String(sourceNodeId.value)) {
             // 完成连线
             console.log("完成连线，目标节点:", node.id);
             // 更新连线起点：根据目标节点位置计算源节点边框上的点
-            const sourceNode = props.nodes.find(n => String(n.id) === String(sourceNodeId.value));
+            const sourceNode = props.nodes.find(
+              (n) => String(n.id) === String(sourceNodeId.value),
+            );
             if (sourceNode) {
               const sourceNodeRect = getNodeRect(sourceNode);
-              connectionStart.value = getPointOnRect({ x: node.x, y: node.y }, sourceNodeRect);
+              const startGraphPos = getPointOnRect(
+                { x: node.x, y: node.y },
+                sourceNodeRect,
+              );
+
+              // 将图谱坐标转换为屏幕坐标
+              let startScreenPos = startGraphPos;
+              try {
+                if (graph.value && graph.value.getViewportByCanvas) {
+                  const point = graph.value.getViewportByCanvas([
+                    startGraphPos.x,
+                    startGraphPos.y,
+                  ]);
+                  startScreenPos = {
+                    x: point[0] || startGraphPos.x,
+                    y: point[1] || startGraphPos.y,
+                  };
+                }
+              } catch (error) {
+                console.warn("坐标转换失败:", error);
+              }
+              connectionStart.value = startScreenPos;
             }
-            
+
             // 固定连线终点到目标节点边框上的点
             const targetNodeRect = getNodeRect(node);
-            connectionEnd.value = getPointOnRect(connectionStart.value, targetNodeRect);
+            const endGraphPos = getPointOnRect(
+              connectionStart.value,
+              targetNodeRect,
+            );
+
+            // 将图谱坐标转换为屏幕坐标
+            let endScreenPos = endGraphPos;
+            try {
+              if (graph.value && graph.value.getViewportByCanvas) {
+                const point = graph.value.getViewportByCanvas([
+                  endGraphPos.x,
+                  endGraphPos.y,
+                ]);
+                endScreenPos = {
+                  x: point[0] || endGraphPos.x,
+                  y: point[1] || endGraphPos.y,
+                };
+              }
+            } catch (error) {
+              console.warn("坐标转换失败:", error);
+            }
+            connectionEnd.value = endScreenPos;
+
             emit("connection-complete", node.id);
             // 标记连线完成，保持显示但不再跟随鼠标移动
             connectionCompleted.value = true;
             isConnectingMode.value = false;
             console.log("连线完成，保持显示，不再跟随鼠标移动");
-            console.log("连线完成后状态:", { isConnectingMode: isConnectingMode.value, connectionCompleted: connectionCompleted.value, sourceNodeId: sourceNodeId.value });
+            console.log("连线完成后状态:", {
+              isConnectingMode: isConnectingMode.value,
+              connectionCompleted: connectionCompleted.value,
+              sourceNodeId: sourceNodeId.value,
+            });
           } else {
             console.log("点击了源节点本身，忽略");
           }
@@ -1226,16 +1428,18 @@ const renderGraph = () => {
 
     const formattedNodes = props.nodes.map((node) => {
       // 检查本地是否保存了节点位置
-      const nodeId = typeof node.id === 'string' ? node.id : node.id.toString();
+      const nodeId = typeof node.id === "string" ? node.id : node.id.toString();
       let nodeX = node.x || width / 2;
       let nodeY = node.y || height / 2;
-      
+
       // 如果本地保存了节点位置，使用保存的位置
       if (nodePositions.value.has(nodeId)) {
         const savedPosition = nodePositions.value.get(nodeId);
         nodeX = savedPosition.x;
         nodeY = savedPosition.y;
-        console.log(`使用本地保存的节点位置: ${nodeId} -> x=${nodeX}, y=${nodeY}`);
+        console.log(
+          `使用本地保存的节点位置: ${nodeId} -> x=${nodeX}, y=${nodeY}`,
+        );
       }
 
       const nodeSize = calculateNodeSize({
@@ -1249,8 +1453,10 @@ const renderGraph = () => {
         },
       });
 
-      console.log(`renderGraph节点原始ID: ${node.id}, 类型: ${typeof node.id}, 转换后ID: ${nodeId}, 类型: ${typeof nodeId}`);
-      
+      console.log(
+        `renderGraph节点原始ID: ${node.id}, 类型: ${typeof node.id}, 转换后ID: ${nodeId}, 类型: ${typeof nodeId}`,
+      );
+
       const formattedNode = {
         id: nodeId,
         type: "rect",
@@ -1276,7 +1482,7 @@ const renderGraph = () => {
           shadowOffsetY: 8,
         },
       };
-      
+
       console.log("renderGraph格式化节点:", formattedNode);
       return formattedNode;
     });
@@ -1315,34 +1521,55 @@ const handleAddEntity = () => {
 // 处理创建关系 - 使用自定义连线模式
 const handleCreateRelationship = () => {
   console.log("触发创建关系，源节点 ID:", clickedNodeId.value);
-  
+
   // 获取源节点
-  const sourceNode = props.nodes.find(node => String(node.id) === String(clickedNodeId.value));
-  
+  const sourceNode = props.nodes.find(
+    (node) => String(node.id) === String(clickedNodeId.value),
+  );
+
   if (sourceNode && graphRef.value && graph.value) {
     // 设置连线起始点
     isConnectingMode.value = true;
     connectionCompleted.value = false;
     sourceNodeId.value = clickedNodeId.value;
-    
+
     // 使用节点边框上的点作为连线起点（相对于容器）
     const sourceNodeRect = getNodeRect(sourceNode);
     // 初始化终点为起点，使用相同的点
     const initialEndPoint = {
       x: sourceNode.x + 100, // 初始终点向右偏移100px
-      y: sourceNode.y
+      y: sourceNode.y,
     };
-    connectionStart.value = getPointOnRect(initialEndPoint, sourceNodeRect);
-    
+    const startGraphPos = getPointOnRect(initialEndPoint, sourceNodeRect);
+
+    // 将图谱坐标转换为屏幕坐标
+    let startScreenPos = startGraphPos;
+    try {
+      if (graph.value && graph.value.getViewportByCanvas) {
+        const point = graph.value.getViewportByCanvas([
+          startGraphPos.x,
+          startGraphPos.y,
+        ]);
+        startScreenPos = {
+          x: point[0] || startGraphPos.x,
+          y: point[1] || startGraphPos.y,
+        };
+      }
+    } catch (error) {
+      console.warn("坐标转换失败:", error);
+    }
+
+    connectionStart.value = startScreenPos;
+
     // 初始化终点为起点
     connectionEnd.value = { ...connectionStart.value };
-    
+
     console.log("连线起点:", connectionStart.value);
     console.log("源节点坐标:", sourceNode.x, sourceNode.y);
   } else {
     console.warn("找不到源节点或graph未初始化");
   }
-  
+
   emit("create-relationship", clickedNodeId.value);
   showContextMenu.value = false;
 };
@@ -1437,7 +1664,7 @@ onUnmounted(() => {
 });
 
 defineExpose({
-  resetConnectionState
+  resetConnectionState,
 });
 </script>
 
@@ -1469,10 +1696,10 @@ defineExpose({
   display: flex;
   align-items: center;
   border-radius: 40px;
-  padding:1px;
-  background: #FFFFFF;
-  border: 0.5px solid rgba(226,226,226,1);
-  box-shadow: 0px 8px 10px 0px rgba(78,89,105,0.18);
+  padding: 1px;
+  background: #ffffff;
+  border: 0.5px solid rgba(226, 226, 226, 1);
+  box-shadow: 0px 8px 10px 0px rgba(78, 89, 105, 0.18);
 }
 
 .zoom-btn {
@@ -1493,8 +1720,8 @@ defineExpose({
 .zoom-icon {
   position: relative;
   z-index: 1;
-  width:18px;
-  height:18px;
+  width: 18px;
+  height: 18px;
 }
 
 .zoom-level {

@@ -564,7 +564,7 @@ const props = defineProps({
   enableAdd: {
     type: Boolean,
     default: true,
-  }
+  },
 });
 
 // 组件库列表
@@ -1066,9 +1066,10 @@ const handleTopicSearchClear = () => {
 .domain-list {
   flex: 1;
   border-radius: 4px;
-  padding: 2px 0;
+  padding: 2px 6px 2px 0px;
   margin-bottom: 15px;
   overflow-y: auto;
+  box-sizing: border-box;
 }
 
 .domain-item {
