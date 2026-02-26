@@ -73,8 +73,12 @@
         <!-- G6关系图 - 仅在本体设计模式下显示 -->
         <div v-else-if="currentMode === 'ontology'" class="relationship-graph">
           <div v-if="false">
-            {{ console.log("Content组件接收到的graphNodes:", props.graphNodes) }}
-            {{ console.log("Content组件接收到的graphEdges:", props.graphEdges) }}
+            {{
+              console.log("Content组件接收到的graphNodes:", props.graphNodes)
+            }}
+            {{
+              console.log("Content组件接收到的graphEdges:", props.graphEdges)
+            }}
           </div>
           <GraphContainer
             ref="graphContainerRef"
@@ -82,8 +86,12 @@
             :edges="props.graphEdges"
             :is-connecting="props.isConnecting"
             @add-entity="handleAddEntity"
-            @create-relationship="(sourceId) => handleCreateRelationship(sourceId)"
-            @connection-complete="(targetId) => handleConnectionComplete(targetId)"
+            @create-relationship="
+              (sourceId) => handleCreateRelationship(sourceId)
+            "
+            @connection-complete="
+              (targetId) => handleConnectionComplete(targetId)
+            "
             @node-click="handleNodeClick"
             @edge-click="handleEdgeClick"
             @graph-click="handleGraphClick"
@@ -95,7 +103,6 @@
           <!-- 这里可以添加图谱构建模式的相关内容，目前仅显示空白区域 -->
         </div>
       </div>
-      
     </div>
   </main>
 </template>
@@ -148,7 +155,9 @@ const emit = defineEmits([
   "create-graph",
   "close-graph-dialog",
   "connection-complete",
-  "node-drag-end"
+  "node-drag-end",
+  "node-click",
+  "edge-click",
 ]);
 
 // 重置连线状态，清除虚线
@@ -160,7 +169,7 @@ const resetConnectionState = () => {
 };
 
 defineExpose({
-  resetConnectionState
+  resetConnectionState,
 });
 
 // 图谱边数据（使用从props传递过来的数据）
@@ -193,11 +202,13 @@ const handleConnectionComplete = (targetId) => {
 // 处理节点点击
 const handleNodeClick = (node) => {
   console.log("节点点击:", node);
+  emit("node-click", node);
 };
 
 // 处理边点击
 const handleEdgeClick = (edge) => {
   console.log("边点击:", edge);
+  emit("edge-click", edge);
 };
 
 // 处理图谱点击
@@ -403,9 +414,3 @@ const handleConfirmCreateGraph = () => {
   }
 }
 </style>
-
-
-
-
-
-

@@ -774,6 +774,15 @@ const handleTopicClick = (topic) => {
 };
 
 const handleAddEntity = (position) => {
+  // 重置实体相关属性
+  entityName.value = "";
+  entityDescription.value = "";
+  entityProperties.value = [
+    { name: "名字", type: "text", value: "" },
+    { name: "日期", type: "date", value: "" },
+    { name: "ID", type: "number", value: "" },
+  ];
+  addToComponentLibrary.value = true;
   currentOperation.value = "entity";
   if (position && (position.x !== undefined || position.y !== undefined)) {
     rightClickPosition.value = position;
@@ -869,6 +878,9 @@ const handleSavePropertyPanel = (data) => {
     if (data.entityName && !entityTypes.value.includes(data.entityName)) {
       entityTypes.value.push(data.entityName);
     }
+
+    // 更新entityProperties变量，这样当用户再次点击同一个实体类型或组件时，属性面板会显示修改后的值
+    entityProperties.value = [...data.entityProperties];
 
     // 创建新的实体节点并添加到图谱节点中
     const newNode = {
@@ -1208,6 +1220,51 @@ const handleNodeDragEnd = (data) => {
 const handleModeChange = (mode) => {
   currentMode.value = mode;
 };
+
+// 处理实体类型点击
+const handleEntityTypeClick = (entityType) => {
+  console.log("点击实体类型:", entityType);
+  console.log("Before setting showPropertyPanel:", showPropertyPanel.value);
+  // 打开属性面板，设置当前操作类型为实体
+  currentOperation.value = "entity";
+  entityName.value = entityType;
+  showPropertyPanel.value = true;
+  console.log("After setting showPropertyPanel:", showPropertyPanel.value);
+};
+
+// 处理组件点击
+const handleComponentClick = (componentName) => {
+  console.log("点击组件:", componentName);
+  console.log("Before setting showPropertyPanel:", showPropertyPanel.value);
+  // 打开属性面板，设置当前操作类型为实体
+  currentOperation.value = "entity";
+  entityName.value = componentName;
+  showPropertyPanel.value = true;
+  console.log("After setting showPropertyPanel:", showPropertyPanel.value);
+};
+
+// 处理节点点击
+const handleNodeClick = (node) => {
+  console.log("Home组件接收节点点击:", node);
+  // 打开属性面板，设置当前操作类型为实体
+  currentOperation.value = "entity";
+  entityName.value = node.name;
+  entityProperties.value = node.properties || [];
+  showPropertyPanel.value = true;
+  console.log("设置showPropertyPanel为true");
+};
+
+// 处理边点击
+const handleEdgeClick = (edge) => {
+  console.log("Home组件接收边点击:", edge);
+  // 打开属性面板，设置当前操作类型为关系
+  currentOperation.value = "relationship";
+  relationshipName.value = edge.data.name;
+  relationshipType.value = edge.data.type;
+  entityProperties.value = edge.data.properties || [];
+  showPropertyPanel.value = true;
+  console.log("设置showPropertyPanel为true");
+};
 </script>
 
 <template>
@@ -1258,6 +1315,8 @@ const handleModeChange = (mode) => {
         @graph-search="handleGraphSearch"
         @graph-search-icon-click="handleGraphSearchIconClick"
         @add-entity-type="handleAddEntityType"
+        @entity-type-click="handleEntityTypeClick"
+        @component-click="handleComponentClick"
       />
 
       <!-- 中间内容 -->
@@ -1278,24 +1337,25 @@ const handleModeChange = (mode) => {
         @mouse-move="handleMouseMove"
         @mouse-up="handleMouseUp"
         @node-drag-end="handleNodeDragEnd"
-      />
-
-      <!-- 右侧属性面板 -->
-      <PropertyPanel
-        :show-property-panel="showPropertyPanel"
-        :current-operation="currentOperation"
-        :entity-name="entityName"
-        :entity-description="entityDescription"
-        :entity-properties="entityProperties"
-        :relationship-name="relationshipName"
-        :relationship-type="relationshipType"
-        :add-to-component-library="addToComponentLibrary"
-        @close="handleClosePropertyPanel"
-        @cancel="handleCancelPropertyPanel"
-        @save="handleSavePropertyPanel"
-        @add-property="handleAddProperty"
+        @node-click="handleNodeClick"
+        @edge-click="handleEdgeClick"
       />
     </div>
+
+    <!-- 右侧属性面板 -->
+    <PropertyPanel
+      :show-property-panel="showPropertyPanel"
+      :current-operation="currentOperation"
+      :entity-name="entityName"
+      :entity-description="entityDescription"
+      :entity-properties="entityProperties"
+      :relationship-name="relationshipName"
+      :relationship-type="relationshipType"
+      :add-to-component-library="addToComponentLibrary"
+      @close="handleClosePropertyPanel"
+      @save="handleSavePropertyPanel"
+      @add-property="handleAddProperty"
+    />
 
     <!-- 新增领域对话框 -->
     <AddDomainDialog

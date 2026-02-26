@@ -165,6 +165,18 @@ const savedCenter = ref({ x: 0, y: 0 });
 // 保存节点位置的本地状态
 const nodePositions = ref(new Map());
 
+// 跟踪是否正在拖拽节点
+const isDragging = ref(false);
+
+// 跟踪是否刚刚结束拖拽
+const justFinishedDragging = ref(false);
+
+// 跟踪拖拽开始位置
+const dragStartPosition = ref({ x: 0, y: 0 });
+
+// 拖拽阈值（像素）
+const DRAG_THRESHOLD = 5;
+
 // 计算SVG样式
 const svgStyle = computed(() => {
   if (!graphRef.value) return {};
@@ -694,6 +706,14 @@ const bindEvents = () => {
     console.log("节点点击事件触发:", event);
     console.log("当前连线模式状态:", isConnectingMode.value);
     console.log("当前源节点ID:", sourceNodeId.value);
+    console.log("当前拖拽状态:", isDragging.value);
+    console.log("刚刚结束拖拽状态:", justFinishedDragging.value);
+
+    // 如果正在拖拽或刚刚结束拖拽，则不处理点击事件
+    if (isDragging.value || justFinishedDragging.value) {
+      console.log("正在拖拽或刚刚结束拖拽，不处理节点点击事件");
+      return;
+    }
 
     if (isConnectingMode.value) {
       console.log("在连线模式中，尝试完成连线");
@@ -791,6 +811,9 @@ const bindEvents = () => {
   graph.value.on("node:dragstart", (event) => {
     console.log("节点拖拽开始", event);
     saveViewState();
+    // 记录拖拽开始位置
+    dragStartPosition.value = { x: event.x, y: event.y };
+    isDragging.value = false; // 初始设置为false，只有当拖拽距离超过阈值时才设为true
 
     const node = event.item;
     if (!node) return;
@@ -809,9 +832,28 @@ const bindEvents = () => {
     const node = event.item;
     if (!node) return;
 
+    // 计算拖拽距离
+    const dragDistance = Math.sqrt(
+      Math.pow(event.x - dragStartPosition.value.x, 2) +
+        Math.pow(event.y - dragStartPosition.value.y, 2),
+    );
+
+    // 如果拖拽距离超过阈值，则视为拖拽操作
+    if (dragDistance > DRAG_THRESHOLD) {
+      isDragging.value = true;
+    }
+
     const model = node.getModel();
     const position = { x: event.x, y: event.y };
     console.log("拖拽节点到:", model.id, position);
+    console.log(
+      "拖拽距离:",
+      dragDistance,
+      "阈值:",
+      DRAG_THRESHOLD,
+      "是否视为拖拽:",
+      isDragging.value,
+    );
 
     emit("node-drag", {
       type: "dragging",
@@ -825,6 +867,14 @@ const bindEvents = () => {
   graph.value.on("node:dragend", function (event) {
     console.log("===== 节点拖拽结束事件开始 =====");
     console.log("事件对象:", event);
+    // 设置刚刚结束拖拽标志
+    justFinishedDragging.value = true;
+    // 延迟重置拖拽状态，以防止拖拽结束后的点击事件被触发
+    setTimeout(() => {
+      isDragging.value = false;
+      justFinishedDragging.value = false;
+      console.log("延迟重置拖拽状态为false");
+    }, 200);
 
     // 尝试使用不同的方式获取节点对象
     let node = null;
@@ -1335,6 +1385,14 @@ const handleClick = (event) => {
   console.log("事件类型:", event.type);
   console.log("事件目标:", event.target);
   console.log("当前连线模式状态:", isConnectingMode.value);
+  console.log("当前拖拽状态:", isDragging.value);
+  console.log("刚刚结束拖拽状态:", justFinishedDragging.value);
+
+  // 如果正在拖拽或刚刚结束拖拽，则不处理点击事件
+  if (isDragging.value || justFinishedDragging.value) {
+    console.log("正在拖拽或刚刚结束拖拽，不处理点击事件");
+    return;
+  }
 
   showContextMenu.value = false;
 
@@ -1476,6 +1534,77 @@ const handleClick = (event) => {
             connectionCompleted: connectionCompleted.value,
             sourceNodeId: sourceNodeId.value,
           });
+          break;
+        }
+      }
+    } catch (error) {
+      console.warn("检测节点点击失败:", error);
+    }
+  } else if (!props.isConnecting && graphRef.value && graph.value) {
+    // 正常模式下，通过坐标检测点击的节点
+    console.log("在正常模式中，通过坐标检测点击的节点");
+    const rect = graphRef.value.getBoundingClientRect();
+    const canvasX = event.clientX - rect.left;
+    const canvasY = event.clientY - rect.top;
+
+    // 转换屏幕坐标为图谱坐标，考虑缩放因素
+    let graphX = canvasX;
+    let graphY = canvasY;
+
+    try {
+      if (graph.value && graph.value.getCanvasByViewport) {
+        const point = graph.value.getCanvasByViewport([canvasX, canvasY]);
+        graphX = point[0] || canvasX;
+        graphY = point[1] || canvasY;
+      }
+    } catch (error) {
+      console.warn("坐标转换失败:", error);
+    }
+
+    console.log("点击的画布坐标:", { canvasX, canvasY, graphX, graphY });
+
+    // 检测点击是否在节点上
+    try {
+      console.log("尝试使用props.nodes检测点击");
+      console.log("props.nodes数量:", props.nodes.length);
+
+      for (const node of props.nodes) {
+        console.log("检查节点:", node.id);
+        console.log("节点坐标:", { x: node.x, y: node.y });
+
+        // 使用默认节点大小进行检测
+        const nodeWidth = 180;
+        const nodeHeight = 100;
+        const halfWidth = nodeWidth / 2;
+        const halfHeight = nodeHeight / 2;
+        const nodeLeft = node.x - halfWidth;
+        const nodeRight = node.x + halfWidth;
+        const nodeTop = node.y - halfHeight;
+        const nodeBottom = node.y + halfHeight;
+
+        console.log("节点边界:", {
+          left: nodeLeft,
+          right: nodeRight,
+          top: nodeTop,
+          bottom: nodeBottom,
+        });
+        console.log(
+          "点击是否在节点内:",
+          graphX >= nodeLeft &&
+            graphX <= nodeRight &&
+            graphY >= nodeTop &&
+            graphY <= nodeBottom,
+        );
+
+        if (
+          graphX >= nodeLeft &&
+          graphX <= nodeRight &&
+          graphY >= nodeTop &&
+          graphY <= nodeBottom
+        ) {
+          // 点击在节点上
+          console.log("点击在节点", node.id, "上");
+          emit("node-click", node);
           break;
         }
       }
