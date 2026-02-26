@@ -406,6 +406,7 @@
                 draggable="true"
                 @dragstart="handleDragStart($event, 'entity', type)"
                 @dragend="handleDragEnd"
+                @click="handleEntityTypeClick(type)"
               >
                 {{ type }}
               </div>
@@ -463,11 +464,12 @@
                 'component-item-highlight':
                   localSearchQuery && component.name.includes(localSearchQuery),
               }"
+              @click="handleComponentClick(component.name)"
             >
               <div class="component-name">{{ component.name }}</div>
               <button
                 class="add-component-btn"
-                @click="handleAddComponentToEntityType(component.name)"
+                @click.stop="handleAddComponentToEntityType(component.name)"
               >
                 +
               </button>
@@ -599,6 +601,8 @@ const emit = defineEmits([
   "graph-search-icon-click",
   "clear-graph-history",
   "add-entity-type",
+  "entity-type-click",
+  "component-click",
 ]);
 
 const localSearchQuery = ref("");
@@ -849,6 +853,16 @@ const handleTopicSearchClear = () => {
       input.blur();
     });
   }, 0);
+};
+
+// 处理实体类型点击
+const handleEntityTypeClick = (entityType) => {
+  emit("entity-type-click", entityType);
+};
+
+// 处理组件点击
+const handleComponentClick = (componentName) => {
+  emit("component-click", componentName);
 };
 </script>
 
