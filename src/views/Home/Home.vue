@@ -50,11 +50,12 @@ const topicSearchOptions = ref([]);
 const showPropertyPanel = ref(false);
 const entityName = ref("");
 const entityDescription = ref("");
-const entityProperties = ref([
-  { name: "名字", type: "text", value: "" },
-  { name: "日期", type: "date", value: "" },
-  { name: "ID", type: "number", value: "" },
-]);
+// const entityProperties = ref([
+//   { name: "名字", type: "text", value: "" },
+//   { name: "日期", type: "date", value: "" },
+//   { name: "ID", type: "number", value: "" },
+// ]);
+const entityProperties = ref([]);
 const addToComponentLibrary = ref(true);
 const hasData = ref(false);
 const savedEntitiesCount = ref(0);
@@ -777,11 +778,12 @@ const handleAddEntity = (position) => {
   // 重置实体相关属性
   entityName.value = "";
   entityDescription.value = "";
-  entityProperties.value = [
-    { name: "名字", type: "text", value: "" },
-    { name: "日期", type: "date", value: "" },
-    { name: "ID", type: "number", value: "" },
-  ];
+  // entityProperties.value = [
+  //   { name: "名字", type: "text", value: "" },
+  //   { name: "日期", type: "date", value: "" },
+  //   { name: "ID", type: "number", value: "" },
+  // ];
+  entityProperties.value = [];
   addToComponentLibrary.value = true;
   currentOperation.value = "entity";
   if (position && (position.x !== undefined || position.y !== undefined)) {
@@ -804,11 +806,12 @@ const handleCreateRelationship = (sourceId) => {
   relationshipName.value = "";
   relationshipType.value = "定向";
   entityDescription.value = "";
-  entityProperties.value = [
-    { name: "名字", type: "text", value: "" },
-    { name: "日期", type: "date", value: "" },
-    { name: "ID", type: "number", value: "" },
-  ];
+  // entityProperties.value = [
+  //   { name: "名字", type: "text", value: "" },
+  //   { name: "日期", type: "date", value: "" },
+  //   { name: "ID", type: "number", value: "" },
+  // ];
+  entityProperties.value = [];
   addToComponentLibrary.value = true;
 
   currentOperation.value = "relationship";
@@ -852,11 +855,12 @@ const handleConnectionComplete = (targetId) => {
   relationshipName.value = "";
   relationshipType.value = "定向";
   entityDescription.value = "";
-  entityProperties.value = [
-    { name: "名字", type: "text", value: "" },
-    { name: "日期", type: "date", value: "" },
-    { name: "ID", type: "number", value: "" },
-  ];
+  // entityProperties.value = [
+  //   { name: "名字", type: "text", value: "" },
+  //   { name: "日期", type: "date", value: "" },
+  //   { name: "ID", type: "number", value: "" },
+  // ];
+  entityProperties.value = [];
   addToComponentLibrary.value = true;
 
   // 设置当前操作类型为关系

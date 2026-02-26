@@ -514,6 +514,7 @@ const initGraph = () => {
             labelPlacement: "center",
             labelBackground: false,
             labelFontSize: 14,
+            cursor: "pointer",
           };
 
           if (relationshipType === "定向") {
@@ -794,9 +795,11 @@ const bindEvents = () => {
 
   graph.value.on("edge:click", (event) => {
     const edge = event.item;
-    const model = edge.getModel();
-    console.log("边点击:", model);
-    emit("edge-click", model);
+    if (edge) {
+      const model = edge.getModel();
+      console.log("边点击:", model);
+      emit("edge-click", model);
+    }
   });
 
   graph.value.on("canvas:click", () => {

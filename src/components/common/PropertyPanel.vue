@@ -37,6 +37,12 @@
             </div>
             <div class="properties-list">
               <div
+                v-if="localEntityProperties.length === 0"
+                class="empty-properties"
+              >
+                暂无属性
+              </div>
+              <div
                 v-for="(property, index) in localEntityProperties"
                 :key="
                   'prop-' +
@@ -123,6 +129,12 @@
               >
             </div>
             <div class="properties-list">
+              <div
+                v-if="localEntityProperties.length === 0"
+                class="empty-properties"
+              >
+                暂无属性
+              </div>
               <div
                 v-for="(property, index) in localEntityProperties"
                 :key="
@@ -619,6 +631,18 @@ const handleConfirmAddProperty = async () => {
   min-height: 40px;
   max-height: 300px;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.empty-properties {
+  color: #999;
+  font-size: 14px;
+  padding: 20px 0;
+  text-align: center;
+  width: 100%;
 }
 
 .property-row {
@@ -626,6 +650,7 @@ const handleConfirmAddProperty = async () => {
   background: #f4f8fc;
   border-radius: 4px;
   padding: 6px 12px 10px 12px;
+  width: 100%;
 
   :deep(.el-select__wrapper) {
     background: #ffffff;
