@@ -64,7 +64,7 @@ import projectService from "@/services/graph.ts"
 import TextProcessor from "@/components/common/TextProcessor.vue";
 import {useConverter} from "@/mock/modules/converter.ts";
 const contentRef = ref(null);
-const textUrl = ref("http://10.11.52.199:8090/pdf/%E5%8C%97%E4%BA%AC%E5%B8%82%E6%80%BB%E4%BD%93%E8%A7%84%E5%88%922016-2035.pdf");
+const textUrl = ref("http://localhost:8090/pdf/%E5%8C%97%E4%BA%AC%E5%B8%82%E6%80%BB%E4%BD%93%E8%A7%84%E5%88%922016-2035.pdf");
 const {graphTypeString2Integer} = useConverter()
 // 从localStorage读取状态，或使用默认值
 const loadState = () => {
