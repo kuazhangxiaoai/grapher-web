@@ -20,7 +20,19 @@
       class="connection-line"
       :style="svgStyle"
     >
+      <!-- 自环时使用曲线 -->
+      <path
+        v-if="isSelfLoop"
+        :d="selfLoopPath"
+        stroke="#44D6B6"
+        stroke-width="2"
+        stroke-dasharray="5,5"
+        fill="none"
+        marker-end="url(#arrow)"
+      />
+      <!-- 普通连线时使用直线 -->
       <line
+        v-else
         :x1="connectionStart.x"
         :y1="connectionStart.y"
         :x2="connectionEnd.x"
@@ -118,6 +130,25 @@ const connectionCompleted = ref(false);
 const connectionStart = ref({ x: 0, y: 0 });
 const connectionEnd = ref({ x: 0, y: 0 });
 const sourceNodeId = ref(null);
+
+// 自环相关状态
+const isSelfLoop = ref(false);
+const selfLoopSourceNodeId = ref(null);
+
+// 计算自环路径
+const selfLoopPath = computed(() => {
+  const startX = connectionStart.value.x;
+  const startY = connectionStart.value.y;
+  const endX = connectionEnd.value.x;
+  const endY = connectionEnd.value.y;
+
+  // 计算控制点，使曲线与实线自环保持一致
+  const centerX = (startX + endX) / 2;
+  const controlY = startY - 160; // 控制高度，与实线自环保持一致
+
+  // 使用三阶贝塞尔曲线，与实线自环保持一致的弧度
+  return `M ${startX} ${startY} C ${startX - 80} ${controlY}, ${endX + 80} ${controlY}, ${endX} ${endY}`;
+});
 
 const graphRef = ref(null);
 const graph = shallowRef(null);
@@ -440,9 +471,13 @@ const initGraph = () => {
       },
       edge: {
         type: (data) => {
-          // 检查是否存在双向连线
+          // 检查是否是自环边
           const source = data.source;
           const target = data.target;
+          if (String(source) === String(target)) {
+            return "cubic";
+          }
+          // 检查是否存在双向连线
           const hasReverseEdge = props.edges.some(
             (edge) => edge.source === target && edge.target === source,
           );
@@ -513,6 +548,26 @@ const initGraph = () => {
             } else {
               // B→A 方向，向下偏移
               style.controlPoints = [{ x: centerX, y: centerY + 30 }];
+            }
+          }
+
+          // 为自环边添加特殊配置，确保与虚线自环保持一致
+          if (String(source) === String(target)) {
+            // 尝试获取节点位置
+            const sourceNode = props.nodes.find(
+              (node) => String(node.id) === String(source),
+            );
+
+            if (sourceNode) {
+              // 为自环边设置控制点，使用三阶贝塞尔曲线
+              const nodeX = sourceNode.x;
+              const nodeY = sourceNode.y;
+
+              // 控制点设置，与虚线自环保持一致的形状
+              style.controlPoints = [
+                { x: nodeX + 80, y: nodeY - 160 }, // 第一个控制点
+                { x: nodeX - 80, y: nodeY - 160 }, // 第二个控制点
+              ];
             }
           }
 
@@ -691,9 +746,8 @@ const bindEvents = () => {
             connectionCompleted: connectionCompleted.value,
             sourceNodeId: sourceNodeId.value,
           });
-        } else {
-          console.log("点击了源节点本身，忽略");
         }
+        // 允许点击源节点本身创建自环
       } else {
         console.log("event.item为null，无法完成连线");
       }
@@ -1030,21 +1084,29 @@ const handleMouseMove = (event) => {
     let targetGraphPos = { x: graphX, y: graphY };
 
     for (const node of props.nodes) {
-      if (String(node.id) !== String(sourceNodeId.value)) {
-        const nodeRect = getNodeRect(node);
-        const nodeHalfWidth = nodeRect.width / 2;
-        const nodeHalfHeight = nodeRect.height / 2;
-        if (
-          graphX >= node.x - nodeHalfWidth &&
-          graphX <= node.x + nodeHalfWidth &&
-          graphY >= node.y - nodeHalfHeight &&
-          graphY <= node.y + nodeHalfHeight
-        ) {
-          targetNode = node;
-          targetGraphPos = { x: node.x, y: node.y };
-          break;
-        }
+      // 允许鼠标悬停在源节点上，支持自环
+      const nodeRect = getNodeRect(node);
+      const nodeHalfWidth = nodeRect.width / 2;
+      const nodeHalfHeight = nodeRect.height / 2;
+      if (
+        graphX >= node.x - nodeHalfWidth &&
+        graphX <= node.x + nodeHalfWidth &&
+        graphY >= node.y - nodeHalfHeight &&
+        graphY <= node.y + nodeHalfHeight
+      ) {
+        targetNode = node;
+        targetGraphPos = { x: node.x, y: node.y };
+        // 设置自环状态
+        isSelfLoop.value = String(node.id) === String(sourceNodeId.value);
+        selfLoopSourceNodeId.value = isSelfLoop.value ? node.id : null;
+        break;
       }
+    }
+
+    // 如果鼠标不在任何节点上，重置自环状态
+    if (!targetNode) {
+      isSelfLoop.value = false;
+      selfLoopSourceNodeId.value = null;
     }
 
     // 更新连线起点：根据目标位置计算源节点边框上的点
@@ -1053,7 +1115,13 @@ const handleMouseMove = (event) => {
     );
     if (sourceNode) {
       const sourceNodeRect = getNodeRect(sourceNode);
-      const startGraphPos = getPointOnRect(targetGraphPos, sourceNodeRect);
+      // 对于自环，使用偏移点来计算起点，确保与实线自环保持一致
+      const isSelfLoop =
+        targetNode && String(targetNode.id) === String(sourceNodeId.value);
+      const startTargetPos = isSelfLoop
+        ? { x: sourceNode.x - 80, y: sourceNode.y - 160 } // 自环时使用左侧偏移点，与实线自环保持一致
+        : targetGraphPos;
+      const startGraphPos = getPointOnRect(startTargetPos, sourceNodeRect);
 
       // 将图谱坐标转换为屏幕坐标
       let startScreenPos = startGraphPos;
@@ -1077,7 +1145,12 @@ const handleMouseMove = (event) => {
     if (targetNode) {
       // 如果鼠标在其他节点上，计算目标节点边框上的点
       const targetNodeRect = getNodeRect(targetNode);
-      const endGraphPos = getPointOnRect(connectionStart.value, targetNodeRect);
+      // 对于自环，使用偏移点来计算终点，确保与实线自环保持一致
+      const isSelfLoop = String(targetNode.id) === String(sourceNodeId.value);
+      const endTargetPos = isSelfLoop
+        ? { x: targetNode.x + 80, y: targetNode.y - 160 } // 自环时使用右侧偏移点，与实线自环保持一致
+        : connectionStart.value;
+      const endGraphPos = getPointOnRect(endTargetPos, targetNodeRect);
 
       // 将图谱坐标转换为屏幕坐标
       let endScreenPos = endGraphPos;
@@ -1329,77 +1402,80 @@ const handleClick = (event) => {
         ) {
           // 点击在节点上
           console.log("点击在节点", node.id, "上");
-          if (String(node.id) !== String(sourceNodeId.value)) {
-            // 完成连线
-            console.log("完成连线，目标节点:", node.id);
-            // 更新连线起点：根据目标节点位置计算源节点边框上的点
-            const sourceNode = props.nodes.find(
-              (n) => String(n.id) === String(sourceNodeId.value),
-            );
-            if (sourceNode) {
-              const sourceNodeRect = getNodeRect(sourceNode);
-              const startGraphPos = getPointOnRect(
-                { x: node.x, y: node.y },
-                sourceNodeRect,
-              );
-
-              // 将图谱坐标转换为屏幕坐标
-              let startScreenPos = startGraphPos;
-              try {
-                if (graph.value && graph.value.getViewportByCanvas) {
-                  const point = graph.value.getViewportByCanvas([
-                    startGraphPos.x,
-                    startGraphPos.y,
-                  ]);
-                  startScreenPos = {
-                    x: point[0] || startGraphPos.x,
-                    y: point[1] || startGraphPos.y,
-                  };
-                }
-              } catch (error) {
-                console.warn("坐标转换失败:", error);
-              }
-              connectionStart.value = startScreenPos;
-            }
-
-            // 固定连线终点到目标节点边框上的点
-            const targetNodeRect = getNodeRect(node);
-            const endGraphPos = getPointOnRect(
-              connectionStart.value,
-              targetNodeRect,
-            );
+          // 允许点击源节点本身创建自环
+          console.log("完成连线，目标节点:", node.id);
+          // 设置自环状态
+          isSelfLoop.value = String(node.id) === String(sourceNodeId.value);
+          selfLoopSourceNodeId.value = isSelfLoop.value ? node.id : null;
+          // 更新连线起点：根据目标节点位置计算源节点边框上的点
+          const sourceNode = props.nodes.find(
+            (n) => String(n.id) === String(sourceNodeId.value),
+          );
+          if (sourceNode) {
+            const sourceNodeRect = getNodeRect(sourceNode);
+            // 对于自环，使用一个偏移点来计算起点，确保与实线自环保持一致
+            const targetPos =
+              String(node.id) === String(sourceNodeId.value)
+                ? { x: node.x - 80, y: node.y - 160 } // 自环时使用左侧偏移点，与实线自环保持一致
+                : { x: node.x, y: node.y };
+            const startGraphPos = getPointOnRect(targetPos, sourceNodeRect);
 
             // 将图谱坐标转换为屏幕坐标
-            let endScreenPos = endGraphPos;
+            let startScreenPos = startGraphPos;
             try {
               if (graph.value && graph.value.getViewportByCanvas) {
                 const point = graph.value.getViewportByCanvas([
-                  endGraphPos.x,
-                  endGraphPos.y,
+                  startGraphPos.x,
+                  startGraphPos.y,
                 ]);
-                endScreenPos = {
-                  x: point[0] || endGraphPos.x,
-                  y: point[1] || endGraphPos.y,
+                startScreenPos = {
+                  x: point[0] || startGraphPos.x,
+                  y: point[1] || startGraphPos.y,
                 };
               }
             } catch (error) {
               console.warn("坐标转换失败:", error);
             }
-            connectionEnd.value = endScreenPos;
-
-            emit("connection-complete", node.id);
-            // 标记连线完成，保持显示但不再跟随鼠标移动
-            connectionCompleted.value = true;
-            isConnectingMode.value = false;
-            console.log("连线完成，保持显示，不再跟随鼠标移动");
-            console.log("连线完成后状态:", {
-              isConnectingMode: isConnectingMode.value,
-              connectionCompleted: connectionCompleted.value,
-              sourceNodeId: sourceNodeId.value,
-            });
-          } else {
-            console.log("点击了源节点本身，忽略");
+            connectionStart.value = startScreenPos;
           }
+
+          // 固定连线终点到目标节点边框上的点
+          const targetNodeRect = getNodeRect(node);
+          // 对于自环，使用另一个偏移点来计算终点，确保与实线自环保持一致
+          const startPos =
+            String(node.id) === String(sourceNodeId.value)
+              ? { x: node.x + 80, y: node.y - 160 } // 自环时使用右侧偏移点，与实线自环保持一致
+              : connectionStart.value;
+          const endGraphPos = getPointOnRect(startPos, targetNodeRect);
+
+          // 将图谱坐标转换为屏幕坐标
+          let endScreenPos = endGraphPos;
+          try {
+            if (graph.value && graph.value.getViewportByCanvas) {
+              const point = graph.value.getViewportByCanvas([
+                endGraphPos.x,
+                endGraphPos.y,
+              ]);
+              endScreenPos = {
+                x: point[0] || endGraphPos.x,
+                y: point[1] || endGraphPos.y,
+              };
+            }
+          } catch (error) {
+            console.warn("坐标转换失败:", error);
+          }
+          connectionEnd.value = endScreenPos;
+
+          emit("connection-complete", node.id);
+          // 标记连线完成，保持显示但不再跟随鼠标移动
+          connectionCompleted.value = true;
+          isConnectingMode.value = false;
+          console.log("连线完成，保持显示，不再跟随鼠标移动");
+          console.log("连线完成后状态:", {
+            isConnectingMode: isConnectingMode.value,
+            connectionCompleted: connectionCompleted.value,
+            sourceNodeId: sourceNodeId.value,
+          });
           break;
         }
       }
@@ -1668,6 +1744,10 @@ const resetConnectionState = () => {
   isConnectingMode.value = false;
   connectionCompleted.value = false;
   sourceNodeId.value = null;
+  isSelfLoop.value = false;
+  selfLoopSourceNodeId.value = null;
+  connectionStart.value = { x: 0, y: 0 };
+  connectionEnd.value = { x: 0, y: 0 };
   console.log("连线状态已重置，虚线已清除");
 };
 
