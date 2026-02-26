@@ -51,6 +51,28 @@
     <div class="text-container">
       <TextProcessor :src="textUrl"></TextProcessor>
     </div>
+    <div class="graph-container">
+      <Content
+          ref="graphRef"
+          :current-sub-domain="currentSubDomain"
+          :current-mode="currentMode"
+          :has-data="hasData"
+          :graph-nodes="graphNodes"
+          :graph-edges="graphEdges"
+          :entity-properties="entityProperties"
+          @add-entity="handleAddEntity"
+          :is-connecting="isConnecting"
+          @create-relationship="handleCreateRelationship"
+          @connection-complete="handleConnectionComplete"
+          @drop="handleDrop"
+          @node-mouse-down="handleNodeMouseDown"
+          @mouse-move="handleMouseMove"
+          @mouse-up="handleMouseUp"
+          @node-drag-end="handleNodeDragEnd"
+          @node-click="handleNodeClick"
+          @edge-click="handleEdgeClick"
+      />
+    </div>
   </div>
 </template>
 
@@ -63,6 +85,7 @@ import AddGraphDialog from "@/components/common/AddGraphDialog.vue";
 import projectService from "@/services/graph.ts"
 import TextProcessor from "@/components/common/TextProcessor.vue";
 import {useConverter} from "@/mock/modules/converter.ts";
+import Content from "@/components/common/Content.vue";
 
 const contentRef = ref(null);
 const textUrl = ref("http://10.11.52.199:8090/pdf/%E5%8C%97%E4%BA%AC%E5%B8%82%E6%80%BB%E4%BD%93%E8%A7%84%E5%88%922016-2035.pdf");
@@ -1223,6 +1246,15 @@ const handleModeChange = (mode) => {
 }
 .text-container{
   position: relative;
+  width: 40%;
+  height: 100%;
+  top: 0;
+  left: 0;
+}
+
+.graph-container{
+  position: relative;
+  display: flex;
   width: 40%;
   height: 100%;
   top: 0;

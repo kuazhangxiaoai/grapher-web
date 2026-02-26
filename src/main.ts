@@ -43,6 +43,6 @@ app.use(Directive)
 app.use(createPinia())
 app.use(ElementPlus)
 
-  app.mount('#app')
+app.mount('#app')
   
 
