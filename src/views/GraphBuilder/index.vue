@@ -63,8 +63,9 @@ import AddGraphDialog from "@/components/common/AddGraphDialog.vue";
 import projectService from "@/services/graph.ts"
 import TextProcessor from "@/components/common/TextProcessor.vue";
 import {useConverter} from "@/mock/modules/converter.ts";
+
 const contentRef = ref(null);
-const textUrl = ref("http://localhost:8090/pdf/%E5%8C%97%E4%BA%AC%E5%B8%82%E6%80%BB%E4%BD%93%E8%A7%84%E5%88%922016-2035.pdf");
+const textUrl = ref("http://10.11.52.199:8090/pdf/%E5%8C%97%E4%BA%AC%E5%B8%82%E6%80%BB%E4%BD%93%E8%A7%84%E5%88%922016-2035.pdf");
 const {graphTypeString2Integer} = useConverter()
 // 从localStorage读取状态，或使用默认值
 const loadState = () => {
@@ -787,7 +788,7 @@ const handleTopicSearch = (query) => {
 const handleTopicClick = (subDomain) => {
   currentSubDomain.value = subDomain.name;
   currentSubDomainId.value = subDomain.id;
-  saveState()
+  saveState();
 };
 
 const handleCreateRelationship = (sourceId) => {
@@ -1083,44 +1084,36 @@ const handleCreateGraph = async (graphData) => {
 
   isConfirmButtonDisabled.value = true;
 
-  try {
-    // 构造图谱数据
+  // 构造图谱数据
+  const graphDataToSend = {
+    articleName: graphData.graphName,
+    createMethod: graphTypeString2Integer(graphData.createMethod).toString(),
+    topicId: state.currentSubDomainId,
+    uploadedFile: graphData.createMethod === "text" ? graphData.uploadedFile : null,
+    databaseName: graphData.createMethod === "database" ? graphData.databaseName : "",
+    anyContent: graphData.createMethod === "any" ? graphData.anyContent : "",
+  };
 
-    const graphDataToSend = {
-      articleName: graphData.graphName,
-      createMethod: graphTypeString2Integer(graphData.createMethod).toString(),
-      topicId: state.currentSubDomainId,
-      uploadedFile: graphData.createMethod === "text" ? graphData.uploadedFile : null,
-      databaseName: graphData.createMethod === "database" ? graphData.databaseName : "",
-      anyContent: graphData.createMethod === "any" ? graphData.anyContent : "",
-    };
+  // 这里可以处理图谱创建的逻辑，例如保存图谱数据到后端
+  console.log("创建图谱:", graphDataToSend);
 
-    // 这里可以处理图谱创建的逻辑，例如保存图谱数据到后端
-    console.log("创建图谱:", graphDataToSend);
-
-    // 模拟创建成功
-    const response = await projectService.addArticle(graphDataToSend)
-    if (response.code === 200) Message.success("图谱创建成功");
-    // 创建成功后的处理
-
-    // 添加到图谱列表
+  // 模拟创建成功
+  const addGraphResponse = await projectService.addArticle(graphDataToSend)
+  if(addGraphResponse.code === 200) {
     const newGraph = {
-      id: Date.now(),
+      id: addGraphResponse.data,
       name: graphData.graphName,
       createMethod: graphData.createMethod,
       createdAt: new Date().toISOString(),
     };
     graphs.value.push(newGraph);
-    // 设置 hasData 为 true，显示关系图
-    hasData.value = true;
-    // } else {
-    //   Message.error(response.message || "图谱创建失败");
-    // }
-  } catch (error) {
-    Message.error("图谱创建失败，请稍后重试");
-  } finally {
-    isConfirmButtonDisabled.value = false;
+    hasData.value = true; // 设置 hasData 为 true，显示关系图
+
+    //跳转至新的url
+    const textUrlResponse = await projectService.getArticleUrl(newGraph.id);
+    textUrl.value = textUrlResponse.data;
   }
+  isConfirmButtonDisabled.value = false;
 };
 
 // 处理创建图谱点击

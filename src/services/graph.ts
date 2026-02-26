@@ -41,6 +41,12 @@ export default {
     return axios.post(`/serve_api/article/addArticle`,
         formData, {headers: { 'Content-Type': 'multipart/form-data'}});
   },
+
+  /**获取后端pdf的url*/
+  getArticleUrl(articleId: string): Promise<any> {
+    return axios.get(`/serve_api/article/getFileUrl?articleId=${articleId}`);
+  },
+
   /**delete Article*/
   deleteArticle(graphName: string, topicName: string, domainName: string, userName: string): Promise<any> {
 

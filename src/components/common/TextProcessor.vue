@@ -5,7 +5,7 @@
 </template>
 
 <script setup lang="ts">
-import {ref, onMounted, watch} from "vue";
+import { ref, onMounted, watch, onBeforeUnmount } from "vue";
 import * as pdfjsLib from 'pdfjs-dist'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = "/package/pdf.worker.min.js"
@@ -18,12 +18,10 @@ const props = defineProps({
   }
 })
 
-let pdfInstance = null
-const pageNum = ref(1)
-const totalPageCount = ref(0)
-const scale = 1
+let pdfInstance: any = null
 
 const loadText = async (pageIndex: number) => {
+  console.log("url: " + props.src)
   const loadingTask = pdfjsLib.getDocument({
     url: props.src,
     cMapUrl: "/package/cmaps/",
@@ -110,10 +108,40 @@ async function renderPage(page: any) {
 }
 
 onMounted(() => {
-  console.log(props.src)
-  if(props.src != null) loadText(1)
-})
+  if (props.src) {
+    loadText(1);
+  }
+});
 
+// 监听 src 变化，重新加载对应的 PDF
+watch(
+  () => props.src,
+  async (newVal) => {
+    // 清理上一次的实例
+    if (pdfInstance && typeof pdfInstance.destroy === "function") {
+      await pdfInstance.destroy();
+      pdfInstance = null;
+    }
+
+    const pageContainer = document.getElementById("pageContainer");
+    if (pageContainer) {
+      pageContainer.innerHTML = "";
+    }
+
+    if (!newVal) {
+      return;
+    }
+
+    await loadText(1);
+  },
+);
+
+onBeforeUnmount(async () => {
+  if (pdfInstance && typeof pdfInstance.destroy === "function") {
+    await pdfInstance.destroy();
+    pdfInstance = null;
+  }
+});
 
 </script>
 
