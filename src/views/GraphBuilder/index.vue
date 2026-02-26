@@ -306,7 +306,7 @@ const saveState = () => {
     currentDomain: currentDomain.value,
     currentDomainId: currentDomainId.value,
     currentSubDomain: currentSubDomain.value,
-    currentSubDomainId: currentSubDomain.value,
+    currentSubDomainId: currentSubDomainId.value,
     domains: domains.value,
     subDomains: subDomains.value,
     subSubDomains: subSubDomains.value,
@@ -565,12 +565,7 @@ const handleSearchIconClick = async (query) => {
   updateDomainSearchOptions();
 };
 
-// 处理专题点击，设置当前子领域为专题名称
-const handleTopicClick = (topic) => {
-  currentSubDomain.value = topic.name;
-  // 清空子子领域，因为专题是子领域的一种
-  subSubDomains.value = [];
-};
+
 
 const handleAddEntity = (position) => {
   currentOperation.value = "entity";
@@ -788,7 +783,8 @@ const handleTopicSearch = (query) => {
   }
 };
 
-const handleSubDomainClick = (subDomain) => {
+// 处理专题点击，设置当前子领域为专题名称-handleTopic
+const handleTopicClick = (subDomain) => {
   currentSubDomain.value = subDomain.name;
   currentSubDomainId.value = subDomain.id;
   saveState()
