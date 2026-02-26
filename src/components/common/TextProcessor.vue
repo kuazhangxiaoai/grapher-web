@@ -7,9 +7,8 @@
 <script setup lang="ts">
 import {ref, onMounted, watch} from "vue";
 import * as pdfjsLib from 'pdfjs-dist'
-import pdfWorker from 'pdfjs-dist/build/pdf.worker?url'
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker
+pdfjsLib.GlobalWorkerOptions.workerSrc = "/package/pdf.worker.min.js"
 
 const props = defineProps({
   src: {
@@ -19,17 +18,22 @@ const props = defineProps({
   }
 })
 
-const pdfDoc = ref(null)
+let pdfInstance = null
 const pageNum = ref(1)
 const totalPageCount = ref(0)
 const scale = 1
 
 const loadText = async (pageIndex: number) => {
-  const loadingTask = pdfjsLib.getDocument(props.src)
-  pdfDoc.value = await loadingTask.promise
-  totalPages.value = pdfDoc.value.numPages
-  const page = await pdfDoc.value.getPage(pageIndex)
-  renderPage(page, pageNum.value)
+  console.log("url: " + props.src)
+  const loadingTask = pdfjsLib.getDocument({
+    url: props.src,
+    cMapUrl: "/package/cmaps/",
+    cMapPacked: true,
+  })
+  pdfInstance = await loadingTask.promise;
+  const totalPages = await pdfInstance.numPages;
+  const page = await pdfInstance.getPage(1);
+  renderPage(page)
 }
 //渲染单页PDF
 async function renderPage(page: any) {
@@ -104,6 +108,7 @@ async function renderPage(page: any) {
 }
 
 onMounted(() => {
+  console.log(props.src)
   if(props.src != null) loadText(1)
 })
 
