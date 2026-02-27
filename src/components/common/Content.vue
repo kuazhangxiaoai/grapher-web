@@ -101,6 +101,7 @@
         <!-- 图谱构建模式下的空状态 -->
         <div v-else-if="currentMode === 'graph'" class="graph-building-mode">
           <!-- 这里可以添加图谱构建模式的相关内容，目前仅显示空白区域 -->
+          <div class="tool-container"></div>
         </div>
       </div>
     </div>
@@ -403,6 +404,14 @@ const handleConfirmCreateGraph = () => {
   margin-left: 0;
 }
 
+.tool-container{
+  position: absolute;
+  display: flex;
+  left: 10vh;
+  bottom: 24px;
+  width: 150px;
+  height: 50px;
+}
 /* 响应式设计 */
 @media (max-width: 768px) {
   .content {

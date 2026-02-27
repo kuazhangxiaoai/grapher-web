@@ -11,10 +11,14 @@ export enum GraphTypeInteger{
 }
 
 export interface GraphConfig {
+    id: string;
     name: string;
-    topic: string;
-    domain: string;
-    description: string;
-    graph_db: string;
-    type: GraphType;
+    articleUrl: string;
+    articleName: string;
+    topicId: string;
+    topicName: string;
+    domainId: string;
+    domainName: string;
+    createMethod: string;
+    createdAt: string;
 }
