@@ -65,6 +65,7 @@ const hasData = ref(false);
 const savedEntitiesCount = ref(0);
 const entityTypes = ref([]);
 const relationshipTypes = ref([]);
+const relationTemplates = ref([]);
 const backgroundColor = ref("#43D7B5");
 // 当前操作类型：'entity' 或 'relationship'
 const currentOperation = ref("");
@@ -72,6 +73,10 @@ const currentOperation = ref("");
 const relationshipName = ref("");
 // 关系类型
 const relationshipType = ref("定向");
+// 开始节点名称
+const startNodeName = ref("");
+// 结束节点名称
+const endNodeName = ref("");
 // 图谱节点
 const graphNodes = ref([]);
 // 图谱边数据
@@ -387,6 +392,8 @@ onMounted(async () => {
                   response.data.relationTemplates &&
                   Array.isArray(response.data.relationTemplates)
                 ) {
+                  // 保存关系模板数据
+                  relationTemplates.value = response.data.relationTemplates;
                   response.data.relationTemplates.forEach((template) => {
                     if (
                       template.relationTemplateName &&
@@ -1029,6 +1036,8 @@ const handleTopicClick = async (topic, skipComponentLibrarySearch = false) => {
             response.data.relationTemplates &&
             Array.isArray(response.data.relationTemplates)
           ) {
+            // 保存关系模板数据
+            relationTemplates.value = response.data.relationTemplates;
             // 创建节点 ID 集合，用于快速检查节点是否存在
             const nodeIds = new Set(graphNodes.value.map((node) => node.id));
 
@@ -1118,6 +1127,8 @@ const handleAddEntity = (position) => {
   entityProperties.value = [];
   addToComponentLibrary.value = true;
   currentOperation.value = "entity";
+  currentNodeTemplateId.value = 0;
+  currentRelationTemplateId.value = 0;
   if (position && (position.x !== undefined || position.y !== undefined)) {
     rightClickPosition.value = position;
     console.log("设置右键点击位置:", position);
@@ -1147,6 +1158,8 @@ const handleCreateRelationship = (sourceId) => {
   addToComponentLibrary.value = true;
 
   currentOperation.value = "relationship";
+  currentNodeTemplateId.value = 0;
+  currentRelationTemplateId.value = 0;
   isConnecting.value = true;
 
   // 存储原始的源节点ID
@@ -1178,6 +1191,10 @@ const handleCreateRelationship = (sourceId) => {
   console.log("进入连线模式，源节点模板ID:", sourceNodeId.value);
   console.log("源节点信息:", sourceNode);
   console.log("所有节点信息:", graphNodes.value);
+
+  // 设置开始节点名称
+  startNodeName.value = sourceNode ? sourceNode.name : "";
+  endNodeName.value = "";
 };
 
 const handleClosePropertyPanel = () => {
@@ -1234,6 +1251,9 @@ const handleConnectionComplete = (targetId) => {
   console.log("目标节点模板ID:", targetNodeId.value);
   console.log("目标节点信息:", targetNode);
 
+  // 设置结束节点名称
+  endNodeName.value = targetNode ? targetNode.name : "";
+
   // 退出连线模式
   isConnecting.value = false;
 
@@ -1251,6 +1271,8 @@ const handleConnectionComplete = (targetId) => {
 
   // 设置当前操作类型为关系
   currentOperation.value = "relationship";
+  currentNodeTemplateId.value = 0;
+  currentRelationTemplateId.value = 0;
 
   // 打开属性面板
   showPropertyPanel.value = true;
@@ -1306,6 +1328,7 @@ const handleSavePropertyPanel = (data) => {
         // 存储节点模板ID，用于后端保存
         sourceNodeTemplateId: sourceNodeId.value,
         targetNodeTemplateId: targetNodeId.value,
+        isLibraryFlag: data.addToComponentLibrary ? "1" : "0",
       };
       graphEdges.value.push(newEdge1);
       console.log("新创建的关系边1:", newEdge1);
@@ -1324,6 +1347,7 @@ const handleSavePropertyPanel = (data) => {
           // 存储节点模板ID，用于后端保存
           sourceNodeTemplateId: targetNodeId.value,
           targetNodeTemplateId: sourceNodeId.value,
+          isLibraryFlag: data.addToComponentLibrary ? "1" : "0",
         };
         graphEdges.value.push(newEdge2);
         console.log("新创建的关系边2:", newEdge2);
@@ -1658,21 +1682,51 @@ const handleRelationshipTypeClick = (relationshipTypeName) => {
   currentOperation.value = "relationship";
   relationshipName.value = relationshipTypeName;
 
-  // 从graphEdges中查找对应的关系模板信息
-  const relationshipTemplate = graphEdges.value.find(
-    (edge) => edge.data.name === relationshipTypeName,
+  // 从relationTemplates中查找对应的关系模板信息
+  const relationshipTemplate = relationTemplates.value.find(
+    (template) => template.relationTemplateName === relationshipTypeName,
   );
   if (relationshipTemplate) {
     // 设置关系类型
-    relationshipType.value = relationshipTemplate.data.type || "定向";
+    let relationTypeText = "定向";
+    switch (relationshipTemplate.relationTemplateType) {
+      case "1":
+        relationTypeText = "定向";
+        break;
+      case "2":
+        relationTypeText = "双向";
+        break;
+      case "3":
+        relationTypeText = "循环";
+        break;
+    }
+    relationshipType.value = relationTypeText;
     // 设置关系属性
-    entityProperties.value = relationshipTemplate.data.properties || [];
+    entityProperties.value = relationshipTemplate.properties
+      ? relationshipTemplate.properties.map((prop) => ({
+          name: prop.propertyKey,
+          type: prop.propertyType.toLowerCase(),
+          value: "",
+        }))
+      : [];
     // 设置是否加入组件库
     addToComponentLibrary.value = relationshipTemplate.isLibraryFlag === "1";
     // 设置当前关系的模板ID
     currentRelationTemplateId.value =
       relationshipTemplate.relationTemplateId || 0;
     currentNodeTemplateId.value = 0;
+
+    // 设置开始和结束节点名称
+    const startNode = graphNodes.value.find(
+      (node) =>
+        String(node.id) === String(relationshipTemplate.startNodeTemplateId),
+    );
+    const endNode = graphNodes.value.find(
+      (node) =>
+        String(node.id) === String(relationshipTemplate.endNodeTemplateId),
+    );
+    startNodeName.value = startNode ? startNode.name : "";
+    endNodeName.value = endNode ? endNode.name : "";
   } else {
     // 如果找不到模板信息，重置默认值
     relationshipType.value = "定向";
@@ -1680,6 +1734,8 @@ const handleRelationshipTypeClick = (relationshipTypeName) => {
     addToComponentLibrary.value = true;
     currentRelationTemplateId.value = 0;
     currentNodeTemplateId.value = 0;
+    startNodeName.value = "";
+    endNodeName.value = "";
   }
 
   showPropertyPanel.value = true;
@@ -1861,9 +1917,22 @@ const handleEdgeClick = (edge) => {
   relationshipName.value = edge.data.name;
   relationshipType.value = edge.data.type;
   entityProperties.value = edge.data.properties || [];
+  // 设置是否加入组件库
+  addToComponentLibrary.value = edge.isLibraryFlag === "1";
   // 设置当前连线的模板ID
   currentRelationTemplateId.value = edge.relationTemplateId || 0;
   currentNodeTemplateId.value = 0;
+
+  // 获取开始和结束节点名称
+  const startNode = graphNodes.value.find(
+    (node) => String(node.id) === String(edge.source),
+  );
+  const endNode = graphNodes.value.find(
+    (node) => String(node.id) === String(edge.target),
+  );
+  startNodeName.value = startNode ? startNode.name : "";
+  endNodeName.value = endNode ? endNode.name : "";
+
   showPropertyPanel.value = true;
   console.log("设置showPropertyPanel为true");
 };
@@ -1964,6 +2033,8 @@ const handleUpdateNodes = (templateData) => {
 
     // 更新关系模板
     if (templateData.relationTemplates) {
+      // 保存关系模板数据
+      relationTemplates.value = templateData.relationTemplates;
       // 清空现有关系数据
       graphEdges.value = [];
       // 清空关系类型数组，准备重新构建
@@ -2059,6 +2130,7 @@ const handleUpdateNodes = (templateData) => {
         :has-data="hasData"
         :entity-types="entityTypes"
         :relationship-types="relationshipTypes"
+        :relation-templates="relationTemplates"
         :components="components"
         @delete-domain="handleDeleteDomain"
         @open-add-dialog="openAddDialog"
@@ -2127,6 +2199,8 @@ const handleUpdateNodes = (templateData) => {
       :entity-properties="entityProperties"
       :relationship-name="relationshipName"
       :relationship-type="relationshipType"
+      :start-node-name="startNodeName"
+      :end-node-name="endNodeName"
       :add-to-component-library="addToComponentLibrary"
       :background-color="backgroundColor"
       :topic-id="currentTopicId"

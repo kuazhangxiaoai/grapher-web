@@ -130,6 +130,18 @@
             </el-select>
           </div>
           <div class="property-item">
+            <label>开始实体</label>
+            <div class="entity-name-display">
+              {{ localStartNodeName || "无" }}
+            </div>
+          </div>
+          <div class="property-item">
+            <label>结束实体</label>
+            <div class="entity-name-display">
+              {{ localEndNodeName || "无" }}
+            </div>
+          </div>
+          <div class="property-item">
             <div class="property-label">
               <label>属性</label>
               <span class="property-count"
@@ -202,6 +214,10 @@
           size="small"
           class="delete-btn"
           @click="handleDeletePropertyPanel"
+          v-if="
+            (currentOperation === 'entity' && nodeTemplateId > 0) ||
+            (currentOperation === 'relationship' && relationTemplateId > 0)
+          "
           >删除</el-button
         >
         <el-button
@@ -297,6 +313,14 @@ const props = defineProps({
     type: String,
     default: "定向",
   },
+  startNodeName: {
+    type: String,
+    default: "",
+  },
+  endNodeName: {
+    type: String,
+    default: "",
+  },
   addToComponentLibrary: {
     type: Boolean,
     default: true,
@@ -336,6 +360,8 @@ const localEntityProperties = ref([]);
 const localRelationshipName = ref(props.relationshipName);
 const localRelationshipDescription = ref(props.relationshipDescription);
 const localRelationshipType = ref(props.relationshipType);
+const localStartNodeName = ref(props.startNodeName);
+const localEndNodeName = ref(props.endNodeName);
 const localAddToComponentLibrary = ref(props.addToComponentLibrary);
 const localBackgroundColor = ref("#43D7B5");
 
@@ -381,6 +407,8 @@ watch(
       localRelationshipName.value = props.relationshipName;
       localRelationshipDescription.value = props.relationshipDescription;
       localRelationshipType.value = props.relationshipType;
+      localStartNodeName.value = props.startNodeName;
+      localEndNodeName.value = props.endNodeName;
       localAddToComponentLibrary.value = props.addToComponentLibrary;
       localBackgroundColor.value = props.backgroundColor || "#43D7B5";
       console.log("Panel opened with properties:", localEntityProperties.value);
@@ -428,6 +456,20 @@ watch(
   () => props.relationshipType,
   (newValue) => {
     localRelationshipType.value = newValue;
+  },
+);
+
+watch(
+  () => props.startNodeName,
+  (newValue) => {
+    localStartNodeName.value = newValue;
+  },
+);
+
+watch(
+  () => props.endNodeName,
+  (newValue) => {
+    localEndNodeName.value = newValue;
   },
 );
 
@@ -816,6 +858,20 @@ const handleConfirmAddProperty = async () => {
     font-size: 13px;
     color: #999;
   }
+}
+
+.entity-name-display {
+  background: #f6fcff;
+  border: 0.8px solid rgba(224, 226, 235, 1);
+  border-radius: 4px;
+  height: 40px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  font-size: 14px;
+  color: #333333;
+  font-weight: 500;
 }
 
 .property-item label {
