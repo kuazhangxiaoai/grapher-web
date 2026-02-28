@@ -111,7 +111,11 @@
 
     <!-- 领域列表 -->
     <div class="domain-list" v-if="!currentDomain">
-      <div v-if="domains.length === 0" class="empty-state">
+      <div v-if="isLoadingDomains" class="loading-container">
+        <div class="loading-icon"></div>
+        <span class="loadings">加载中...</span>
+      </div>
+      <div v-else-if="domains.length === 0" class="empty-state">
         <span>暂无数据</span>
       </div>
       <div
@@ -125,7 +129,13 @@
           <span>{{ domain.name }}</span>
         </div>
         <div class="domain-icons">
-          <img class="arrow-icon" src="@/assets/images/复制.png" alt="arrow" />
+          <img
+            class="arrow-icon"
+            src="@/assets/images/复制.png"
+            alt="arrow"
+            @click.stop="handleCopyDomain(domain.id)"
+            title="复制"
+          />
           <div class="domain-actions">
             <button
               class="delete-btn"
@@ -215,7 +225,7 @@
       <div class="domain-list">
         <div v-if="isLoadingTopics" class="loading-container">
           <div class="loading-icon"></div>
-          <span>加载中...</span>
+          <span class="loadings">加载中...</span>
         </div>
         <div v-else-if="topics.length === 0" class="empty-state">
           <span>暂无数据</span>
@@ -235,6 +245,8 @@
               class="arrow-icon"
               src="@/assets/images/复制.png"
               alt="arrow"
+              @click.stop="handleCopyTopic(topic.id)"
+              title="复制"
             />
             <div class="domain-actions">
               <button
@@ -371,9 +383,16 @@
 
       <!-- 本体设计模式 -->
       <div v-else class="sub-sub-domain-container">
-        <!-- 图谱列表 -->
-        <!-- <div class="graph-list" v-if="!hasData"> -->
-        <div class="graph-list" v-if="entityTypes.length === 0">
+        <!-- 加载状态 -->
+        <div class="graph-list" v-if="isLoadingTemplates">
+          <!-- 加载中状态 -->
+          <div class="loading-container">
+            <div class="loading-icon"></div>
+            <span class="loadings">加载中...</span>
+          </div>
+        </div>
+        <!-- 空状态 -->
+        <div class="graph-list" v-else-if="entityTypes.length === 0">
           <!-- 空状态 -->
           <div class="empty-list">
             <div class="list-placeholder">
@@ -388,23 +407,31 @@
         </div>
 
         <!-- 数据列表 当用于本体设计时，这个当作是工具面板。当用于图谱构建模块时，这个当作项目（文章）的三级列表-->
-        <div v-if="entityTypes.length > 0" class="data-list-container">
+        <div v-else class="data-list-container">
           <!-- 实体类型 -->
           <div class="data-section">
-            <h3>实体类型</h3>
+            <h3>实体模板</h3>
             <div
               class="entity-types"
               :class="{ 'empty-data': entityTypes.length === 0 }"
             >
               <span class="empty-data-msg" v-if="entityTypes.length === 0"
-                >暂无实体类型</span
+                >暂无实体模板</span
               >
               <div
                 v-for="(type, index) in entityTypes"
                 :key="index"
                 class="entity-type-item"
+                :class="{
+                  'entity-type-item-selected': selectedEntityType === type,
+                }"
                 draggable="true"
-                @dragstart="handleDragStart($event, 'entity', type)"
+                @dragstart="
+                  handleDragStart($event, 'entity', {
+                    name: type,
+                    nodeTemplateId: 0,
+                  })
+                "
                 @dragend="handleDragEnd"
                 @click="handleEntityTypeClick(type)"
               >
@@ -415,18 +442,23 @@
 
           <!-- 关系类型 -->
           <div class="data-section">
-            <h3>关系类型</h3>
+            <h3>关系模板</h3>
             <div class="relationship-types">
               <span class="empty-data-msg" v-if="relationshipTypes.length === 0"
-                >暂无关系类型</span
+                >暂无关系模板</span
               >
               <div
                 v-for="(type, index) in relationshipTypes"
                 :key="index"
                 class="relationship-type-item"
+                :class="{
+                  'relationship-type-item-selected':
+                    selectedRelationshipType === type,
+                }"
                 draggable="true"
                 @dragstart="handleDragStart($event, 'relationship', type)"
                 @dragend="handleDragEnd"
+                @click="handleRelationshipTypeClick(type)"
               >
                 {{ type }}
               </div>
@@ -452,24 +484,65 @@
             @input="handleSearch"
             @focus="handleSearchFocus"
             @blur="handleSearchBlur"
-            :suffix-icon="Search"
-            style="margin-bottom: 6px"
-          />
+            @clear="handleComponentSearchClear"
+          >
+            <template #suffix>
+              <el-icon
+                @click.stop="handleComponentSearchClick"
+                @mousedown.prevent
+                class="search-icon"
+              >
+                <Search />
+              </el-icon>
+            </template>
+          </el-input>
           <div class="component-list">
+            <div v-if="isLoadingComponents" class="loading-container">
+              <div class="loading-icon"></div>
+              <span class="loadings">加载中...</span>
+            </div>
+            <div v-else-if="props.components.length === 0" class="empty-state">
+              <span class="loadings">暂无组件</span>
+            </div>
             <div
-              v-for="component in components"
-              :key="component.name"
+              v-else
+              v-for="component in props.components"
+              :key="component.nodeTemplateId || component.relationTemplateId"
               class="component-item"
               :class="{
                 'component-item-highlight':
-                  localSearchQuery && component.name.includes(localSearchQuery),
+                  localSearchQuery &&
+                  (
+                    component.nodeTemplateName || component.relationTemplateName
+                  ).includes(localSearchQuery),
+                'component-item-selected':
+                  selectedComponent ===
+                  (component.nodeTemplateName ||
+                    component.relationTemplateName),
               }"
-              @click="handleComponentClick(component.name)"
+              draggable="true"
+              @dragstart="
+                handleDragStart(
+                  $event,
+                  component.nodeTemplateId ? 'entity' : 'relationship',
+                  component,
+                )
+              "
+              @dragend="handleDragEnd"
+              @click="
+                handleComponentClick(
+                  component.nodeTemplateName || component.relationTemplateName,
+                )
+              "
             >
-              <div class="component-name">{{ component.name }}</div>
+              <div class="component-name">
+                {{
+                  component.nodeTemplateName || component.relationTemplateName
+                }}
+              </div>
               <button
                 class="add-component-btn"
-                @click.stop="handleAddComponentToEntityType(component.name)"
+                @click.stop="handleAddComponentToEntityType(component)"
               >
                 +
               </button>
@@ -480,7 +553,7 @@
     </div>
 
     <!-- 新增按钮 -->
-    <div class="add-btn" v-if="!currentSubDomain">
+    <div class="add-btn" v-if="!currentSubDomain && currentMode === 'ontology'">
       <el-button
         type="success"
         size="small"
@@ -546,7 +619,19 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  isLoadingDomains: {
+    type: Boolean,
+    default: false,
+  },
   isLoadingTopics: {
+    type: Boolean,
+    default: false,
+  },
+  isLoadingTemplates: {
+    type: Boolean,
+    default: false,
+  },
+  isLoadingComponents: {
     type: Boolean,
     default: false,
   },
@@ -562,14 +647,13 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  components: {
+    type: Array,
+    default: () => [],
+  },
 });
 
-// 组件库列表
-const components = ref([
-  { name: "工作要点" },
-  { name: "规划要求" },
-  { name: "规划要求2" },
-]);
+// Use components from props directly
 
 const emit = defineEmits([
   "delete-domain",
@@ -602,11 +686,21 @@ const emit = defineEmits([
   "clear-graph-history",
   "add-entity-type",
   "entity-type-click",
+  "relationship-type-click",
   "component-click",
+  "component-library-search",
+  "add-component-to-model",
+  "copy-domain",
+  "copy-topic",
 ]);
 
 const localSearchQuery = ref("");
 const isSearchFocused = ref(false);
+
+// 选中状态
+const selectedEntityType = ref("");
+const selectedRelationshipType = ref("");
+const selectedComponent = ref(null);
 
 // 监听页面切换，清空搜索框内容
 watch(
@@ -628,8 +722,16 @@ const handleDeleteDomain = (id) => {
   emit("delete-domain", id);
 };
 
+const handleCopyDomain = (id) => {
+  emit("copy-domain", id);
+};
+
 const openAddDialog = () => {
   emit("open-add-dialog");
+};
+
+const handleCopyTopic = (id) => {
+  emit("copy-topic", id);
 };
 
 const openAddTopicDialog = () => {
@@ -649,7 +751,12 @@ const handleTopicSearch = (query) => {
 };
 
 const handleSearch = (query) => {
-  emit("search", query);
+  // Check if we're in the component library context
+  if (props.currentMode === "ontology" && props.currentSubDomain) {
+    emit("component-library-search", query);
+  } else {
+    emit("search", query);
+  }
 };
 
 // 搜索图标点击事件
@@ -789,8 +896,8 @@ const handleTopicClick = (topic) => {
   emit("topic-click", topic);
 };
 
-const handleAddComponentToEntityType = (componentName) => {
-  emit("add-entity-type", componentName);
+const handleAddComponentToEntityType = (component) => {
+  emit("add-component-to-model", component);
 };
 
 const handleDragStart = (event, type, item) => {
@@ -857,12 +964,57 @@ const handleTopicSearchClear = () => {
 
 // 处理实体类型点击
 const handleEntityTypeClick = (entityType) => {
+  selectedEntityType.value = entityType;
+  selectedRelationshipType.value = "";
+  selectedComponent.value = null;
   emit("entity-type-click", entityType);
+};
+
+// 处理关系类型点击
+const handleRelationshipTypeClick = (relationshipType) => {
+  selectedRelationshipType.value = relationshipType;
+  selectedEntityType.value = "";
+  selectedComponent.value = null;
+  emit("relationship-type-click", relationshipType);
 };
 
 // 处理组件点击
 const handleComponentClick = (componentName) => {
+  selectedComponent.value = componentName;
+  selectedEntityType.value = "";
+  selectedRelationshipType.value = "";
   emit("component-click", componentName);
+};
+
+// 组件库搜索图标点击事件
+const handleComponentSearchClick = () => {
+  // 点击搜索图标时，确保下拉框消失
+  isSearchFocused.value = false;
+  emit("component-library-search", localSearchQuery.value);
+  // 确保输入框失去焦点
+  setTimeout(() => {
+    const inputElements = document.querySelectorAll(".search-input input");
+    inputElements.forEach((input) => {
+      input.blur();
+    });
+  }, 0);
+};
+
+// 组件库搜索框清空事件处理
+const handleComponentSearchClear = () => {
+  // 点击删除图标时，确保下拉框消失
+  isSearchFocused.value = false;
+  // 清空搜索框内容
+  localSearchQuery.value = "";
+  // 调用组件库搜索图标点击事件，获取所有组件
+  handleComponentSearchClick();
+  // 确保输入框失去焦点
+  setTimeout(() => {
+    const inputElements = document.querySelectorAll(".search-input input");
+    inputElements.forEach((input) => {
+      input.blur();
+    });
+  }, 0);
 };
 </script>
 
@@ -1232,7 +1384,7 @@ const handleComponentClick = (componentName) => {
   gap: 12px;
   margin-bottom: 16px;
   overflow-y: auto;
-  max-height: 150px;
+  max-height: 200px;
   padding-right: 8px;
 }
 .empty-data {
@@ -1254,7 +1406,8 @@ const handleComponentClick = (componentName) => {
   text-overflow: ellipsis;
 }
 
-.entity-type-item:hover {
+.entity-type-item:hover,
+.entity-type-item-selected {
   // background-color: rgba(61, 210, 176, 1);
   // color: white;
   border-color: rgba(61, 210, 176, 1);
@@ -1266,7 +1419,7 @@ const handleComponentClick = (componentName) => {
   flex-direction: column;
   gap: 12px;
   overflow-y: auto;
-  max-height: 150px;
+  max-height: 200px;
   padding-right: 8px;
 }
 
@@ -1294,7 +1447,8 @@ const handleComponentClick = (componentName) => {
   background-position: center;
 }
 
-.relationship-type-item:hover {
+.relationship-type-item:hover,
+.relationship-type-item-selected {
   border-color: rgba(61, 210, 176, 1);
   color: rgba(61, 210, 176, 1);
 }
@@ -1354,12 +1508,14 @@ const handleComponentClick = (componentName) => {
 }
 
 .component-item:hover,
-.component-item-highlight {
+.component-item-highlight,
+.component-item-selected {
   border: 1px solid rgba(61, 210, 176, 1);
   color: rgba(61, 210, 176, 1);
 }
 .component-item:hover .add-component-btn,
-.component-item-highlight .add-component-btn {
+.component-item-highlight .add-component-btn,
+.component-item-selected .add-component-btn {
   color: #3dd2b0;
 }
 
@@ -1571,7 +1727,9 @@ const handleComponentClick = (componentName) => {
   animation: spin 1s linear infinite;
   margin-bottom: 10px;
 }
-
+.loadings {
+  font-size: 12px;
+}
 @keyframes spin {
   0% {
     transform: rotate(0deg);

@@ -29,6 +29,45 @@ export default {
   deleteTopic(projectId: number): Promise<any> {
     return axios.get(`/serve_api/topic/remove?topicId=${projectId}`);
   },
+  /** 节点/关系模版查询 */
+  queryTemplate(topicId: number): Promise<any> {
+    return axios.get(`/serve_api/template/queryTemplate?topicId=${topicId}`);
+  },
+  /** 节点模板保存 */
+  saveNodeTemplate(data: Object): Promise<any> {
+    return axios.post(`/serve_api/template/saveNodeTemplate`, data);
+  },
+  /** 关系模板保存 */
+  saveRelationTemplate(data: Object): Promise<any> {
+    return axios.post(`/serve_api/template/saveRelationTemplate`, data);
+  },
+  /** 节点模版删除 */
+  deleteNodeTemplate(data: Object): Promise<any> {
+    return axios.post(`/serve_api/template/deleteNodeTemplate`, data);
+  },
+  /** 关系模版删除 */
+  deleteRelationTemplate(data: Object): Promise<any> {
+    return axios.post(`/serve_api/template/deleteRelationTemplate`, data);
+  },
+  /** 组件库查询 */
+  queryLibraryTemplate(data: string): Promise<any> {
+    return axios.get(
+      `/serve_api/template/queryLibraryTemplate?templateName=${data}`,
+    );
+  },
+  /** 添加到模型接口 */
+  addToModel(data: Object): Promise<any> {
+    return axios.post(`/serve_api/template/addToModel`, data);
+  },
+  /** 复制领域 */
+  copyField(fieldId: string): Promise<any> {
+    return axios.get(`/serve_api/field/copyField?fieldId=${fieldId}`);
+  },
+  /** 复制专题 */
+  copyTopic(topicId: string): Promise<any> {
+    return axios.get(`/serve_api/topic/copyTopic?topicId=${topicId}`);
+  },
+
   /** create Article*/
   addArticle(graphData): Promise<any> {
     //raphName: string, topicId: string, createMethod: string, file: any
@@ -38,8 +77,9 @@ export default {
     formData.append("fileSize", "123");
     formData.append("topicId", graphData.topicId);
     formData.append("multipartFile", graphData.uploadedFile);
-    return axios.post(`/serve_api/article/addArticle`,
-        formData, {headers: { 'Content-Type': 'multipart/form-data'}});
+    return axios.post(`/serve_api/article/addArticle`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
   },
 
   /**获取后端pdf的url*/
@@ -48,9 +88,13 @@ export default {
   },
 
   /**delete Article*/
-  deleteArticle(graphName: string, topicName: string, domainName: string, userName: string): Promise<any> {
-
-    return axios.post(`/serve_api/article/removeArticle`,{
+  deleteArticle(
+    graphName: string,
+    topicName: string,
+    domainName: string,
+    userName: string,
+  ): Promise<any> {
+    return axios.post(`/serve_api/article/removeArticle`, {
       graphName: graphName,
       topicName: topicName,
       domainName: domainName,
@@ -58,14 +102,17 @@ export default {
     });
   },
   /**get Article list*/
-  getArticleList(topicName: string, domainName: string, userName: string): Promise<any> {
-    return axios.get(`/serve_api/article/getArticleList`,
-        {
-          params: {
-            topicName: topicName,
-            domainName: domainName,
-            userName: userName
-          }
-        });
-  }
+  getArticleList(
+    topicName: string,
+    domainName: string,
+    userName: string,
+  ): Promise<any> {
+    return axios.get(`/serve_api/article/getArticleList`, {
+      params: {
+        topicName: topicName,
+        domainName: domainName,
+        userName: userName,
+      },
+    });
+  },
 };

@@ -62,7 +62,7 @@
                   style="width: 100%"
                   :popper-append-to-body="false"
                 >
-                  <el-option label="文本" value="text"></el-option>
+                  <el-option label="文本" value="string"></el-option>
                   <el-option label="日期" value="date"></el-option>
                   <el-option label="数字" value="number"></el-option>
                   <el-option label="布尔" value="boolean"></el-option>
@@ -79,6 +79,14 @@
             >
               <el-icon class="plusIcon"><Plus /></el-icon> 新增属性
             </el-button>
+          </div>
+          <div class="property-item">
+            <label>背景颜色</label>
+            <el-color-picker
+              v-model="localBackgroundColor"
+              show-alpha
+              size="large"
+            ></el-color-picker>
           </div>
           <div class="property-item lines">
             <label>加入组件库</label>
@@ -98,7 +106,7 @@
               placeholder="请输入~"
             ></el-input>
           </div>
-          <div class="property-item">
+          <!-- <div class="property-item">
             <label>定义描述</label>
             <el-input
               v-model="localRelationshipDescription"
@@ -108,7 +116,7 @@
               resize="none"
               :rows="3"
             ></el-input>
-          </div>
+          </div> -->
           <div class="property-item">
             <label>关系类型</label>
             <el-select
@@ -155,7 +163,7 @@
                   style="width: 100%"
                   :popper-append-to-body="false"
                 >
-                  <el-option label="文本" value="text"></el-option>
+                  <el-option label="文本" value="string"></el-option>
                   <el-option label="日期" value="date"></el-option>
                   <el-option label="数字" value="number"></el-option>
                   <el-option label="布尔" value="boolean"></el-option>
@@ -189,7 +197,11 @@
           @click="handleClosePropertyPanel"
           >关闭</el-button
         >
-        <el-button type="danger" size="small" class="delete-btn"
+        <el-button
+          type="danger"
+          size="small"
+          class="delete-btn"
+          @click="handleDeletePropertyPanel"
           >删除</el-button
         >
         <el-button
@@ -221,7 +233,7 @@
       </el-form-item>
       <el-form-item label="属性类型">
         <el-select v-model="newProperty.type" style="width: 100%">
-          <el-option label="文本" value="text"></el-option>
+          <el-option label="文本" value="string"></el-option>
           <el-option label="日期" value="date"></el-option>
           <el-option label="数字" value="number"></el-option>
           <el-option label="布尔" value="boolean"></el-option>
@@ -249,7 +261,8 @@
 <script setup>
 import { ref, watch, nextTick, onMounted, onUnmounted } from "vue";
 import { Plus } from "@element-plus/icons-vue";
-import { ElMessage } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
+import graph from "@/services/graph";
 
 const props = defineProps({
   showPropertyPanel: {
@@ -288,6 +301,30 @@ const props = defineProps({
     type: Boolean,
     default: true,
   },
+  backgroundColor: {
+    type: String,
+    default: "#43D7B5",
+  },
+  topicId: {
+    type: String,
+    default: "",
+  },
+  startNodeTemplateId: {
+    type: Number,
+    default: 0,
+  },
+  endNodeTemplateId: {
+    type: Number,
+    default: 0,
+  },
+  nodeTemplateId: {
+    type: Number,
+    default: 0,
+  },
+  relationTemplateId: {
+    type: Number,
+    default: 0,
+  },
 });
 
 const emit = defineEmits(["close", "cancel", "save", "add-property"]);
@@ -300,10 +337,11 @@ const localRelationshipName = ref(props.relationshipName);
 const localRelationshipDescription = ref(props.relationshipDescription);
 const localRelationshipType = ref(props.relationshipType);
 const localAddToComponentLibrary = ref(props.addToComponentLibrary);
+const localBackgroundColor = ref("#43D7B5");
 
 // 新增属性对话框相关
 const addPropertyDialogVisible = ref(false);
-const newProperty = ref({ name: "", type: "text" });
+const newProperty = ref({ name: "", type: "string" });
 
 // 标记是否正在添加属性，避免被props更新覆盖
 const isAddingProperty = ref(false);
@@ -344,6 +382,7 @@ watch(
       localRelationshipDescription.value = props.relationshipDescription;
       localRelationshipType.value = props.relationshipType;
       localAddToComponentLibrary.value = props.addToComponentLibrary;
+      localBackgroundColor.value = props.backgroundColor || "#43D7B5";
       console.log("Panel opened with properties:", localEntityProperties.value);
     }
   },
@@ -392,6 +431,13 @@ watch(
   },
 );
 
+watch(
+  () => props.backgroundColor,
+  (newValue) => {
+    localBackgroundColor.value = newValue || "#43D7B5";
+  },
+);
+
 const handleClosePropertyPanel = () => {
   emit("close");
 };
@@ -400,24 +446,182 @@ const handleCancelPropertyPanel = () => {
   emit("cancel");
 };
 
-const handleSavePropertyPanel = () => {
-  // 准备保存的数据
-  const saveData = {
-    currentOperation: props.currentOperation,
-    entityName: localEntityName.value,
-    entityDescription: localEntityDescription.value,
-    entityProperties: localEntityProperties.value.map((prop) => ({ ...prop })),
-    relationshipName: localRelationshipName.value,
-    relationshipDescription: localRelationshipDescription.value,
-    relationshipType: localRelationshipType.value,
-    addToComponentLibrary: localAddToComponentLibrary.value,
-  };
-  emit("save", saveData);
+const handleSavePropertyPanel = async () => {
+  try {
+    // 检查 topicId 是否为空
+    if (!props.topicId) {
+      ElMessage.warning("请先选择专题");
+      return;
+    }
+    if (props.currentOperation === "entity") {
+      // 构建保存到接口的数据
+      const templateData = {
+        topicId: props.topicId,
+        nodeTemplateName: localEntityName.value,
+        nodeTemplateDescription: localEntityDescription.value,
+        isLibraryFlag: localAddToComponentLibrary.value ? "1" : "0",
+        nodeTemplateColor: localBackgroundColor.value,
+        properties: localEntityProperties.value.map((prop) => ({
+          propertyKey: prop.name,
+          propertyType:
+            prop.type === "string"
+              ? "String"
+              : prop.type === "date"
+                ? "Date"
+                : prop.type === "number"
+                  ? "Number"
+                  : prop.type === "boolean"
+                    ? "Boolean"
+                    : prop.type === "object"
+                      ? "Object"
+                      : prop.type === "array"
+                        ? "Array"
+                        : "String",
+        })),
+      };
+
+      // 调用保存接口
+      await graph.saveNodeTemplate(templateData);
+      // 保存成功后，调用查询接口更新节点数据
+      try {
+        const templateResponse = await graph.queryTemplate(props.topicId);
+        if (templateResponse && templateResponse.data) {
+          // 触发更新事件，通知父组件更新节点数据
+          emit("update-nodes", templateResponse.data);
+        }
+      } catch (error) {
+        console.error("更新节点数据失败:", error);
+      }
+    } else if (props.currentOperation === "relationship") {
+      // 检查 startNodeTemplateId 和 endNodeTemplateId 是否为空
+      if (!props.startNodeTemplateId || !props.endNodeTemplateId) {
+        ElMessage.warning("请选择关系的起始节点和结束节点");
+        return;
+      }
+
+      // 构建关系模板保存数据
+      const getRelationTypeValue = (type) => {
+        switch (type) {
+          case "定向":
+            return "1";
+          case "双向":
+            return "2";
+          case "循环":
+            return "3";
+          default:
+            return "1";
+        }
+      };
+      const relationTemplateData = {
+        topicId: props.topicId,
+        relationTemplateName: localRelationshipName.value,
+        relationTemplateType: getRelationTypeValue(localRelationshipType.value),
+        startNodeTemplateId: props.startNodeTemplateId,
+        endNodeTemplateId: props.endNodeTemplateId,
+        isLibraryFlag: localAddToComponentLibrary.value ? "1" : "0",
+        properties: localEntityProperties.value.map((prop) => ({
+          propertyKey: prop.name,
+          propertyType:
+            prop.type === "string"
+              ? "String"
+              : prop.type === "date"
+                ? "Date"
+                : prop.type === "number"
+                  ? "Number"
+                  : prop.type === "boolean"
+                    ? "Boolean"
+                    : prop.type === "object"
+                      ? "Object"
+                      : prop.type === "array"
+                        ? "Array"
+                        : "String",
+        })),
+      };
+
+      // 调用保存接口
+      await graph.saveRelationTemplate(relationTemplateData);
+      // 保存成功后，调用查询接口更新节点数据
+      try {
+        const templateResponse = await graph.queryTemplate(props.topicId);
+        if (templateResponse && templateResponse.data) {
+          // 触发更新事件，通知父组件更新节点数据
+          emit("update-nodes", templateResponse.data);
+        }
+      } catch (error) {
+        console.error("更新节点数据失败:", error);
+      }
+    }
+
+    // 保存成功提示
+    ElMessage.success("保存成功");
+
+    // 准备保存到父组件的数据
+    const saveData = {
+      currentOperation: props.currentOperation,
+      entityName: localEntityName.value,
+      entityDescription: localEntityDescription.value,
+      entityProperties: localEntityProperties.value.map((prop) => ({
+        ...prop,
+      })),
+      relationshipName: localRelationshipName.value,
+      relationshipDescription: localRelationshipDescription.value,
+      relationshipType: localRelationshipType.value,
+      addToComponentLibrary: localAddToComponentLibrary.value,
+      backgroundColor: localBackgroundColor.value,
+    };
+    emit("save", saveData);
+  } catch (error) {
+    console.error("保存失败:", error);
+    ElMessage.error("保存失败，请重试");
+  }
+};
+
+const handleDeletePropertyPanel = async () => {
+  try {
+    // 弹出确认对话框
+    await ElMessageBox.confirm("确定要删除吗？", "删除确认", {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning",
+    });
+
+    if (props.currentOperation === "entity") {
+      // 检查 nodeTemplateId 是否为空
+      if (!props.nodeTemplateId) {
+        ElMessage.warning("实体模板ID不能为空");
+        return;
+      }
+      // 调用删除接口
+      await graph.deleteNodeTemplate({ nodeTemplateId: props.nodeTemplateId });
+    } else if (props.currentOperation === "relationship") {
+      // 检查 relationTemplateId 是否为空
+      if (!props.relationTemplateId) {
+        ElMessage.warning("关系模板ID不能为空");
+        return;
+      }
+      // 调用删除接口
+      await graph.deleteRelationTemplate({
+        relationTemplateId: props.relationTemplateId,
+      });
+    }
+
+    // 删除成功提示
+    ElMessage.success("删除成功");
+
+    // 关闭属性面板
+    emit("close");
+  } catch (error) {
+    // 如果是用户取消操作，不显示错误信息
+    if (error !== "cancel") {
+      console.error("删除失败:", error);
+      ElMessage.error("删除失败，请重试");
+    }
+  }
 };
 
 const handleAddProperty = () => {
   // 重置新属性数据
-  newProperty.value = { name: "", type: "text" };
+  newProperty.value = { name: "", type: "string" };
   // 打开对话框
   addPropertyDialogVisible.value = true;
 };
@@ -463,7 +667,7 @@ const handleConfirmAddProperty = async () => {
   addPropertyDialogVisible.value = false;
 
   // 重置新属性数据
-  newProperty.value = { name: "", type: "text" };
+  newProperty.value = { name: "", type: "string" };
 
   // 成功提示
   ElMessage.success("属性添加成功");
