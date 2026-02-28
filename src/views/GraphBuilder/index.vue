@@ -72,7 +72,12 @@
           @node-click="handleNodeClick"
           @edge-click="handleEdgeClick"
       />
-      <TextTool class="tool"></TextTool>
+      <TextTool
+          class="tool"
+          @previous-page="hanlePreviousPage"
+          @next-page="hanleNextPage"
+          @jump-page="handleJumpPage"
+      />
     </div>
   </div>
 </template>
@@ -594,7 +599,6 @@ const handleSearchIconClick = async (query) => {
 };
 
 
-
 const handleAddEntity = (position) => {
   currentOperation.value = "entity";
   if (position && (position.x !== undefined || position.y !== undefined)) {
@@ -1092,6 +1096,23 @@ const handleAddTopic = async (name) => {
       console.error("新增专题失败:", error);
     }
   }
+};
+
+//上一页
+const hanlePreviousPage = () => {
+  console.log("previousPage");
+  pageNum.value = pageNum.value - 1;
+}
+
+//下一页
+const hanleNextPage = () => {
+  console.log("nextPage");
+  pageNum.value = pageNum.value + 1;
+};
+
+// 跳页至
+const handleJumpPage = (page: number) => {
+  pageNum.value = page;
 };
 
 // 图谱创建相关状态

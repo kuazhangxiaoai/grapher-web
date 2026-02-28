@@ -3,8 +3,8 @@
     Loading PDF Engine...
   </div>
   <div v-else class="text-processor-root">
-    <EmbedPDF :engine="engine" :plugins="plugins" v-slot="{ activeDocumentId }">
-      <DocumentContent v-if="activeDocumentId" :document-id="activeDocumentId" :current-page="currentPage" v-slot="{ isLoaded }">
+    <EmbedPDF :engine="engine" :plugins="pluginRef" v-slot="{ activeDocumentId }">
+      <DocumentContent v-if="activeDocumentId" :document-id="activeDocumentId" :current-page="props.page" v-slot="{ isLoaded }">
         <TextSelection v-if="isLoaded" :document-id="activeDocumentId" :current-page="currentPage" />
       </DocumentContent>
     </EmbedPDF>
@@ -12,7 +12,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import {ref, computed, onMounted, watch} from 'vue';
 import { usePdfiumEngine } from '@embedpdf/engines/vue';
 import { EmbedPDF } from '@embedpdf/core/vue';
 import { createPluginRegistration } from '@embedpdf/core';
@@ -26,27 +26,43 @@ import { SelectionPluginPackage } from '@embedpdf/plugin-selection/vue';
 import TextSelection from "@/components/common/TextSelection.vue";
 
 const { engine, isLoading } = usePdfiumEngine();
+const pluginRef = ref(null)
 const props = defineProps<{
   src?: string | null;
   page?: number;
-  pageIndex?: number;
 }>();
+const currentPage = ref(0);
 
-// 支持 page 或 pageIndex，GraphBuilder 传 1-based（page 1 = 第一页），embedpdf 使用 0-based
-const currentPage = computed(() => {
-  const page = props.page ?? props.pageIndex ?? 1;
-  return page > 0 ? page - 1 : 0;
+onMounted(()=>{
+  const plugins = [
+    createPluginRegistration(DocumentManagerPluginPackage, {
+      initialDocuments: [{ url: props.src }],
+    }),
+    createPluginRegistration(ViewportPluginPackage),
+    createPluginRegistration(ScrollPluginPackage),
+    createPluginRegistration(RenderPluginPackage),
+    createPluginRegistration(InteractionManagerPluginPackage),
+    createPluginRegistration(SelectionPluginPackage),
+  ];
+  pluginRef.value = plugins;
+})
+
+watch([() => props.src, () => props.page], () => {
+  const plugins = [
+    createPluginRegistration(DocumentManagerPluginPackage, {
+      initialDocuments: [{ url: props.src }],
+    }),
+    createPluginRegistration(ViewportPluginPackage),
+    createPluginRegistration(ScrollPluginPackage),
+    createPluginRegistration(RenderPluginPackage),
+    createPluginRegistration(InteractionManagerPluginPackage),
+    createPluginRegistration(SelectionPluginPackage),
+  ];
+  pluginRef.value = plugins;
+  currentPage.value = props.page;
 });
-const plugins = [
-  createPluginRegistration(DocumentManagerPluginPackage, {
-    initialDocuments: [{ url: props.src }],
-  }),
-  createPluginRegistration(ViewportPluginPackage),
-  createPluginRegistration(ScrollPluginPackage),
-  createPluginRegistration(RenderPluginPackage),
-  createPluginRegistration(InteractionManagerPluginPackage),
-  createPluginRegistration(SelectionPluginPackage),
-];
+
+
 
 </script>
 

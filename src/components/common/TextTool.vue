@@ -2,10 +2,17 @@
 <template>
   <div class="graph-tool">
     <div class="previous-page" title="上一页" @click="handlePreviousPageClick"/>
-    <div class="next-page" title="下一页"/>
-    <div class="jump-page" title="跳页至"/>
+    <div class="next-page" title="下一页" @click="handleNextPageClick"/>
+    <div class="jump-page" title="跳页至" @click="openJumpPageDialog"/>
     <div class="refresh" title="刷新"/>
     <div class="edit" title="编辑图谱"/>
+    <JumpPageDialog
+      v-if="showJumpPageDialog"
+      :total-pages="textStore.totalPages"
+      :current-page="textStore.currentPage"
+      @close="showJumpPageDialog = false"
+      @jump-page="handleJumpPage"
+    />
   </div>
 </template>
 
@@ -13,12 +20,26 @@
 import {ref, watch, onUnmounted} from "vue";
 import {useTextStore} from "@/store/useTextStore";
 import {storeToRefs} from "pinia";
-
+import JumpPageDialog from "@/components/common/JumpPageDialog.vue";
+const emit = defineEmits(["next-page", "jump-page", "refresh", "previous-page", "editgraph"]);
 const textStore = useTextStore();
-const {currentPage, totalPages} = storeToRefs(textStore);
+const showJumpPageDialog = ref(false);
 const handlePreviousPageClick = () => {
-
+  emit("previous-page");
 }
+
+const handleNextPageClick = () => {
+  emit("next-page");
+}
+
+const openJumpPageDialog = () => {
+  showJumpPageDialog.value = true;
+};
+
+const handleJumpPage = (page: number) => {
+  showJumpPageDialog.value = false;
+  emit("jump-page", page);
+};
 
 </script>
 

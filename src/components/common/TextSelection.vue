@@ -24,12 +24,13 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue';
+import {ref, onMounted, onUnmounted, computed, watch} from 'vue';
 import { Viewport } from '@embedpdf/plugin-viewport/vue';
-import { Scroller } from '@embedpdf/plugin-scroll/vue';
+import { Scroller, useScroll } from '@embedpdf/plugin-scroll/vue';
 import { RenderLayer } from '@embedpdf/plugin-render/vue';
 import { PagePointerProvider } from '@embedpdf/plugin-interaction-manager/vue';
 import { SelectionLayer, useSelectionCapability } from '@embedpdf/plugin-selection/vue';
+import { useTextStore } from '@/store/useTextStore';
 
 const props = withDefaults(
   defineProps<{
@@ -39,7 +40,35 @@ const props = withDefaults(
   { currentPage: 0 },
 );
 
-const { documentId, currentPage } = props;
+// 用 computed 保持响应式，解构 props 会丢失响应性导致翻页不重新渲染
+const currentPage = computed(() => props.currentPage ?? 0);
+
+// 翻页后需要视口到当前页
+const { provides: scrollScope, state: scrollState } = useScroll(() => props.documentId);
+const scrollScopeRef = computed(() => scrollScope.value);
+const textStore = useTextStore();
+
+// 根据 embedpdf 的 scroll 状态计算并同步总页数到 store
+watch(
+  () => scrollState.value?.totalPages,
+  (totalPages) => {
+    if (totalPages != null && totalPages > 0) {
+      textStore.setTotalPages(totalPages);
+    }
+  },
+  { immediate: true },
+);
+watch(
+  () => props.currentPage,
+  (page) => {
+    const scope = scrollScopeRef.value;
+    if (scope != null && page != null) {
+      // embedpdf 的 pageNumber 是 1-based，我们 currentPage 是 0-based
+      scope.scrollToPage({ pageNumber: page + 1, behavior: 'smooth' });
+    }
+  },
+  { immediate: true },
+);
 
 const { provides: selectionCapability } = useSelectionCapability();
 const selection = computed(() => selectionCapability.value?.forDocument(props.documentId));
@@ -67,7 +96,7 @@ onMounted(() => {
     const textTask = selection.value!.getSelectedText();
     textTask.wait((textLines) => {
       selectedText.value = textLines.join('\n');
-    }, ignore);
+    });
   });
 });
 
@@ -92,6 +121,10 @@ const handleCopyFromMenu = () => {
     menuCopied.value = false;
   }, 1500);
 };
+
+watch([() => props.documentId, () => props.currentPage], () => {
+
+});
 
 </script>
 
