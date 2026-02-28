@@ -257,7 +257,7 @@ const calculateNodeSize = (nodeData) => {
     properties.forEach((property, index) => {
       if (typeof property === "object" && property !== null) {
         const propName = property.name || `属性${index + 1}`;
-        const propType = property.type || "text";
+        const propType = property.type || "string";
         const propText = `${propName}: ${propType}`;
         const propWidth = calculateTextWidth(propText) + PADDING.width * 2;
         maxPropertyWidth = Math.max(maxPropertyWidth, propWidth);
@@ -312,7 +312,7 @@ const calculateNodeSize = (nodeData) => {
 const formatLabelText = (data) => {
   // 类型映射：英文 -> 中文
   const typeMap = {
-    text: "文本",
+    string: "文本",
     number: "数字",
     date: "日期",
     boolean: "布尔",
@@ -334,7 +334,7 @@ const formatLabelText = (data) => {
     properties.forEach((property, index) => {
       if (typeof property === "object" && property !== null) {
         const propName = property.name || `属性${index + 1}`;
-        const propType = property.type || "text";
+        const propType = property.type || "string";
         const chineseType = typeMap[propType] || propType;
         text += `${propName}           ${chineseType}\n`;
       } else {
@@ -378,19 +378,28 @@ const initGraph = () => {
 
   try {
     const formattedNodes = props.nodes.map((node) => {
-      const nodeX = node.x || width / 2;
-      const nodeY = node.y || height / 2;
+      let nodeX = node.x || width / 2;
+      let nodeY = node.y || height / 2;
 
       const nodeSize = calculateNodeSize({
         data: {
           name: node.name || "节点",
           type: node.type || "人物",
           properties: node.properties || [
-            { name: "名字", type: "text" },
+            { name: "名字", type: "string" },
             { name: "日期", type: "date" },
           ],
         },
       });
+
+      // 边界检查，确保节点不超出画布范围
+      const nodeHalfWidth = nodeSize.width / 2;
+      const nodeHalfHeight = nodeSize.height / 2;
+      nodeX = Math.max(nodeHalfWidth, Math.min(width - nodeHalfWidth, nodeX));
+      nodeY = Math.max(
+        nodeHalfHeight,
+        Math.min(height - nodeHalfHeight, nodeY),
+      );
 
       // 确保节点 ID 与 Home 组件中的格式一致
       const nodeId = typeof node.id === "string" ? node.id : node.id.toString();
@@ -405,14 +414,16 @@ const initGraph = () => {
           name: node.name || "节点",
           type: node.type || "人物",
           properties: node.properties || [
-            { name: "名字", type: "text" },
+            { name: "名字", type: "string" },
             { name: "日期", type: "date" },
           ],
+          backgroundColor: node.backgroundColor || "#43D7B5",
         },
         style: {
           x: nodeX,
           y: nodeY,
           fill: "#fff",
+          // stroke: node.backgroundColor || "#43D7B5",
           stroke: "#43D7B5",
           lineWidth: 2,
           radius: 8,
@@ -442,6 +453,9 @@ const initGraph = () => {
         type: "rect",
         style: {
           fill: "#fff",
+          // stroke: (data) => {
+          //   return data.data?.backgroundColor || "#43D7B5";
+          // },
           stroke: "#43D7B5",
           lineWidth: 2,
           radius: 8,
@@ -627,7 +641,7 @@ const initGraph = () => {
           enable: true,
         },
       ],
-      animation: false,
+      animation: true,
       autoResize: true,
     });
 
@@ -1671,11 +1685,20 @@ const renderGraph = () => {
           name: node.name || "节点",
           type: node.type || "人物",
           properties: node.properties || [
-            { name: "名字", type: "text" },
+            { name: "名字", type: "string" },
             { name: "日期", type: "date" },
           ],
         },
       });
+
+      // 边界检查，确保节点不超出画布范围
+      const nodeHalfWidth = nodeSize.width / 2;
+      const nodeHalfHeight = nodeSize.height / 2;
+      nodeX = Math.max(nodeHalfWidth, Math.min(width - nodeHalfWidth, nodeX));
+      nodeY = Math.max(
+        nodeHalfHeight,
+        Math.min(height - nodeHalfHeight, nodeY),
+      );
 
       console.log(
         `renderGraph节点原始ID: ${node.id}, 类型: ${typeof node.id}, 转换后ID: ${nodeId}, 类型: ${typeof nodeId}`,
@@ -1688,14 +1711,16 @@ const renderGraph = () => {
           name: node.name || "节点",
           type: node.type || "人物",
           properties: node.properties || [
-            { name: "名字", type: "text" },
+            { name: "名字", type: "string" },
             { name: "日期", type: "date" },
           ],
+          backgroundColor: node.backgroundColor || "#43D7B5",
         },
         style: {
           x: nodeX,
           y: nodeY,
           fill: "#fff",
+          // stroke: node.backgroundColor || "#43D7B5",
           stroke: "#43D7B5",
           lineWidth: 2,
           radius: 8,
