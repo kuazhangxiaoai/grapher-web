@@ -1890,6 +1890,8 @@ const handleUpdateNodes = (templateData) => {
   if (templateData && templateData.nodeTemplates) {
     // 清空现有节点数据
     graphNodes.value = [];
+    // 清空实体类型数组，准备重新构建
+    entityTypes.value = [];
 
     // 为节点模板分配位置（均匀分散分布）
     const nodeCount = templateData.nodeTemplates.length;
@@ -1900,11 +1902,8 @@ const handleUpdateNodes = (templateData) => {
     const padding = 100; // 减小边距，让节点更靠近画布边缘
 
     templateData.nodeTemplates.forEach((template, index) => {
-      // 检查实体类型数组中是否已存在该节点模板名称
-      if (
-        template.nodeTemplateName &&
-        !entityTypes.value.includes(template.nodeTemplateName)
-      ) {
+      // 添加节点模板名称到实体类型数组
+      if (template.nodeTemplateName) {
         entityTypes.value.push(template.nodeTemplateName);
       }
 
@@ -1967,16 +1966,15 @@ const handleUpdateNodes = (templateData) => {
     if (templateData.relationTemplates) {
       // 清空现有关系数据
       graphEdges.value = [];
+      // 清空关系类型数组，准备重新构建
+      relationshipTypes.value = [];
 
       // 创建节点 ID 集合，用于快速检查节点是否存在
       const nodeIds = new Set(graphNodes.value.map((node) => node.id));
 
       templateData.relationTemplates.forEach((template) => {
-        // 检查关系类型数组中是否已存在该关系模板名称
-        if (
-          template.relationTemplateName &&
-          !relationshipTypes.value.includes(template.relationTemplateName)
-        ) {
+        // 添加关系模板名称到关系类型数组
+        if (template.relationTemplateName) {
           relationshipTypes.value.push(template.relationTemplateName);
         }
 

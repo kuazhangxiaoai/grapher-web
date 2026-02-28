@@ -608,6 +608,17 @@ const handleDeletePropertyPanel = async () => {
     // 删除成功提示
     ElMessage.success("删除成功");
 
+    // 保存成功后，调用查询接口更新节点数据
+    try {
+      const templateResponse = await graph.queryTemplate(props.topicId);
+      if (templateResponse && templateResponse.data) {
+        // 触发更新事件，通知父组件更新节点数据
+        emit("update-nodes", templateResponse.data);
+      }
+    } catch (error) {
+      console.error("更新节点数据失败:", error);
+    }
+
     // 关闭属性面板
     emit("close");
   } catch (error) {
