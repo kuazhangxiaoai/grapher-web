@@ -392,7 +392,10 @@
           </div>
         </div>
         <!-- 空状态 -->
-        <div class="graph-list" v-else-if="entityTypes.length === 0">
+        <div
+          class="graph-list"
+          v-else-if="entityTypes.length === 0 && relationshipTypes.length === 0"
+        >
           <!-- 空状态 -->
           <div class="empty-list">
             <div class="list-placeholder">
