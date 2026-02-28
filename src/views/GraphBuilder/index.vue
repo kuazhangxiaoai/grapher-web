@@ -49,7 +49,7 @@
         @cancel="handleCancelCreateGraph"
     />
     <div class="text-container">
-      <TextProcessor :src="textUrl"></TextProcessor>
+      <Text :src="textUrl" :page="pageNum"></Text>
     </div>
     <div class="graph-container">
       <Content
@@ -83,12 +83,13 @@ import { ElMessage as Message } from "element-plus";
 import Sidebar from "@/components/common/Sidebar.vue";
 import AddGraphDialog from "@/components/common/AddGraphDialog.vue";
 import projectService from "@/services/graph.ts"
-import TextProcessor from "@/components/common/TextProcessor.vue";
+import Text from "@/components/common/Text.vue";
 import {useConverter} from "@/mock/modules/converter.ts";
 import Content from "@/components/common/Content.vue";
 import {GraphConfig} from "@/configs/graph.js";
 
 const contentRef = ref(null);
+const pageNum = ref(1);
 const textUrl = ref("http://10.11.52.199:8090/pdf/%E5%8C%97%E4%BA%AC%E5%B8%82%E6%80%BB%E4%BD%93%E8%A7%84%E5%88%922016-2035.pdf");
 const {graphTypeString2Integer} = useConverter()
 // 从localStorage读取状态，或使用默认值
