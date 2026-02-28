@@ -21,14 +21,19 @@ import {ref, watch, onUnmounted} from "vue";
 import {useTextStore} from "@/store/useTextStore";
 import {storeToRefs} from "pinia";
 import JumpPageDialog from "@/components/common/JumpPageDialog.vue";
+import {ElMessageBox} from "element-plus";
 const emit = defineEmits(["next-page", "jump-page", "refresh", "previous-page", "editgraph"]);
 const textStore = useTextStore();
 const showJumpPageDialog = ref(false);
 const handlePreviousPageClick = () => {
+  if(textStore.currentPage <= 1) return;
+  textStore.previousPage()
   emit("previous-page");
 }
 
 const handleNextPageClick = () => {
+  if(textStore.currentPage >= textStore.totalPages) return;
+  textStore.nextPage()
   emit("next-page");
 }
 
@@ -38,6 +43,7 @@ const openJumpPageDialog = () => {
 
 const handleJumpPage = (page: number) => {
   showJumpPageDialog.value = false;
+  textStore.setCurrentPage(page);
   emit("jump-page", page);
 };
 

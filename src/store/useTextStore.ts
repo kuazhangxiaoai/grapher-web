@@ -18,6 +18,9 @@ export const useTextStore = defineStore('textStore', {
         setTotalPages(totalPages: number) {
             this.totalPages = totalPages;
         },
+        setCurrentPage(page: number) {
+            this.currentPage = page;
+        },
         previousPage(){
             this.currentPage--;
             this.savePageInfo();

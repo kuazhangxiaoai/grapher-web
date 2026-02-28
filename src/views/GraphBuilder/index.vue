@@ -1098,21 +1098,32 @@ const handleAddTopic = async (name) => {
   }
 };
 
+// 页码改变时在屏幕上方提示当前页码
+const notifyPageChange = (num: number) => {
+  const displayPage = num <= 0 ? 1 : num + 1;
+  Message({
+    message: `当前页码：${displayPage}`,
+    type: "info",
+    customClass: "page-notify-message",
+  });
+};
+
 //上一页
 const hanlePreviousPage = () => {
-  console.log("previousPage");
-  pageNum.value = pageNum.value - 1;
-}
+  pageNum.value = Math.max(0, pageNum.value - 1);
+  notifyPageChange(pageNum.value);
+};
 
 //下一页
 const hanleNextPage = () => {
-  console.log("nextPage");
   pageNum.value = pageNum.value + 1;
+  notifyPageChange(pageNum.value);
 };
 
 // 跳页至
 const handleJumpPage = (page: number) => {
   pageNum.value = page;
+  notifyPageChange(pageNum.value);
 };
 
 // 图谱创建相关状态
@@ -1298,5 +1309,13 @@ const handleModeChange = (mode) => {
   left: 25%;
   bottom: 5%;
   height: 45px;
+}
+</style>
+
+<style lang="scss">
+/* 页码提示字体颜色优化 */
+.page-notify-message .el-message__content {
+  color: #303133;
+  font-weight: 500;
 }
 </style>
