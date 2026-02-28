@@ -5,6 +5,7 @@
     <div class="next-page" title="下一页"/>
     <div class="jump-page" title="跳页至"/>
     <div class="refresh" title="刷新"/>
+    <div class="edit" title="编辑图谱"/>
   </div>
 </template>
 
@@ -16,7 +17,7 @@
 .graph-tool {
   position: absolute;
   display: flex;
-  width: 100%;
+  width: 202px;
   height: 100%;
   border: 2px solid #3dd2b0;
   background-color: #f8f9fa;
@@ -50,7 +51,7 @@
 .previous-page{
   position: relative;
   display: flex;
-  width: 11%;
+  width: 20%;
   height: 100%;
   place-content: center;
   align-items: center;
@@ -66,7 +67,7 @@
 .next-page{
   position: relative;
   display: flex;
-  width: 11%;
+  width: 20%;
   height: 100%;
   place-content: center;
   align-items: center;
@@ -82,7 +83,7 @@
 .jump-page{
   position: relative;
   display: flex;
-  width: 11%;
+  width: 20%;
   height: 100%;
   place-content: center;
   align-items: center;
@@ -98,7 +99,7 @@
 .refresh{
   position: relative;
   display: flex;
-  width: 11%;
+  width: 20%;
   height: 100%;
   place-content: center;
   align-items: center;
@@ -110,5 +111,21 @@
 .refresh:hover{
   cursor: pointer;
   background-image: url('@/assets/images/刷新-点击.png');
+}
+.edit{
+  position: relative;
+  display: flex;
+  width: 20%;
+  height: 100%;
+  place-content: center;
+  align-items: center;
+  padding: 2px 2px;
+  background-image: url('@/assets/images/编辑1.png');
+  background-size: contain;
+  border-bottom: 1px solid #e4e7ed;
+}
+.edit:hover{
+  cursor: pointer;
+  background-image: url('@/assets/images/编辑2.png');
 }
 </style>
