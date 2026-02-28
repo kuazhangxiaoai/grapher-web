@@ -447,23 +447,31 @@
           <div class="data-section">
             <h3>关系模板</h3>
             <div class="relationship-types">
-              <span class="empty-data-msg" v-if="relationshipTypes.length === 0"
+              <span class="empty-data-msg" v-if="relationTemplates.length === 0"
                 >暂无关系模板</span
               >
               <div
-                v-for="(type, index) in relationshipTypes"
-                :key="index"
+                v-for="template in relationTemplates"
+                :key="template.relationTemplateId"
                 class="relationship-type-item"
                 :class="{
                   'relationship-type-item-selected':
-                    selectedRelationshipType === type,
+                    selectedRelationshipType === template.relationTemplateName,
                 }"
                 draggable="true"
-                @dragstart="handleDragStart($event, 'relationship', type)"
+                @dragstart="
+                  handleDragStart(
+                    $event,
+                    'relationship',
+                    template.relationTemplateName,
+                  )
+                "
                 @dragend="handleDragEnd"
-                @click="handleRelationshipTypeClick(type)"
+                @click="
+                  handleRelationshipTypeClick(template.relationTemplateName)
+                "
               >
-                {{ type }}
+                {{ template.relationTemplateName }}
               </div>
             </div>
           </div>
@@ -647,6 +655,10 @@ const props = defineProps({
     default: () => [],
   },
   relationshipTypes: {
+    type: Array,
+    default: () => [],
+  },
+  relationTemplates: {
     type: Array,
     default: () => [],
   },
