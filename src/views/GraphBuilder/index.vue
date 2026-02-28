@@ -72,6 +72,7 @@
           @node-click="handleNodeClick"
           @edge-click="handleEdgeClick"
       />
+      <TextTool class="tool"></TextTool>
     </div>
   </div>
 </template>
@@ -87,6 +88,7 @@ import Text from "@/components/common/Text.vue";
 import {useConverter} from "@/mock/modules/converter.ts";
 import Content from "@/components/common/Content.vue";
 import {GraphConfig} from "@/configs/graph.js";
+import TextTool from "@/components/common/TextTool.vue";
 
 const contentRef = ref(null);
 const pageNum = ref(1);
@@ -1269,5 +1271,12 @@ const handleModeChange = (mode) => {
   height: 100%;
   top: 0;
   left: 0;
+}
+.tool{
+  position: absolute;
+  left: 25%;
+  bottom: 5%;
+  width: 50%;
+  height: 45px;
 }
 </style>

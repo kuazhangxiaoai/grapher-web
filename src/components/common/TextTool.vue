@@ -1,0 +1,114 @@
+
+<template>
+  <div class="graph-tool">
+    <div class="previous-page" title="上一页"/>
+    <div class="next-page" title="下一页"/>
+    <div class="jump-page" title="跳页至"/>
+    <div class="refresh" title="刷新"/>
+  </div>
+</template>
+
+<script setup lang="ts">
+
+</script>
+
+<style scoped lang="scss">
+.graph-tool {
+  position: absolute;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  border: 2px solid #3dd2b0;
+  background-color: #f8f9fa;
+  border-radius: 10px;
+}
+.toolbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px;
+  background: #fff;
+  border-bottom: 1px solid #e4e7ed;
+}
+.nav-btn {
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: 1px solid #dcdfe6;
+  background: #fff;
+  cursor: pointer;
+  font-size: 12px;
+}
+.nav-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.page-info {
+  font-size: 12px;
+  color: #606266;
+}
+.previous-page{
+  position: relative;
+  display: flex;
+  width: 11%;
+  height: 100%;
+  place-content: center;
+  align-items: center;
+  padding: 2px 2px;
+  background-image: url('@/assets/images/上一页.png');
+  background-size: contain;
+  border-bottom: 1px solid #e4e7ed;
+}
+.previous-page:hover{
+  cursor: pointer;
+  background-image: url('@/assets/images/上一页-点击.png');
+}
+.next-page{
+  position: relative;
+  display: flex;
+  width: 11%;
+  height: 100%;
+  place-content: center;
+  align-items: center;
+  padding: 2px 2px;
+  background-image: url('@/assets/images/下一页.png');
+  background-size: contain;
+  border-bottom: 1px solid #e4e7ed;
+}
+.next-page:hover{
+  cursor: pointer;
+  background-image: url('@/assets/images/下一页-点击.png');
+}
+.jump-page{
+  position: relative;
+  display: flex;
+  width: 11%;
+  height: 100%;
+  place-content: center;
+  align-items: center;
+  padding: 2px 2px;
+  background-image: url('@/assets/images/跳页.png');
+  background-size: contain;
+  border-bottom: 1px solid #e4e7ed;
+}
+.jump-page:hover{
+  cursor: pointer;
+  background-image: url('@/assets/images/跳页-点击.png');
+}
+.refresh{
+  position: relative;
+  display: flex;
+  width: 11%;
+  height: 100%;
+  place-content: center;
+  align-items: center;
+  padding: 2px 2px;
+  background-image: url('@/assets/images/刷新.png');
+  background-size: contain;
+  border-bottom: 1px solid #e4e7ed;
+}
+.refresh:hover{
+  cursor: pointer;
+  background-image: url('@/assets/images/刷新-点击.png');
+}
+</style>
