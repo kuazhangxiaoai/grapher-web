@@ -76,12 +76,17 @@ const handleCancel = () => {
 
 const handleConfirm = () => {
   const page = form.value.selectedPage;
+  if(page == textStore.currentPage) {
+    emit("close")
+    return;
+  }
   if (page >= 1 && page <= props.totalPages) {
     textStore.jumpPage(page);
     emit("jump-page", page);
     dialogVisible.value = false;
     emit("close");
   }
+
 };
 </script>
 

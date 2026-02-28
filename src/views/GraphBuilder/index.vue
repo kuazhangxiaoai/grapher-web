@@ -49,7 +49,7 @@
         @cancel="handleCancelCreateGraph"
     />
     <div class="text-container">
-      <Text :src="textUrl" :page="pageNum"></Text>
+      <Text :src="textUrl" :page="currentPage"></Text>
     </div>
     <div class="graph-container">
       <Content
@@ -94,9 +94,12 @@ import {useConverter} from "@/mock/modules/converter.ts";
 import Content from "@/components/common/Content.vue";
 import {GraphConfig} from "@/configs/graph.js";
 import TextTool from "@/components/common/TextTool.vue";
+import {storeToRefs} from "pinia";
+import {useTextStore} from "@/store/useTextStore";
 
+const textStore = useTextStore();
 const contentRef = ref(null);
-const pageNum = ref(0);
+const {currentPage} = storeToRefs(textStore)
 const textUrl = ref("http://10.11.52.199:8090/pdf/%E5%8C%97%E4%BA%AC%E5%B8%82%E6%80%BB%E4%BD%93%E8%A7%84%E5%88%922016-2035.pdf");
 const {graphTypeString2Integer} = useConverter()
 // 从localStorage读取状态，或使用默认值
@@ -1099,30 +1102,23 @@ const handleAddTopic = async (name) => {
 };
 
 // 页码改变时在屏幕上方提示当前页码
-const notifyPageChange = (num: number) => {
-  const displayPage = num <= 0 ? 1 : num + 1;
-  Message({
-    message: `当前页码：${displayPage}`,
-    type: "info",
-    customClass: "page-notify-message",
-  });
-};
+
 
 //上一页
 const hanlePreviousPage = () => {
-  pageNum.value = Math.max(0, pageNum.value - 1);
+  //pageNum.value = Math.max(0, pageNum.value - 1);
   notifyPageChange(pageNum.value);
 };
 
 //下一页
 const hanleNextPage = () => {
-  pageNum.value = pageNum.value + 1;
+  //pageNum.value = pageNum.value + 1;
   notifyPageChange(pageNum.value);
 };
 
 // 跳页至
 const handleJumpPage = (page: number) => {
-  pageNum.value = page;
+  //pageNum.value = page;
   notifyPageChange(pageNum.value);
 };
 
