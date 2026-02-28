@@ -682,6 +682,9 @@ const handleBackToDomains = () => {
   currentSubDomain.value = "";
   subDomains.value = [];
   subSubDomains.value = [];
+  // 清空画布数据
+  graphNodes.value = [];
+  graphEdges.value = [];
   // 返回领域列表时隐藏属性面板
   showPropertyPanel.value = false;
   // 切换回领域页面，更新下拉框显示领域搜索历史
@@ -693,6 +696,9 @@ const handleBackToSubDomains = () => {
   const previousSubDomain = currentSubDomain.value;
   currentSubDomain.value = "";
   subSubDomains.value = [];
+  // 清空画布数据
+  graphNodes.value = [];
+  graphEdges.value = [];
   // 返回子领域列表时隐藏属性面板
   showPropertyPanel.value = false;
   // 可以在这里更新子领域的数量
@@ -710,6 +716,9 @@ const handleDomainClick = async (domain) => {
   currentSubDomain.value = "";
   // 切换领域时隐藏属性面板
   showPropertyPanel.value = false;
+  // 清空画布数据
+  graphNodes.value = [];
+  graphEdges.value = [];
 
   // 立即清空topics列表，避免显示上一个领域的专题数据
   topics.value = [];
@@ -945,9 +954,9 @@ const handleTopicClick = async (topic, skipComponentLibrarySearch = false) => {
             const nodeCount = response.data.nodeTemplates.length;
             const nodePositions = [];
 
-            // 计算画布大小，使用更大的范围
-            const canvasWidth = 1400;
-            const canvasHeight = 900;
+            // 计算画布大小，使用容器大小
+            const { width: canvasWidth, height: canvasHeight } =
+              getCanvasSize();
             const padding = 100; // 减小边距，让节点更靠近画布边缘
 
             // 生成均匀分散的位置
@@ -959,20 +968,31 @@ const handleTopicClick = async (topic, skipComponentLibrarySearch = false) => {
                 entityTypes.value.push(template.nodeTemplateName);
               }
 
-              // 计算节点位置：如果只有一个节点，放在中心；否则以中心向外发散
+              // 计算节点位置：如果只有一个节点，放在中心；否则使用圆形布局均匀分布
               let x, y;
               if (nodeCount === 1) {
                 // 只有一个节点时放在画布中心
                 x = canvasWidth / 2;
                 y = canvasHeight / 2;
               } else {
-                // 多个节点时以中心为基准，随机生成位置，但确保不靠近边缘
+                // 多个节点时使用圆形布局，均匀分布在一个圆周上
                 const centerX = canvasWidth / 2;
                 const centerY = canvasHeight / 2;
-                const maxOffsetX = (canvasWidth - 2 * padding) / 2;
-                const maxOffsetY = (canvasHeight - 2 * padding) / 2;
-                x = centerX + (Math.random() - 0.5) * 2 * maxOffsetX;
-                y = centerY + (Math.random() - 0.5) * 2 * maxOffsetY;
+                // 计算圆的半径，考虑边距，增加半径使节点更分散
+                const radius = Math.min(
+                  (canvasWidth - 2 * padding) / 1.5,
+                  (canvasHeight - 2 * padding) / 1.5,
+                );
+                // 计算每个节点的角度
+                const angle = (2 * Math.PI * index) / nodeCount;
+                // 计算节点位置
+                x = centerX + radius * Math.cos(angle);
+                y = centerY + radius * Math.sin(angle);
+
+                // 添加一些随机偏移，增加分散度
+                const randomOffset = 50; // 偏移量
+                x += (Math.random() - 0.5) * randomOffset;
+                y += (Math.random() - 0.5) * randomOffset;
               }
 
               // 保存位置
@@ -1848,6 +1868,22 @@ const handleEdgeClick = (edge) => {
   console.log("设置showPropertyPanel为true");
 };
 
+// 获取画布容器大小
+const getCanvasSize = () => {
+  // 尝试获取窗口大小，作为画布大小的参考
+  const windowWidth = window.innerWidth;
+  const windowHeight = window.innerHeight;
+
+  // 考虑到页面布局，减去一定的边距和其他元素的高度
+  const canvasWidth = Math.max(800, windowWidth - 400); // 减去侧边栏和其他元素的宽度
+  const canvasHeight = Math.max(600, windowHeight - 200); // 减去顶部导航栏和其他元素的高度
+
+  return {
+    width: canvasWidth,
+    height: canvasHeight,
+  };
+};
+
 // 处理节点数据更新
 const handleUpdateNodes = (templateData) => {
   console.log("更新节点数据:", templateData);
@@ -1859,9 +1895,8 @@ const handleUpdateNodes = (templateData) => {
     const nodeCount = templateData.nodeTemplates.length;
     const nodePositions = [];
 
-    // 计算画布大小，使用更大的范围
-    const canvasWidth = 1400;
-    const canvasHeight = 900;
+    // 计算画布大小，使用容器大小
+    const { width: canvasWidth, height: canvasHeight } = getCanvasSize();
     const padding = 100; // 减小边距，让节点更靠近画布边缘
 
     templateData.nodeTemplates.forEach((template, index) => {
@@ -1873,20 +1908,31 @@ const handleUpdateNodes = (templateData) => {
         entityTypes.value.push(template.nodeTemplateName);
       }
 
-      // 计算节点位置：如果只有一个节点，放在中心；否则以中心向外发散
+      // 计算节点位置：如果只有一个节点，放在中心；否则使用圆形布局均匀分布
       let x, y;
       if (nodeCount === 1) {
         // 只有一个节点时放在画布中心
         x = canvasWidth / 2;
         y = canvasHeight / 2;
       } else {
-        // 多个节点时以中心为基准，随机生成位置，但确保不靠近边缘
+        // 多个节点时使用圆形布局，均匀分布在一个圆周上
         const centerX = canvasWidth / 2;
         const centerY = canvasHeight / 2;
-        const maxOffsetX = (canvasWidth - 2 * padding) / 2;
-        const maxOffsetY = (canvasHeight - 2 * padding) / 2;
-        x = centerX + (Math.random() - 0.5) * 2 * maxOffsetX;
-        y = centerY + (Math.random() - 0.5) * 2 * maxOffsetY;
+        // 计算圆的半径，考虑边距，增加半径使节点更分散
+        const radius = Math.min(
+          (canvasWidth - 2 * padding) / 1.5,
+          (canvasHeight - 2 * padding) / 1.5,
+        );
+        // 计算每个节点的角度
+        const angle = (2 * Math.PI * index) / nodeCount;
+        // 计算节点位置
+        x = centerX + radius * Math.cos(angle);
+        y = centerY + radius * Math.sin(angle);
+
+        // 添加一些随机偏移，增加分散度
+        const randomOffset = 50; // 偏移量
+        x += (Math.random() - 0.5) * randomOffset;
+        y += (Math.random() - 0.5) * randomOffset;
       }
 
       // 保存位置

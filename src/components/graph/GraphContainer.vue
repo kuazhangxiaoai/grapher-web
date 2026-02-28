@@ -378,8 +378,8 @@ const initGraph = () => {
 
   try {
     const formattedNodes = props.nodes.map((node) => {
-      const nodeX = node.x || width / 2;
-      const nodeY = node.y || height / 2;
+      let nodeX = node.x || width / 2;
+      let nodeY = node.y || height / 2;
 
       const nodeSize = calculateNodeSize({
         data: {
@@ -391,6 +391,15 @@ const initGraph = () => {
           ],
         },
       });
+
+      // 边界检查，确保节点不超出画布范围
+      const nodeHalfWidth = nodeSize.width / 2;
+      const nodeHalfHeight = nodeSize.height / 2;
+      nodeX = Math.max(nodeHalfWidth, Math.min(width - nodeHalfWidth, nodeX));
+      nodeY = Math.max(
+        nodeHalfHeight,
+        Math.min(height - nodeHalfHeight, nodeY),
+      );
 
       // 确保节点 ID 与 Home 组件中的格式一致
       const nodeId = typeof node.id === "string" ? node.id : node.id.toString();
@@ -1681,6 +1690,15 @@ const renderGraph = () => {
           ],
         },
       });
+
+      // 边界检查，确保节点不超出画布范围
+      const nodeHalfWidth = nodeSize.width / 2;
+      const nodeHalfHeight = nodeSize.height / 2;
+      nodeX = Math.max(nodeHalfWidth, Math.min(width - nodeHalfWidth, nodeX));
+      nodeY = Math.max(
+        nodeHalfHeight,
+        Math.min(height - nodeHalfHeight, nodeY),
+      );
 
       console.log(
         `renderGraph节点原始ID: ${node.id}, 类型: ${typeof node.id}, 转换后ID: ${nodeId}, 类型: ${typeof nodeId}`,
