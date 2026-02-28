@@ -1,7 +1,7 @@
 
 <template>
   <div class="graph-tool">
-    <div class="previous-page" title="上一页"/>
+    <div class="previous-page" title="上一页" @click="handlePreviousPageClick"/>
     <div class="next-page" title="下一页"/>
     <div class="jump-page" title="跳页至"/>
     <div class="refresh" title="刷新"/>
@@ -10,6 +10,15 @@
 </template>
 
 <script setup lang="ts">
+import {ref, watch, onUnmounted} from "vue";
+import {useTextStore} from "@/store/useTextStore";
+import {storeToRefs} from "pinia";
+
+const textStore = useTextStore();
+const {currentPage, totalPages} = storeToRefs(textStore);
+const handlePreviousPageClick = () => {
+
+}
 
 </script>
 
