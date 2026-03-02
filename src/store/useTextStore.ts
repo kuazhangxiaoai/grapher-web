@@ -39,8 +39,14 @@ export const useTextStore = defineStore('textStore', {
         setMark(mark: Mark){
             this.markList = [mark];
         },
+        addMark(mark: Mark){
+            this.markList.push(mark);
+        },
         setMarkList(markList: Mark[]){
             this.markList = markList;
+        },
+        clearMarkList(){
+            this.markList = [];
         }
 
     },

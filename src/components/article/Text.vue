@@ -54,7 +54,14 @@ const drawMark = (mark: Mark) => {
   textSelectionRef.value?.drawMark?.(mark);
 };
 
-defineExpose({ drawMark });
+const clearMark = () => {
+  textSelectionRef.value?.clearMark?.();
+}
+
+const clearEditing = () => {
+  textSelectionRef.value?.clearEditing?.();
+}
+defineExpose({ drawMark, clearMark, clearEditing });
 
 onMounted(()=>{
   const plugins = [
@@ -84,8 +91,6 @@ watch([() => props.src, () => props.page], () => {
   pluginRef.value = plugins;
   currentPage.value = props.page;
 });
-
-
 
 </script>
 

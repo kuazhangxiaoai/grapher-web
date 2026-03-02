@@ -1026,7 +1026,7 @@ const handlePdfSelectionChange = (payload: Mark) => {
   pdfSelectionRects.value = payload.rects ?? [];
   pdfSelectionMark.value = payload;
 
-  textStore.setMark(payload);
+  textStore.addMark(payload);
   // 在 PDF 上绘制该选区下划线（通过 Text → TextSelection.drawMark）
   textRef.value?.drawMark?.(payload);
 };

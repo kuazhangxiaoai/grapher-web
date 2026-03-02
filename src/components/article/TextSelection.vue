@@ -94,16 +94,39 @@ const emit = defineEmits<{ (e: 'selection-change', payload: Mark): void }>();
 let unsubscribeSelectionChange: (() => void) | undefined;
 let unsubscribeEndSelection: (() => void) | undefined;
 
-/** 获取选区的文本和坐标 */
+/** 将 embedpdf 的 getHighlightRects 转为我们的 Rect[]（每行/每段一个矩形） */
+const highlightRectsToOurRects = (highlightRects: Record<number, { origin?: { x: number; y: number }; size?: { width: number; height: number } }[]>): Rect[] => {
+  const list: Rect[] = [];
+  for (const [pageStr, rects] of Object.entries(highlightRects)) {
+    const page = Number(pageStr);
+    for (const r of rects ?? []) {
+      const o = r.origin ?? { x: 0, y: 0 };
+      const s = r.size ?? { width: 0, height: 0 };
+      list.push({
+        x0: o.x,
+        y0: o.y,
+        x1: o.x + s.width,
+        y1: o.y + s.height,
+        width: s.width,
+        height: s.height,
+        page,
+      });
+    }
+  }
+  return list;
+};
+
+/** 获取选区的文本和坐标（使用 getHighlightRects，跨行时每行一个矩形） */
 const getSelectionContentAndCoordinates = () => {
   const scope = selection.value;
   if (!scope) {
     return { content: '', coordinates: [] };
   }
-  const rects = scope.getBoundingRects?.() ?? [];
+  const highlightRects = scope.getHighlightRects?.() ?? {};
+  const rects = highlightRectsToOurRects(highlightRects as Record<number, { origin?: { x: number; y: number }; size?: { width: number; height: number } }[]>);
   const coordinates = rects.map((r) => ({
     page: r.page,
-    rect: r.rect,
+    rect: { origin: { x: r.x0, y: r.y0 }, size: { width: r.width, height: r.height } },
   }));
   return {
     content: selectedText.value,
@@ -114,40 +137,19 @@ const getSelectionContentAndCoordinates = () => {
 /** 在当前 PDF 上绘制 mark 的下划线（加入绘制列表并在叠加层显示） */
 const drawMark = (mark: Mark) => {
   const rects = mark.rects;
-  rects.forEach((rect) => {
-    const x0 = rect.x0;
-    const y0 = rect.y1 - 5;
-    const length = rect.x1 - rect.x0;
-    const lineness = 2
-
-    //highlightRef.value?.drawline(x0, y0, length, lineness, mark.color);
-    highlightRef.value?.drawRectangle(rect.x0, rect.y0, rect.width, rect.height, 3, mark.color)
+  rects.forEach((r) => {
+    //highlightRef.value?.drawLine(x0, y0, length, lineness, mark.color);
+    highlightRef.value?.drawRectangle(r.x0, r.y0, r.width, r.height, 2, mark.color, mark.type);
   })
 };
 
-// PDF 页面坐标系：原点在左下，y 向上；SVG viewBox 原点在左上，y 向下。需做 Y 轴翻转。
-const PDF_PAGE_HEIGHT = 792;
+const clearMark = () => {
+  highlightRef.value?.clear?.();
+}
 
-/** 当前页用于下划线 SVG 的线段数据（x0, y, x1, color, key），y 已转换为 SVG 坐标系 */
-const underlinePathsForPage = (pageIndex: number) => {
-  const list: Array<{ x0: number; y: number; x1: number; color: string; key: string }> = [];
-  for (const mark of marksToDraw.value) {
-    const color = mark.color ?? MarkColor.editing;
-    for (const rect of mark.rects ?? []) {
-      if (rect.page !== pageIndex) continue;
-      // 下划线取矩形下缘：PDF 中为 rect.y0（较小 y）；转为 SVG：svgY = pageHeight - pdfY
-      const svgY = PDF_PAGE_HEIGHT - rect.y0;
-      list.push({
-        x0: rect.x0,
-        y: svgY,
-        x1: rect.x1,
-        color,
-        key: `${mark.id}-${rect.page}-${rect.x0}-${rect.y0}`,
-      });
-    }
-  }
-  return list;
-};
+const clearEditing = () => {
+  highlightRef.value?.clearEditing?.();
+}
 
 onMounted(() => {
   if (!selection.value) return;
@@ -165,20 +167,9 @@ onMounted(() => {
 
   unsubscribeEndSelection = selection.value.onEndSelection(() => {
     const scope = selection.value!;
-    const rects = scope.getBoundingRects?.() ?? [];
-    selectedRects.value = rects.map((r) => {
-      const o = r.rect.origin ?? { x: 0, y: 0 };
-      const s = r.rect.size ?? { width: 0, height: 0 };
-      return {
-        x0: o.x,
-        y0: o.y,
-        x1: o.x + s.width,
-        y1: o.y + s.height,
-        width: s.width,
-        height: s.height,
-        page: r.page,
-      } as Rect;
-    });
+    // 使用 getHighlightRects 获取每行/每段一个矩形；getBoundingRects 只返回每页一个外包矩形，跨行会合并成一条
+    const highlightRects = scope.getHighlightRects?.() ?? {};
+    selectedRects.value = highlightRectsToOurRects(highlightRects as Record<number, { origin?: { x: number; y: number }; size?: { width: number; height: number } }[]>);
     const textTask = scope.getSelectedText();
     textTask.wait((textLines) => {
       selectedText.value = textLines.join('\n');
@@ -192,7 +183,7 @@ onMounted(() => {
       };
       selectedMark.value = mark;
       emit('selection-change', mark);
-      drawMark(mark);
+      console.log('selection-change:', mark);
     });
   });
 });
@@ -203,6 +194,8 @@ defineExpose({
   hasSelection,
   marksToDraw,
   drawMark,
+  clearMark,
+  clearEditing,
   getSelectionContentAndCoordinates,
 });
 
