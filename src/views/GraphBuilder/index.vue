@@ -49,28 +49,22 @@
         @cancel="handleCancelCreateGraph"
     />
     <div class="text-container">
-      <Text :src="textUrl" :page="currentPage"></Text>
+      <Text
+        ref="textRef"
+        :src="textUrl"
+        :page="currentPage"
+        @selection-change="handlePdfSelectionChange"
+      />
     </div>
     <div class="graph-container">
-      <Content
-          ref="graphRef"
-          :current-sub-domain="currentSubDomain"
-          :current-mode="currentMode"
-          :has-data="hasData"
-          :graph-nodes="graphNodes"
-          :graph-edges="graphEdges"
-          :entity-properties="entityProperties"
-          @add-entity="handleAddEntity"
-          :is-connecting="isConnecting"
-          @create-relationship="handleCreateRelationship"
-          @connection-complete="handleConnectionComplete"
-          @drop="handleDrop"
-          @node-mouse-down="handleNodeMouseDown"
-          @mouse-move="handleMouseMove"
-          @mouse-up="handleMouseUp"
-          @node-drag-end="handleNodeDragEnd"
-          @node-click="handleNodeClick"
-          @edge-click="handleEdgeClick"
+      <GraphViewer
+        ref="graphViewer"
+        :nodes="graphNodes"
+        :edges="graphEdges"
+        :article-id="currentGraphId"
+        :topic-id="currentSubDomainId"
+        :domain-id="currentDomainId"
+        :level="currentLevel"
       />
       <TextTool
           class="tool"
@@ -79,6 +73,7 @@
           @jump-page="handleJumpPage"
       />
     </div>
+    <GraphEditor v-if="showEditor"></GraphEditor>
   </div>
 </template>
 
@@ -89,16 +84,19 @@ import { ElMessage as Message } from "element-plus";
 import Sidebar from "@/components/common/Sidebar.vue";
 import AddGraphDialog from "@/components/common/AddGraphDialog.vue";
 import projectService from "@/services/graph.ts"
-import Text from "@/components/common/Text.vue";
+import Text from "@/components/article/Text.vue";
 import {useConverter} from "@/mock/modules/converter.ts";
-import Content from "@/components/common/Content.vue";
 import {GraphConfig} from "@/configs/graph.js";
-import TextTool from "@/components/common/TextTool.vue";
+import TextTool from "@/components/article/TextTool.vue";
 import {storeToRefs} from "pinia";
 import {useTextStore} from "@/store/useTextStore";
+import GraphViewer from "@/views/GraphBuilder/GraphViewer.vue";
+import GraphEditor from "@/views/GraphBuilder/GraphEditor.vue";
+import type { Mark, Rect } from "@/configs/text"
 
 const textStore = useTextStore();
 const contentRef = ref(null);
+const textRef = ref<InstanceType<typeof Text> | null>(null);
 const {currentPage} = storeToRefs(textStore)
 const textUrl = ref("http://10.11.52.199:8090/pdf/%E5%8C%97%E4%BA%AC%E5%B8%82%E6%80%BB%E4%BD%93%E8%A7%84%E5%88%922016-2035.pdf");
 const {graphTypeString2Integer} = useConverter()
@@ -113,12 +111,15 @@ const loadState = () => {
     currentDomainId: "",
     currentSubDomain: "",
     currentSubDomainId: "",
+    currentGraphId: "",
+    currentGraphName: "",
     domains: [],
     subDomains: [],
     subSubDomains: [],
     hasData: false,
     graphs: [],
     graphNodes: [],
+    currentLevel: 0,
   };
 };
 
@@ -127,6 +128,8 @@ const currentDomain = ref("");
 const currentDomainId = ref("");
 const currentSubDomain = ref("");
 const currentSubDomainId = ref("");
+const currentGraphId = ref("");
+const currentGraphName = ref("");
 const domains = ref([]);
 const subDomains = ref([]);
 const subSubDomains = ref([]);
@@ -163,6 +166,10 @@ const relationshipType = ref("定向");
 const graphNodes = ref([]);
 // 图谱边数据
 const graphEdges = ref([]);
+// PDF 选区内容与坐标（由 TextSelection 经 Text 传入）
+const pdfSelectionContent = ref("");
+const pdfSelectionRects = ref<Rect[]>([]);
+const pdfSelectionMark = ref<Mark | null>(null);
 // 图谱列表
 const graphs = ref([]);
 // 显示图谱创建对话框
@@ -179,6 +186,10 @@ const sourceNodeId = ref(null);
 const targetNodeId = ref(null);
 // 当前模式：'ontology' 或 'graph'
 const currentMode = ref("graph");
+//开启 graphEditor
+const showEditor = ref(false);
+//当前目录层级
+const currentLevel= ref(0);
 
 // ============ 历史搜索记录相关 ============
 // 存储在不同上下文中的历史记录
@@ -343,12 +354,15 @@ const saveState = () => {
     currentDomainId: currentDomainId.value,
     currentSubDomain: currentSubDomain.value,
     currentSubDomainId: currentSubDomainId.value,
+    currentGraphId: currentGraphId.value,
+    currentGraphName: currentGraphName.value,
     domains: domains.value,
     subDomains: subDomains.value,
     subSubDomains: subSubDomains.value,
     hasData: hasData.value,
     graphs: graphs.value,
     graphNodes: graphNodes.value,
+    currentLevel: currentLevel.value,
   };
   localStorage.setItem("GrapherPageState", JSON.stringify(state));
 };
@@ -385,11 +399,14 @@ onMounted(async () => {
   currentDomainId.value = savedState.currentDomainId;
   currentSubDomain.value = savedState.currentSubDomain;
   currentSubDomainId.value = savedState.currentSubDomainId;
+  currentGraphId.value = savedState.currentGraphId;
+  currentGraphName.value = savedState.currentGraphName;
   subDomains.value = savedState.subDomains;
   subSubDomains.value = savedState.subSubDomains;
   hasData.value = savedState.hasData;
   graphs.value = savedState.graphs;
   graphNodes.value = savedState.graphNodes || [];
+  currentLevel.value = savedState.currentLevel;
 
   // 加载历史搜索记录
   loadSearchHistory();
@@ -719,6 +736,9 @@ const handleDomainClick = async (domain) => {
   currentDomain.value = domain.name;
   currentDomainId.value = domain.id;
   currentSubDomain.value = "";
+  currentGraphName.value = "";
+  currentGraphId.value = "";
+  currentLevel.value = 1;
 
   // 立即清空topics列表，避免显示上一个领域的专题数据
   topics.value = [];
@@ -732,8 +752,8 @@ const handleDomainClick = async (domain) => {
 
   // 切换到专题页面，更新下拉框显示专题搜索历史
   updateTopicSearchOptions();
-
   saveState()
+
 };
 
 // 获取专题列表
@@ -822,8 +842,12 @@ const handleTopicSearch = (query) => {
 const handleTopicClick = (subDomain) => {
   currentSubDomain.value = subDomain.name;
   currentSubDomainId.value = subDomain.id;
+  currentLevel.value = 2;
+  currentGraphId.value = "";
+  currentGraphName.value = "";
   saveState();
 };
+
 
 const handleCreateRelationship = (sourceId) => {
   console.log("开始创建关系，源节点ID:", sourceId);
@@ -894,111 +918,6 @@ const handleConnectionComplete = (targetId) => {
   console.log("打开关系属性面板");
 };
 
-const handleSavePropertyPanel = (data) => {
-  // 保存实体或关系的属性
-  hasData.value = true;
-  savedEntitiesCount.value += 1;
-
-  // 根据当前操作类型处理
-  if (data.currentOperation === "entity") {
-    // 将当前填写的实体名称添加到实体类型数组中（如果不存在）
-    if (data.entityName && !entityTypes.value.includes(data.entityName)) {
-      entityTypes.value.push(data.entityName);
-    }
-
-    // 创建新的实体节点并添加到图谱节点中
-    const newNode = {
-      id: Date.now(),
-      type: "entity",
-      name: data.entityName,
-      // 正确处理x或y为0的情况
-      x:
-          rightClickPosition.value.x !== undefined
-              ? rightClickPosition.value.x
-              : 100 + Math.random() * 400,
-      y:
-          rightClickPosition.value.y !== undefined
-              ? rightClickPosition.value.y
-              : 100 + Math.random() * 300,
-      properties: data.entityProperties,
-    };
-    console.log("创建新节点，位置:", { x: newNode.x, y: newNode.y });
-    graphNodes.value.push(newNode);
-    console.log("新创建的节点:", newNode);
-    console.log("当前graphNodes数组:", graphNodes.value);
-  } else if (data.currentOperation === "relationship") {
-    // 将当前填写的关系名称添加到关系类型数组中（如果不存在）
-    if (
-        data.relationshipType &&
-        !relationshipTypes.value.includes(data.relationshipType)
-    ) {
-      relationshipTypes.value.push(data.relationshipType);
-    }
-
-    // 创建新的关系边并添加到图谱边数据中
-    if (sourceNodeId.value && targetNodeId.value) {
-      const relationshipName = data.relationshipName || "关系";
-      const relationshipType = data.relationshipType || "定向";
-      const properties = data.entityProperties || [];
-
-      // 创建第一条边：A→B
-      const newEdge1 = {
-        id: (Date.now() + 1).toString(),
-        source: sourceNodeId.value.toString(),
-        target: targetNodeId.value.toString(),
-        data: {
-          name: relationshipName,
-          type: relationshipType,
-          properties: properties,
-        },
-      };
-      graphEdges.value.push(newEdge1);
-      console.log("新创建的关系边1:", newEdge1);
-
-      // 如果是循环关系，创建第二条边：B→A
-      if (relationshipType === "循环") {
-        const newEdge2 = {
-          id: Date.now().toString(),
-          source: targetNodeId.value.toString(),
-          target: sourceNodeId.value.toString(),
-          data: {
-            name: relationshipName,
-            type: relationshipType,
-            properties: properties,
-          },
-        };
-        graphEdges.value.push(newEdge2);
-        console.log("新创建的关系边2:", newEdge2);
-      }
-
-      console.log("当前graphEdges数组:", graphEdges.value);
-
-      // 清空源节点和目标节点ID，准备下一次连线
-      sourceNodeId.value = null;
-      targetNodeId.value = null;
-    }
-  }
-
-  // 更新当前子领域的数量
-  const currentSubDomainObj = subDomains.value.find(
-      (subDomain) => subDomain.name === currentSubDomain.value,
-  );
-  if (currentSubDomainObj) {
-    currentSubDomainObj.count += 1;
-  }
-
-  showPropertyPanel.value = false;
-
-  // 保存关系后，清除虚线
-  if (data.currentOperation === "relationship" && contentRef.value) {
-    contentRef.value.resetConnectionState();
-    console.log("保存关系后，调用resetConnectionState方法清除虚线");
-  }
-};
-
-const handleAddProperty = () => {
-  entityProperties.value.push({ name: "", type: "text", value: "" });
-};
 
 // 处理拖拽开始
 const handleDragStart = (event, type, item) => {
@@ -1101,8 +1020,16 @@ const handleAddTopic = async (name) => {
   }
 };
 
-// 页码改变时在屏幕上方提示当前页码
+// 接收 PDF 选区内容与坐标（来自 TextSelection → Text）
+const handlePdfSelectionChange = (payload: Mark) => {
+  pdfSelectionContent.value = payload.content;
+  pdfSelectionRects.value = payload.rects ?? [];
+  pdfSelectionMark.value = payload;
 
+  textStore.setMark(payload);
+  // 在 PDF 上绘制该选区下划线（通过 Text → TextSelection.drawMark）
+  textRef.value?.drawMark?.(payload);
+};
 
 //上一页
 const hanlePreviousPage = () => {
@@ -1191,7 +1118,9 @@ const handleCancelCreateGraph = () => {
 
 // 处理图谱点击
 const handleGraphClick = (graph) => {
-  console.log("点击图谱:", graph);
+  currentLevel.value = 3;
+  currentGraphId.value = graph.id;
+  currentGraphName.value = graph.name;
   // 设置 hasData 为 true，显示关系图
   hasData.value = true;
 };

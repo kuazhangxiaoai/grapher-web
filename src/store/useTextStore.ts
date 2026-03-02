@@ -35,6 +35,12 @@ export const useTextStore = defineStore('textStore', {
         },
         savePageInfo(){
             localStorage.setItem("markInfo", JSON.stringify(this.markList));
+        },
+        setMark(mark: Mark){
+            this.markList = [mark];
+        },
+        setMarkList(markList: Mark[]){
+            this.markList = markList;
         }
 
     },

@@ -5,7 +5,16 @@
   <div v-else class="text-processor-root">
     <EmbedPDF :engine="engine" :plugins="pluginRef" v-slot="{ activeDocumentId }">
       <DocumentContent v-if="activeDocumentId" :document-id="activeDocumentId" :current-page="props.page" v-slot="{ isLoaded }">
-        <TextSelection v-if="isLoaded" :document-id="activeDocumentId" :current-page="currentPage" />
+        <TextSelection
+          ref="textSelectionRef"
+          v-if="isLoaded"
+          :document-id="activeDocumentId"
+          :current-page="currentPage"
+          :article-id="props.articleId"
+          :topic-id="props.topicId"
+          :domain-id="props.domainId"
+          @selection-change="$emit('selection-change', $event)"
+        />
       </DocumentContent>
     </EmbedPDF>
   </div>
@@ -23,15 +32,29 @@ import { DocumentContent, DocumentManagerPluginPackage } from '@embedpdf/plugin-
 import { RenderPluginPackage } from '@embedpdf/plugin-render/vue';
 import { InteractionManagerPluginPackage} from '@embedpdf/plugin-interaction-manager/vue';
 import { SelectionPluginPackage } from '@embedpdf/plugin-selection/vue';
-import TextSelection from "@/components/common/TextSelection.vue";
+import TextSelection from "@/components/article/TextSelection.vue";
+import type { Mark } from "@/configs/text";
 
 const { engine, isLoading } = usePdfiumEngine();
 const pluginRef = ref(null)
 const props = defineProps<{
   src?: string | null;
   page?: number;
+  articleId?: string | null;
+  topicId?: string | null;
+  domainId?: string | null;
 }>();
+
+defineEmits(["selection-change"]);
 const currentPage = ref(0);
+const textSelectionRef = ref<InstanceType<typeof TextSelection> | null>(null);
+
+/** 在 PDF 上绘制下划线（转发给 TextSelection.drawMark） */
+const drawMark = (mark: Mark) => {
+  textSelectionRef.value?.drawMark?.(mark);
+};
+
+defineExpose({ drawMark });
 
 onMounted(()=>{
   const plugins = [

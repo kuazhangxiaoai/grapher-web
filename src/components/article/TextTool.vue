@@ -19,9 +19,7 @@
 <script setup lang="ts">
 import {ref, watch, onUnmounted} from "vue";
 import {useTextStore} from "@/store/useTextStore";
-import {storeToRefs} from "pinia";
 import JumpPageDialog from "@/components/common/JumpPageDialog.vue";
-import {ElMessageBox} from "element-plus";
 import { ElMessage as Message } from "element-plus";
 
 const emit = defineEmits(["next-page", "jump-page", "refresh", "previous-page", "editgraph"]);

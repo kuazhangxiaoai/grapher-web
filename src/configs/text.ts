@@ -8,18 +8,22 @@ export enum MarkColor {
     editing = "#99ccff"
 }
 
+export interface Rect{
+    x0: number;
+    y0: number;
+    x1: number;
+    y1: number;
+    width: number;
+    height: number;
+    page: number
+}
+
 export interface Mark{
     id: string,
-    sequence: string,
-    x0: number,
-    x1: number,
-    y0: number,
-    y1: number,
-    width: number,
-    height: number,
+    content: string,
+    rects: Rect[],
     type: MarkType,
     articleId: string,
-    pageIndex: number,
     color: MarkColor,
 }
 
