@@ -70,6 +70,90 @@ const mockTopics = {
   ],
 };
 
+// 模拟模板数据
+const mockTemplates = {
+  101: [
+    // 政务服务专题的模板
+    {
+      nodeTemplateId: 1001,
+      nodeTemplateName: "政府部门节点",
+      templateType: "node",
+      topicId: 101,
+      nodeTemplateColor: "#43D7B5",
+    },
+    {
+      nodeTemplateId: 1002,
+      nodeTemplateName: "服务事项节点",
+      templateType: "node",
+      topicId: 101,
+      nodeTemplateColor: "#3B82F6",
+    },
+    {
+      relationTemplateId: 1003,
+      relationTemplateName: "办理流程关系",
+      templateType: "relation",
+      topicId: 101,
+      startNodeTemplateId: 1001,
+      endNodeTemplateId: 1002,
+      relationTemplateType: "1",
+    },
+  ],
+  201: [
+    // 历史文化专题的模板
+    {
+      nodeTemplateId: 2001,
+      nodeTemplateName: "历史建筑节点",
+      templateType: "node",
+      topicId: 201,
+      nodeTemplateColor: "#F59E0B",
+    },
+    {
+      nodeTemplateId: 2002,
+      nodeTemplateName: "文化遗产节点",
+      templateType: "node",
+      topicId: 201,
+      nodeTemplateColor: "#EC4899",
+    },
+    {
+      relationTemplateId: 2003,
+      relationTemplateName: "时空关系",
+      templateType: "relation",
+      topicId: 201,
+      startNodeTemplateId: 2001,
+      endNodeTemplateId: 2002,
+      relationTemplateType: "1",
+    },
+  ],
+};
+
+// 模拟组件库数据
+const mockLibraryTemplates = [
+  {
+    templateId: 1,
+    templateName: "基础节点",
+    templateType: "node",
+    description: "基础节点模板",
+  },
+  {
+    templateId: 2,
+    templateName: "高级节点",
+    templateType: "node",
+    description: "高级节点模板",
+  },
+  {
+    templateId: 3,
+    templateName: "基础关系",
+    templateType: "relation",
+    description: "基础关系模板",
+  },
+  {
+    templateId: 4,
+    templateName: "复杂关系",
+    templateType: "relation",
+    description: "复杂关系模板",
+  },
+];
+
 export default [
   // 获取领域列表
   {
@@ -185,6 +269,264 @@ export default [
       return {
         code: 200,
         msg: "删除专题成功",
+      };
+    },
+  },
+
+  // 节点/关系模版查询
+  {
+    url: "/serve_api/template/queryTemplate",
+    method: "get",
+    response: ({ query }) => {
+      const { topicId } = query;
+      // 将topicId转换为字符串，确保与mockTemplates的键类型匹配
+      const topicIdStr = String(topicId);
+      let templates = mockTemplates[topicIdStr] || [];
+
+      // 如果没有找到对应专题的模板数据，返回默认模板数据
+      if (templates.length === 0) {
+        templates = [
+          {
+            nodeTemplateId: Date.now() + 1,
+            nodeTemplateName: "默认节点1",
+            templateType: "node",
+            topicId: topicId,
+            nodeTemplateColor: "#d77c43ff",
+          },
+          {
+            nodeTemplateId: Date.now() + 2,
+            nodeTemplateName: "默认节点2",
+            templateType: "node",
+            topicId: topicId,
+            nodeTemplateColor: "#f6e63bff",
+          },
+          {
+            relationTemplateId: Date.now() + 3,
+            relationTemplateName: "默认关系",
+            templateType: "relation",
+            topicId: topicId,
+            startNodeTemplateId: Date.now() + 1,
+            endNodeTemplateId: Date.now() + 2,
+            relationTemplateType: "1",
+          },
+        ];
+      }
+
+      // 分离节点模板和关系模板
+      const nodeTemplates = templates.filter(
+        (template) => template.templateType === "node",
+      );
+      const relationTemplates = templates.filter(
+        (template) => template.templateType === "relation",
+      );
+      return {
+        code: 200,
+        msg: "查询模板成功",
+        data: {
+          nodeTemplates: nodeTemplates,
+          relationTemplates: relationTemplates,
+        },
+      };
+    },
+  },
+
+  // 节点模板保存
+  {
+    url: "/serve_api/template/saveNodeTemplate",
+    method: "post",
+    response: ({ body }) => {
+      const {
+        topicId,
+        nodeTemplateName,
+        nodeTemplateDescription,
+        isLibraryFlag,
+        nodeTemplateColor,
+        properties,
+      } = body;
+      // 将topicId转换为字符串，确保与mockTemplates的键类型匹配
+      const topicIdStr = String(topicId);
+      const newTemplate = {
+        nodeTemplateId: Date.now(),
+        nodeTemplateName: nodeTemplateName,
+        nodeTemplateDescription: nodeTemplateDescription || "",
+        isLibraryFlag: isLibraryFlag || "0",
+        nodeTemplateColor: nodeTemplateColor || "#43D7B5",
+        properties: properties || [],
+        templateType: "node",
+        topicId: topicId,
+      };
+      // 将新模板添加到mockTemplates中
+      if (!mockTemplates[topicIdStr]) {
+        mockTemplates[topicIdStr] = [];
+      }
+      mockTemplates[topicIdStr].push(newTemplate);
+      return {
+        code: 200,
+        msg: "保存节点模板成功",
+        data: newTemplate,
+      };
+    },
+  },
+
+  // 关系模板保存
+  {
+    url: "/serve_api/template/saveRelationTemplate",
+    method: "post",
+    response: ({ body }) => {
+      const {
+        topicId,
+        relationTemplateName,
+        relationTemplateDescription,
+        isLibraryFlag,
+        properties,
+        sourceNodeTemplateId,
+        targetNodeTemplateId,
+      } = body;
+      // 将topicId转换为字符串，确保与mockTemplates的键类型匹配
+      const topicIdStr = String(topicId);
+      const newTemplate = {
+        relationTemplateId: Date.now(),
+        relationTemplateName: relationTemplateName,
+        relationTemplateDescription: relationTemplateDescription || "",
+        isLibraryFlag: isLibraryFlag || "0",
+        properties: properties || [],
+        templateType: "relation",
+        topicId: topicId,
+        startNodeTemplateId: sourceNodeTemplateId,
+        endNodeTemplateId: targetNodeTemplateId,
+        relationTemplateType: "1", // 默认定向关系
+      };
+      // 将新模板添加到mockTemplates中
+      if (!mockTemplates[topicIdStr]) {
+        mockTemplates[topicIdStr] = [];
+      }
+      mockTemplates[topicIdStr].push(newTemplate);
+      return {
+        code: 200,
+        msg: "保存关系模板成功",
+        data: newTemplate,
+      };
+    },
+  },
+
+  // 节点模版删除
+  {
+    url: "/serve_api/template/deleteNodeTemplate",
+    method: "post",
+    response: () => {
+      return {
+        code: 200,
+        msg: "删除节点模板成功",
+      };
+    },
+  },
+
+  // 关系模版删除
+  {
+    url: "/serve_api/template/deleteRelationTemplate",
+    method: "post",
+    response: () => {
+      return {
+        code: 200,
+        msg: "删除关系模板成功",
+      };
+    },
+  },
+
+  // 组件库查询
+  {
+    url: "/serve_api/template/queryLibraryTemplate",
+    method: "get",
+    response: ({ query }) => {
+      const { templateName } = query;
+      let filteredTemplates = mockLibraryTemplates;
+      if (templateName) {
+        filteredTemplates = mockLibraryTemplates.filter((template) =>
+          template.templateName
+            .toLowerCase()
+            .includes(templateName.toLowerCase()),
+        );
+      }
+      return {
+        code: 200,
+        msg: "查询组件库成功",
+        data: filteredTemplates,
+      };
+    },
+  },
+
+  // 添加到模型接口
+  {
+    url: "/serve_api/template/addToModel",
+    method: "post",
+    response: () => {
+      return {
+        code: 200,
+        msg: "添加到模型成功",
+      };
+    },
+  },
+
+  // 复制领域
+  {
+    url: "/serve_api/field/copyField",
+    method: "get",
+    response: ({ query }) => {
+      const { fieldId } = query;
+      const originalDomain = mockDomains.find(
+        (domain) => domain.fieldId == fieldId,
+      );
+      if (originalDomain) {
+        const copiedDomain = {
+          ...originalDomain,
+          fieldId: Date.now(),
+          fieldName: `${originalDomain.fieldName} (复制)`,
+        };
+        return {
+          code: 200,
+          msg: "复制领域成功",
+          data: copiedDomain,
+        };
+      }
+      return {
+        code: 200,
+        msg: "复制领域成功",
+        data: null,
+      };
+    },
+  },
+
+  // 复制专题
+  {
+    url: "/serve_api/topic/copyTopic",
+    method: "get",
+    response: ({ query }) => {
+      const { topicId } = query;
+      // 查找原始专题
+      let originalTopic = null;
+      for (const fieldId in mockTopics) {
+        const topic = mockTopics[fieldId].find((t) => t.topicId == topicId);
+        if (topic) {
+          originalTopic = topic;
+          break;
+        }
+      }
+      if (originalTopic) {
+        const copiedTopic = {
+          ...originalTopic,
+          topicId: Date.now(),
+          topicName: `${originalTopic.topicName} (复制)`,
+        };
+        return {
+          code: 200,
+          msg: "复制专题成功",
+          data: copiedTopic,
+        };
+      }
+      return {
+        code: 200,
+        msg: "复制专题成功",
+        data: null,
       };
     },
   },

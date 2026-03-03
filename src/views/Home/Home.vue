@@ -13,6 +13,7 @@ import AddGraphDialog from "@/components/common/AddGraphDialog.vue";
 import projectService from "@/services/graph.ts";
 
 const contentRef = ref(null);
+const sidebarRef = ref(null);
 
 // 从localStorage读取状态，或使用默认值
 const loadState = () => {
@@ -833,10 +834,10 @@ const handleDeleteTopic = async (id) => {
 };
 
 // 处理复制领域
-const handleCopyDomain = async (id) => {
+const handleCopyDomain = async (id, newName) => {
   try {
     // 调用复制领域接口
-    await projectService.copyField(id);
+    await projectService.copyField(id, newName);
     // 复制成功后，重新获取领域列表
     await fetchAllDomains();
     ElMessage.success("复制领域成功");
@@ -847,10 +848,10 @@ const handleCopyDomain = async (id) => {
 };
 
 // 处理复制专题
-const handleCopyTopic = async (id) => {
+const handleCopyTopic = async (id, newName) => {
   try {
     // 调用复制专题接口
-    await projectService.copyTopic(id);
+    await projectService.copyTopic(id, newName);
     // 复制成功后，重新获取专题列表
     const currentDomainObj = domains.value.find(
       (domain) => domain.name === currentDomain.value,
@@ -1205,6 +1206,48 @@ const handleClosePropertyPanel = () => {
     contentRef.value.resetConnectionState();
     console.log("关闭属性面板后，调用resetConnectionState方法清除虚线");
   }
+  console.log(
+    "关闭属性面板后22222",
+    contentRef.value,
+    contentRef.value.clearNodeSelection,
+  );
+  // 清除节点选中状态
+  if (contentRef.value && contentRef.value.clearNodeSelection) {
+    contentRef.value.clearNodeSelection();
+    console.log("关闭属性面板后，清除节点选中状态");
+  }
+  // 清除连线选中状态
+  if (contentRef.value && contentRef.value.clearEdgesSelection) {
+    contentRef.value.clearEdgesSelection();
+    console.log("关闭属性面板后，清除连线选中状态");
+  }
+  // 直接修改 graphNodes 数组，清除节点的选中状态
+  // graphNodes.value = graphNodes.value.map(node => {
+  //   return {
+  //     ...node,
+  //     state: {
+  //       ...node.state,
+  //       selected: false
+  //     }
+  //   };
+  // });
+  // console.log("直接修改 graphNodes 数组，清除节点的选中状态");
+
+  // 清除模型列表选中状态
+  if (sidebarRef.value && sidebarRef.value.handleClearSelections) {
+    sidebarRef.value.handleClearSelections();
+    console.log("关闭属性面板后，清除模型列表选中状态");
+  }
+
+  // 如果当前是关系操作，退出连线模式
+  if (currentOperation.value === "relationship") {
+    isConnecting.value = false;
+    // 清空源节点和目标节点ID
+    sourceNodeId.value = null;
+    targetNodeId.value = null;
+    originalSourceNodeId.value = null;
+    originalTargetNodeId.value = null;
+  }
 };
 
 const handleCancelPropertyPanel = () => {
@@ -1214,6 +1257,44 @@ const handleCancelPropertyPanel = () => {
   if (currentOperation.value === "relationship" && contentRef.value) {
     contentRef.value.resetConnectionState();
     console.log("取消属性面板后，调用resetConnectionState方法清除虚线");
+  }
+
+  // 清除节点选中状态
+  if (contentRef.value && contentRef.value.clearNodeSelection) {
+    contentRef.value.clearNodeSelection();
+    console.log("取消属性面板后，清除节点选中状态");
+  }
+  // 清除连线选中状态
+  if (contentRef.value && contentRef.value.clearEdgesSelection) {
+    contentRef.value.clearEdgesSelection();
+    console.log("取消属性面板后，清除连线选中状态");
+  }
+  // 直接修改 graphNodes 数组，清除节点的选中状态
+  // graphNodes.value = graphNodes.value.map(node => {
+  //   return {
+  //     ...node,
+  //     state: {
+  //       ...node.state,
+  //       selected: false
+  //     }
+  //   };
+  // });
+  // console.log("直接修改 graphNodes 数组，清除节点的选中状态");
+
+  // 清除模型列表选中状态
+  if (sidebarRef.value && sidebarRef.value.handleClearSelections) {
+    sidebarRef.value.handleClearSelections();
+    console.log("取消属性面板后，清除模型列表选中状态");
+  }
+
+  // 如果当前是关系操作，退出连线模式
+  if (currentOperation.value === "relationship") {
+    isConnecting.value = false;
+    // 清空源节点和目标节点ID
+    sourceNodeId.value = null;
+    targetNodeId.value = null;
+    originalSourceNodeId.value = null;
+    originalTargetNodeId.value = null;
   }
 };
 
@@ -1254,8 +1335,8 @@ const handleConnectionComplete = (targetId) => {
   // 设置结束节点名称
   endNodeName.value = targetNode ? targetNode.name : "";
 
-  // 退出连线模式
-  isConnecting.value = false;
+  // 不立即退出连线模式，等待用户保存或取消关系后再退出
+  // isConnecting.value = false;
 
   // 重置关系相关属性
   relationshipName.value = "";
@@ -1360,6 +1441,8 @@ const handleSavePropertyPanel = (data) => {
       targetNodeId.value = null;
       originalSourceNodeId.value = null;
       originalTargetNodeId.value = null;
+      // 退出连线模式
+      isConnecting.value = false;
     }
   }
 
@@ -1372,6 +1455,22 @@ const handleSavePropertyPanel = (data) => {
   }
 
   showPropertyPanel.value = false;
+
+  // 清除节点选中状态
+  if (contentRef.value && contentRef.value.clearNodeSelection) {
+    contentRef.value.clearNodeSelection();
+    console.log("保存属性后，清除节点选中状态");
+  }
+  // 清除连线选中状态
+  if (contentRef.value && contentRef.value.clearEdgesSelection) {
+    contentRef.value.clearEdgesSelection();
+    console.log("保存属性后，清除连线选中状态");
+  }
+  // 清除模型列表选中状态
+  if (sidebarRef.value && sidebarRef.value.handleClearSelections) {
+    sidebarRef.value.handleClearSelections();
+    console.log("保存属性后，清除模型列表选中状态");
+  }
 
   // 保存关系后，清除虚线
   if (data.currentOperation === "relationship" && contentRef.value) {
@@ -1640,6 +1739,13 @@ const handleModeChange = (mode) => {
 const handleEntityTypeClick = (entityType) => {
   console.log("点击实体类型:", entityType);
   console.log("Before setting showPropertyPanel:", showPropertyPanel.value);
+
+  // 设置 Sidebar 组件中的选中状态
+  if (sidebarRef.value && sidebarRef.value.setSelectedEntityType) {
+    sidebarRef.value.setSelectedEntityType(entityType);
+    console.log("设置实体类型选中状态:", entityType);
+  }
+
   // 打开属性面板，设置当前操作类型为实体
   currentOperation.value = "entity";
   entityName.value = entityType;
@@ -1678,6 +1784,13 @@ const handleEntityTypeClick = (entityType) => {
 const handleRelationshipTypeClick = (relationshipTypeName) => {
   console.log("点击关系类型:", relationshipTypeName);
   console.log("Before setting showPropertyPanel:", showPropertyPanel.value);
+
+  // 设置 Sidebar 组件中的选中状态
+  if (sidebarRef.value && sidebarRef.value.setSelectedRelationshipType) {
+    sidebarRef.value.setSelectedRelationshipType(relationshipTypeName);
+    console.log("设置关系类型选中状态:", relationshipTypeName);
+  }
+
   // 打开属性面板，设置当前操作类型为关系
   currentOperation.value = "relationship";
   relationshipName.value = relationshipTypeName;
@@ -1746,6 +1859,12 @@ const handleRelationshipTypeClick = (relationshipTypeName) => {
 const handleComponentClick = (componentName) => {
   console.log("点击组件:", componentName);
   console.log("Before setting showPropertyPanel:", showPropertyPanel.value);
+
+  // 设置 Sidebar 组件中的选中状态
+  if (sidebarRef.value && sidebarRef.value.setSelectedComponent) {
+    sidebarRef.value.setSelectedComponent(componentName);
+    console.log("设置组件选中状态:", componentName);
+  }
 
   // 从components数组中查找对应的组件信息
   const component = components.value.find(
@@ -1912,29 +2031,35 @@ const handleNodeClick = (node) => {
 // 处理边点击
 const handleEdgeClick = (edge) => {
   console.log("Home组件接收边点击:", edge);
-  // 打开属性面板，设置当前操作类型为关系
-  currentOperation.value = "relationship";
-  relationshipName.value = edge.data.name;
-  relationshipType.value = edge.data.type;
-  entityProperties.value = edge.data.properties || [];
-  // 设置是否加入组件库
-  addToComponentLibrary.value = edge.isLibraryFlag === "1";
-  // 设置当前连线的模板ID
-  currentRelationTemplateId.value = edge.relationTemplateId || 0;
-  currentNodeTemplateId.value = 0;
+  try {
+    // 打开属性面板，设置当前操作类型为关系
+    currentOperation.value = "relationship";
+    relationshipName.value = edge.data?.name || "";
+    relationshipType.value = edge.data?.type || "定向";
+    entityProperties.value = edge.data?.properties || [];
+    // 设置是否加入组件库
+    addToComponentLibrary.value = edge.isLibraryFlag === "1";
+    // 设置当前连线的模板ID
+    currentRelationTemplateId.value = edge.relationTemplateId || 0;
+    currentNodeTemplateId.value = 0;
 
-  // 获取开始和结束节点名称
-  const startNode = graphNodes.value.find(
-    (node) => String(node.id) === String(edge.source),
-  );
-  const endNode = graphNodes.value.find(
-    (node) => String(node.id) === String(edge.target),
-  );
-  startNodeName.value = startNode ? startNode.name : "";
-  endNodeName.value = endNode ? endNode.name : "";
+    // 获取开始和结束节点名称
+    const startNode = graphNodes.value.find(
+      (node) => String(node.id) === String(edge.source),
+    );
+    const endNode = graphNodes.value.find(
+      (node) => String(node.id) === String(edge.target),
+    );
+    startNodeName.value = startNode ? startNode.name : "";
+    endNodeName.value = endNode ? endNode.name : "";
 
-  showPropertyPanel.value = true;
-  console.log("设置showPropertyPanel为true");
+    showPropertyPanel.value = true;
+    console.log("设置showPropertyPanel为true");
+  } catch (error) {
+    console.error("处理边点击事件失败:", error);
+    // 即使出错也要显示属性面板
+    showPropertyPanel.value = true;
+  }
 };
 
 // 获取画布容器大小
@@ -2103,6 +2228,12 @@ const handleUpdateNodes = (templateData) => {
     console.log("节点数据更新完成:", graphNodes.value);
   }
 };
+
+// 处理清除选中状态
+const handleClearSelections = () => {
+  // 这里不需要做任何操作，因为 Sidebar 组件会处理清除选中状态的逻辑
+  console.log("清除模型列表选中状态");
+};
 </script>
 
 <template>
@@ -2111,6 +2242,7 @@ const handleUpdateNodes = (templateData) => {
     <div class="main-content">
       <!-- 左侧侧边栏 -->
       <Sidebar
+        ref="sidebarRef"
         :all-option="allOption"
         :current-domain="currentDomain"
         :current-sub-domain="currentSubDomain"

@@ -169,8 +169,25 @@ const resetConnectionState = () => {
   }
 };
 
+// 清除节点选中状态
+const clearNodeSelection = () => {
+  if (graphContainerRef.value) {
+    graphContainerRef.value.clearNodeSelection();
+    console.log("Content组件调用GraphContainer的clearNodeSelection方法");
+  }
+};
+// 清除连线选中状态
+const clearEdgesSelection = () => {
+  if (graphContainerRef.value) {
+    graphContainerRef.value.clearEdgesSelection();
+    console.log("Content组件调用GraphContainer的clearEdgesSelection方法");
+  }
+};
+
 defineExpose({
   resetConnectionState,
+  clearNodeSelection,
+  clearEdgesSelection,
 });
 
 // 图谱边数据（使用从props传递过来的数据）
@@ -208,8 +225,9 @@ const handleNodeClick = (node) => {
 
 // 处理边点击
 const handleEdgeClick = (edge) => {
-  console.log("边点击:", edge);
+  console.log("Content组件接收到边点击事件:", edge);
   emit("edge-click", edge);
+  console.log("Content组件触发edge-click事件成功");
 };
 
 // 处理图谱点击
@@ -404,7 +422,7 @@ const handleConfirmCreateGraph = () => {
   margin-left: 0;
 }
 
-.tool-container{
+.tool-container {
   position: absolute;
   display: flex;
   left: 10vh;

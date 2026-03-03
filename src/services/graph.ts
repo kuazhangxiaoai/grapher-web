@@ -60,12 +60,16 @@ export default {
     return axios.post(`/serve_api/template/addToModel`, data);
   },
   /** 复制领域 */
-  copyField(fieldId: string): Promise<any> {
-    return axios.get(`/serve_api/field/copyField?fieldId=${fieldId}`);
+  copyField(fieldId: string, newName?: string): Promise<any> {
+    return axios.get(
+      `/serve_api/field/copyField?fieldId=${fieldId}${newName ? `&fieldName=${newName}` : ""}`,
+    );
   },
   /** 复制专题 */
-  copyTopic(topicId: string): Promise<any> {
-    return axios.get(`/serve_api/topic/copyTopic?topicId=${topicId}`);
+  copyTopic(topicId: string, newName?: string): Promise<any> {
+    return axios.get(
+      `/serve_api/topic/copyTopic?topicId=${topicId}${newName ? `&topicName=${newName}` : ""}`,
+    );
   },
   /** 输入topickId,获取graph*/
   getGraphList(topicId: object): Promise<any> {

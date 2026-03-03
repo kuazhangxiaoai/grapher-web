@@ -1,5 +1,5 @@
 <template>
-  <aside class="sidebar">
+  <aside class="sidebar" @clear-selections="handleClearSelections">
     <!-- 面包屑导航 -->
     <div class="breadcrumb" v-if="currentSubDomain">
       <span
@@ -575,11 +575,43 @@
       </el-button>
     </div>
   </aside>
+
+  <!-- 复制重命名弹窗 -->
+  <el-dialog v-model="copyDialogVisible" :title="copyDialogTitle" width="500px">
+    <el-form :model="copyForm" label-width="100px" style="padding: 30px 0">
+      <el-form-item :label="copyType === 'domain' ? '领域名称' : '专题名称'">
+        <el-input
+          v-model="copyForm.name"
+          :placeholder="
+            copyType === 'domain' ? '请输入领域名称' : '请输入专题名称'
+          "
+          style="width: 100%; height: 45px"
+        />
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <span class="dialog-footer">
+        <el-button class="cancel-btn" @click="copyDialogVisible = false"
+          >取消</el-button
+        >
+        <el-button class="confirm-btn" @click="handleCopyConfirm"
+          >确定</el-button
+        >
+      </span>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup>
 import { ref, watch } from "vue";
 import { Search, Plus } from "@element-plus/icons-vue";
+
+// 复制重命名弹窗相关
+const copyDialogVisible = ref(false);
+const copyDialogTitle = ref("");
+const copyForm = ref({ name: "" });
+const copyId = ref("");
+const copyType = ref(""); // 'domain' or 'topic'
 
 const props = defineProps({
   allOption: {
@@ -707,6 +739,7 @@ const emit = defineEmits([
   "add-component-to-model",
   "copy-domain",
   "copy-topic",
+  "clear-selections",
 ]);
 
 const localSearchQuery = ref("");
@@ -738,7 +771,11 @@ const handleDeleteDomain = (id) => {
 };
 
 const handleCopyDomain = (id) => {
-  emit("copy-domain", id);
+  copyId.value = id;
+  copyType.value = "domain";
+  copyDialogTitle.value = "复制领域";
+  copyForm.value.name = "";
+  copyDialogVisible.value = true;
 };
 
 const openAddDialog = () => {
@@ -746,7 +783,22 @@ const openAddDialog = () => {
 };
 
 const handleCopyTopic = (id) => {
-  emit("copy-topic", id);
+  copyId.value = id;
+  copyType.value = "topic";
+  copyDialogTitle.value = "复制专题";
+  copyForm.value.name = "";
+  copyDialogVisible.value = true;
+};
+
+const handleCopyConfirm = () => {
+  if (copyForm.value.name.trim()) {
+    if (copyType.value === "domain") {
+      emit("copy-domain", copyId.value, copyForm.value.name);
+    } else if (copyType.value === "topic") {
+      emit("copy-topic", copyId.value, copyForm.value.name);
+    }
+    copyDialogVisible.value = false;
+  }
 };
 
 const openAddTopicDialog = () => {
@@ -1031,6 +1083,36 @@ const handleComponentSearchClear = () => {
     });
   }, 0);
 };
+
+// 监听清除选中状态事件
+const handleClearSelections = () => {
+  selectedEntityType.value = "";
+  selectedRelationshipType.value = "";
+  selectedComponent.value = null;
+  console.log("清除所有选中状态");
+};
+
+defineExpose({
+  handleClearSelections,
+  setSelectedEntityType: (entityType) => {
+    selectedEntityType.value = entityType;
+    selectedRelationshipType.value = "";
+    selectedComponent.value = null;
+    console.log("设置实体类型选中状态:", entityType);
+  },
+  setSelectedRelationshipType: (relationshipType) => {
+    selectedRelationshipType.value = relationshipType;
+    selectedEntityType.value = "";
+    selectedComponent.value = null;
+    console.log("设置关系类型选中状态:", relationshipType);
+  },
+  setSelectedComponent: (componentName) => {
+    selectedComponent.value = componentName;
+    selectedEntityType.value = "";
+    selectedRelationshipType.value = "";
+    console.log("设置组件选中状态:", componentName);
+  },
+});
 </script>
 
 <style scoped lang="scss">
@@ -1772,5 +1854,45 @@ const handleComponentSearchClear = () => {
     width: 280px;
     padding: 10px;
   }
+}
+
+/* 复制重命名弹窗样式 */
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.confirm-btn {
+  background-color: rgba(61, 210, 176, 1) !important;
+  border-color: rgba(61, 210, 176, 1) !important;
+  color: white !important;
+}
+
+.confirm-btn:hover {
+  background-color: rgba(61, 210, 176, 0.9) !important;
+  border-color: rgba(61, 210, 176, 0.9) !important;
+}
+
+.cancel-btn {
+  background-color: white !important;
+  border-color: #dcdfe6 !important;
+  color: #606266 !important;
+}
+
+.cancel-btn:hover {
+  background-color: #f5f7fa !important;
+  border-color: #c0c4cc !important;
+  color: #606266 !important;
+}
+
+/* 弹框关闭按钮样式 */
+.el-dialog__headerbtn:hover .el-dialog__close {
+  color: rgba(61, 210, 176, 1) !important;
+}
+
+/* 确保样式能够正确应用 */
+:global(.el-dialog__headerbtn:hover .el-dialog__close) {
+  color: rgba(61, 210, 176, 1) !important;
 }
 </style>
