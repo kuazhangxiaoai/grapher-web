@@ -76,7 +76,12 @@
           @edit-graph="openGraphEditor"
       />
     </div>
-    <GraphEditor v-if="showEditor" style="z-index: 9"></GraphEditor>
+    <GraphEditor
+        v-if="showEditor"
+        style="z-index: 9"
+        :marks="markList"
+    >
+    </GraphEditor>
   </div>
 </template>
 
@@ -100,7 +105,7 @@ import type { Mark, Rect } from "@/configs/text"
 const textStore = useTextStore();
 const contentRef = ref(null);
 const textRef = ref<InstanceType<typeof Text> | null>(null);
-const {currentPage} = storeToRefs(textStore)
+const {currentPage, markList} = storeToRefs(textStore)
 const textUrl = ref("");
 const {graphTypeString2Integer} = useConverter()
 // 从localStorage读取状态，或使用默认值
@@ -193,6 +198,8 @@ const currentMode = ref("graph");
 const showEditor = ref(false);
 //当前目录层级
 const currentLevel= ref(0);
+//文本信息
+const currentMarks = ref<Mark[]>([]);
 
 // ============ 历史搜索记录相关 ============
 // 存储在不同上下文中的历史记录
@@ -751,6 +758,7 @@ const handleDomainClick = async (domain) => {
   // 调用接口获取专题列表
   await fetchTopics(domain.id);
   // 取消加载状态
+  textUrl.value = "";
   isLoadingTopics.value = false;
 
   // 切换到专题页面，更新下拉框显示专题搜索历史
@@ -893,8 +901,8 @@ const handleTopicClick = async (subDomain) => {
   currentLevel.value = 2;
   currentGraphId.value = "";
   currentGraphName.value = "";
-
   await fetchGraph(subDomain.id);
+  textUrl.value = "";
   saveState();
 };
 
@@ -1215,6 +1223,7 @@ const openGraphEditor = () => {
 
 const hanleRefresh = () => {
   textRef.value?.clearEditing()
+  textStore.clearMarkList()
   showEditor.value = false;
 }
 </script>

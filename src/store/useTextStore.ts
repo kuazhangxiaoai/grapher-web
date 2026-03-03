@@ -47,7 +47,9 @@ export const useTextStore = defineStore('textStore', {
         },
         clearMarkList(){
             this.markList = [];
-        }
-
+        },
+        getMarkList(){
+            return this.markList;
+        },
     },
 })

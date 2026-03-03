@@ -1,19 +1,59 @@
 <template>
   <div class="graph-editor">
-    <div ref="graphRef" class="graph-canvas"></div>
-    <div class="zoom-controls">
-      <button class="zoom-btn" @click="zoomIn">
-        <img src="@/assets/images/放大.png" alt="放大" class="zoom-icon" />
-      </button>
-      <div class="zoom-level">{{ zoomLevel }}%</div>
-      <button class="zoom-btn" @click="zoomOut">
-        <img src="@/assets/images/缩小.png" alt="缩小" class="zoom-icon" />
-      </button>
-    </div>
+    <div class="content-wrapper">{{ content }}</div>
+    <EditorContainer
+      ref="graphContainerRef"
+      class="graph-canvas"
+    ></EditorContainer>
   </div>
 </template>
 <script setup lang="ts">
+import { ref, onMounted, onUnmounted, watch, shallowRef, computed } from "vue";
+import GraphContainer from "@/components/graph/GraphContainer.vue";
+import type { Mark } from "@/configs/text";
+import EditorContainer from "@/components/editor/EditorContainer.vue";
 
+const graphContainerRef = ref(null);
+
+const props = withDefaults(
+    defineProps<{
+      nodes?: Array<{
+        id: string | number;
+        name?: string;
+        type?: string;
+        x?: number;
+        y?: number;
+        properties?: unknown;
+      }>;
+      edges?: Array<{
+        source: string | number;
+        target: string | number;
+        data?: { name?: string; type?: string };
+      }>;
+      marks: Array<Mark> | null;
+      articleId?: string | null;
+      topicId?: string | null;
+      domainId?: string | null;
+    }>(),
+    {
+      nodes: () => [],
+      edges: () => [],
+      marks: () => null,
+    }
+);
+
+// 将 marks 中的 content 字段拼接成一个字符串
+const content = computed(() => {
+  if (!props.marks || props.marks.length === 0) return "";
+  return props.marks
+    .map((mark) => mark.content ?? "")
+    .join("");
+});
+
+//初始化图谱
+const initGraph = () => {
+
+}
 </script>
 
 
@@ -33,7 +73,7 @@
   background-color: #f5f8fb;
   background-image: radial-gradient(#e2dfdf 1px, transparent 1px);
   background-size: 20px 20px;
-  border: #4caf50 3px solid;
+  border: #3dd2b0 3px solid;
   border-radius: 15px;
 }
 
@@ -42,30 +82,13 @@
   height: 100%;
 }
 
-.zoom-controls {
+.content-wrapper {
   position: absolute;
-  bottom: 25px;
-  right: 28px;
-  display: flex;
-  align-items: center;
-  border-radius: 40px;
-  padding: 1px;
-  background: #ffffff;
-  border: 0.5px solid rgba(226, 226, 226, 1);
-  box-shadow: 0px 2px 8px rgba(78, 89, 105, 0.18);
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 5%;
+  background-color: #4caf50;
 }
 
-.zoom-btn {
-  width: 36px;
-  height: 36px;
-  border: none;
-  background: none;
-  font-size: 14px;
-  font-weight: bold;
-  cursor: pointer;
-  margin: 0 2px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
 </style>
