@@ -67,7 +67,10 @@ export default {
   copyTopic(topicId: string): Promise<any> {
     return axios.get(`/serve_api/topic/copyTopic?topicId=${topicId}`);
   },
-
+  /** 输入topickId,获取graph*/
+  getGraphList(topicId: object): Promise<any> {
+    return axios.get(`/serve_api/article/selectArticle?topicId=${topicId}`);
+  },
   /** create Article*/
   addArticle(graphData): Promise<any> {
     //raphName: string, topicId: string, createMethod: string, file: any

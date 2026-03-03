@@ -71,9 +71,11 @@
           @previous-page="hanlePreviousPage"
           @next-page="hanleNextPage"
           @jump-page="handleJumpPage"
+          @refresh="hanleRefresh"
+          @edit-graph="openGraphEditor"
       />
     </div>
-    <GraphEditor v-if="showEditor"></GraphEditor>
+    <GraphEditor v-if="showEditor" style="z-index: 9"></GraphEditor>
   </div>
 </template>
 
@@ -98,7 +100,7 @@ const textStore = useTextStore();
 const contentRef = ref(null);
 const textRef = ref<InstanceType<typeof Text> | null>(null);
 const {currentPage} = storeToRefs(textStore)
-const textUrl = ref("http://10.11.52.199:8090/pdf/%E5%8C%97%E4%BA%AC%E5%B8%82%E6%80%BB%E4%BD%93%E8%A7%84%E5%88%922016-2035.pdf");
+const textUrl = ref("");
 const {graphTypeString2Integer} = useConverter()
 // 从localStorage读取状态，或使用默认值
 const loadState = () => {
@@ -783,6 +785,51 @@ const fetchTopics = async (fieldId, condition = "") => {
   }
 };
 
+//获取图谱列表
+const fetchGraph = async (topicId, condition = "") => {
+  try {
+    const currentTopicObj = topics.value.find(
+        (domain) => domain.id === currentSubDomainId.value,
+    );
+    if (!currentTopicObj) return;
+
+    const response = await projectService.getGraphList(
+        currentTopicObj.id,
+    );
+
+    if (response && response.data) {
+      graphs.value = []
+      for(const graph of response.data) {
+        const articleUrl = await projectService.getArticleUrl(graph.articleId);
+        const newGraph: GraphConfig = {
+          id: graph.articleId,
+          name: graph.articleName,
+          articleUrl: articleUrl,
+          articleName: graph.articleName,
+          topicId: graph.topicId,
+          topicName: currentSubDomain.value,
+          domainId: currentDomainId.value,
+          domainName: currentDomain.value,
+          createMethod: graph.createMethod,
+          createdAt: graph.createTime,
+        }
+        graphs.value.push(newGraph);
+      }
+
+      //graphs.value = response.data.map((item) => ({
+      //  id: item.articleId,
+      //  name: item.articleName,
+      //  topicId: item.topicId,
+      //}));
+    } else {
+      graphs.value = [];
+    }
+  } catch (error) {
+    console.error("获取专题列表失败:", error);
+    graphs.value = [];
+  }
+};
+
 // 删除专题
 const handleDeleteTopic = async (id) => {
   try {
@@ -839,12 +886,14 @@ const handleTopicSearch = (query) => {
 };
 
 // 处理专题点击，设置当前子领域为专题名称-handleTopic
-const handleTopicClick = (subDomain) => {
+const handleTopicClick = async (subDomain) => {
   currentSubDomain.value = subDomain.name;
   currentSubDomainId.value = subDomain.id;
   currentLevel.value = 2;
   currentGraphId.value = "";
   currentGraphName.value = "";
+
+  await fetchGraph(subDomain.id);
   saveState();
 };
 
@@ -979,47 +1028,6 @@ const handleMouseUp = () => {
   // 处理鼠标释放事件
 };
 
-// 处理取消新增领域
-const handleCancelAddDomain = () => {
-  showAddDialog.value = false;
-};
-
-// 打开新增专题对话框
-const openAddTopicDialog = () => {
-  showAddTopicDialog.value = true;
-};
-
-// 取消新增专题
-const handleCancelAddTopic = () => {
-  showAddTopicDialog.value = false;
-  newTopicName.value = "";
-};
-
-// 处理新增专题
-const handleAddTopic = async (name) => {
-  if (name) {
-    try {
-      const currentDomainObj = domains.value.find(
-          (domain) => domain.name === currentDomain.value,
-      );
-      if (!currentDomainObj) return;
-
-      const response = await projectService.addTopicProject({
-        topicName: name,
-        fieldId: currentDomainObj.id,
-      });
-      if (response && response.data) {
-        // 新增成功后，重新获取专题列表
-        await fetchTopics(currentDomainObj.id);
-        newTopicName.value = "";
-        showAddTopicDialog.value = false;
-      }
-    } catch (error) {
-      console.error("新增专题失败:", error);
-    }
-  }
-};
-
 // 接收 PDF 选区内容与坐标（来自 TextSelection → Text）
 const handlePdfSelectionChange = (payload: Mark) => {
   pdfSelectionContent.value = payload.content;
@@ -1086,7 +1094,7 @@ const handleCreateGraph = async (graphData) => {
     hasData.value = true; // 设置 hasData 为 true，显示关系图
 
     //跳转至新的url
-    const textUrlResponse = await projectService.getArticleUrl(newGraph.id);
+    const textUrlResponse = await projectService.getArticleUrl(addGraphResponse.data);
     textUrl.value = textUrlResponse.data;
 
     const newGraph: GraphConfig = {
@@ -1100,7 +1108,7 @@ const handleCreateGraph = async (graphData) => {
       domainName: state.currentDomain,
       createMethod: graphData.createMethod,
       createdAt: new Date().toISOString(),
-  };
+    };
     graphs.value.push(newGraph);
   }
   isConfirmButtonDisabled.value = false;
@@ -1117,10 +1125,13 @@ const handleCancelCreateGraph = () => {
 };
 
 // 处理图谱点击
-const handleGraphClick = (graph) => {
+const handleGraphClick = async (graph) => {
   currentLevel.value = 3;
   currentGraphId.value = graph.id;
   currentGraphName.value = graph.name;
+  const response = await projectService.getArticleUrl(graph.id);
+  textUrl.value = response.data;
+  currentPage.value = 0;
   // 设置 hasData 为 true，显示关系图
   hasData.value = true;
 };
@@ -1195,6 +1206,16 @@ const handleNodeDragEnd = (data) => {
 const handleModeChange = (mode) => {
   currentMode.value = mode;
 };
+
+//
+const openGraphEditor = () => {
+  showEditor.value = !showEditor.value;
+}
+
+const hanleRefresh = () => {
+  textRef.value?.clearEditing()
+  showEditor.value = false;
+}
 </script>
 
 <style scoped lang="scss">

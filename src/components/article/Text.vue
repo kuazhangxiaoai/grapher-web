@@ -2,8 +2,11 @@
   <div v-if="isLoading || !engine" class="loading-pane">
     Loading PDF Engine...
   </div>
+  <div v-else-if="!props.src" class="loading-pane">
+    暂无 PDF 文档
+  </div>
   <div v-else class="text-processor-root">
-    <EmbedPDF :engine="engine" :plugins="pluginRef" v-slot="{ activeDocumentId }">
+    <EmbedPDF :key="props.src" :engine="engine" :plugins="pluginRef" v-slot="{ activeDocumentId }">
       <DocumentContent v-if="activeDocumentId" :document-id="activeDocumentId" :current-page="props.page" v-slot="{ isLoaded }">
         <TextSelection
           ref="textSelectionRef"
@@ -21,7 +24,7 @@
 </template>
 
 <script setup lang="ts">
-import {ref, computed, onMounted, watch} from 'vue';
+import {ref, computed, watch} from 'vue';
 import { usePdfiumEngine } from '@embedpdf/engines/vue';
 import { EmbedPDF } from '@embedpdf/core/vue';
 import { createPluginRegistration } from '@embedpdf/core';
@@ -36,7 +39,6 @@ import TextSelection from "@/components/article/TextSelection.vue";
 import type { Mark } from "@/configs/text";
 
 const { engine, isLoading } = usePdfiumEngine();
-const pluginRef = ref(null)
 const props = defineProps<{
   src?: string | null;
   page?: number;
@@ -63,33 +65,20 @@ const clearEditing = () => {
 }
 defineExpose({ drawMark, clearMark, clearEditing });
 
-onMounted(()=>{
-  const plugins = [
-    createPluginRegistration(DocumentManagerPluginPackage, {
-      initialDocuments: [{ url: props.src }],
-    }),
-    createPluginRegistration(ViewportPluginPackage),
-    createPluginRegistration(ScrollPluginPackage),
-    createPluginRegistration(RenderPluginPackage),
-    createPluginRegistration(InteractionManagerPluginPackage),
-    createPluginRegistration(SelectionPluginPackage),
-  ];
-  pluginRef.value = plugins;
-})
+/** 根据 src 构建插件配置，确保 EmbedPDF 初始化时即有有效 plugins（官方示例为顶层常量） */
+const pluginRef = computed(() => [
+  createPluginRegistration(DocumentManagerPluginPackage, {
+    initialDocuments: [{ url: props.src }],
+  }),
+  createPluginRegistration(ViewportPluginPackage),
+  createPluginRegistration(ScrollPluginPackage),
+  createPluginRegistration(RenderPluginPackage),
+  createPluginRegistration(InteractionManagerPluginPackage),
+  createPluginRegistration(SelectionPluginPackage),
+]);
 
 watch([() => props.src, () => props.page], () => {
-  const plugins = [
-    createPluginRegistration(DocumentManagerPluginPackage, {
-      initialDocuments: [{ url: props.src }],
-    }),
-    createPluginRegistration(ViewportPluginPackage),
-    createPluginRegistration(ScrollPluginPackage),
-    createPluginRegistration(RenderPluginPackage),
-    createPluginRegistration(InteractionManagerPluginPackage),
-    createPluginRegistration(SelectionPluginPackage),
-  ];
-  pluginRef.value = plugins;
-  currentPage.value = props.page;
+  currentPage.value = props.page ?? 1;
 });
 
 </script>

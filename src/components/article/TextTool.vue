@@ -4,8 +4,8 @@
     <div class="previous-page" title="上一页" @click="handlePreviousPageClick"/>
     <div class="next-page" title="下一页" @click="handleNextPageClick"/>
     <div class="jump-page" title="跳页至" @click="openJumpPageDialog"/>
-    <div class="refresh" title="刷新"/>
-    <div class="edit" title="编辑图谱"/>
+    <div class="refresh" title="刷新" @click="hanleRefreshClick"/>
+    <div class="edit" title="编辑图谱" @click="openGraphEditor"/>
     <JumpPageDialog
       v-if="showJumpPageDialog"
       :total-pages="textStore.totalPages"
@@ -17,12 +17,12 @@
 </template>
 
 <script setup lang="ts">
-import {ref, watch, onUnmounted} from "vue";
+import {ref} from "vue";
 import {useTextStore} from "@/store/useTextStore";
 import JumpPageDialog from "@/components/common/JumpPageDialog.vue";
 import { ElMessage as Message } from "element-plus";
 
-const emit = defineEmits(["next-page", "jump-page", "refresh", "previous-page", "editgraph"]);
+const emit = defineEmits(["next-page", "jump-page", "refresh", "previous-page", "edit-graph"]);
 const textStore = useTextStore();
 const showJumpPageDialog = ref(false);
 
@@ -59,6 +59,14 @@ const handleJumpPage = (page: number) => {
   notifyPageChange(textStore.currentPage);
   emit("jump-page", page);
 };
+
+const openGraphEditor = () => {
+  emit("edit-graph");
+}
+
+const hanleRefreshClick = () => {
+  emit("refresh");
+}
 
 </script>
 
