@@ -3,6 +3,7 @@
     <!-- 左侧侧边栏 -->
     <Sidebar
         :all-option="allOption"
+        :active-graph-item="currentGraphId"
         :current-domain="currentDomain"
         :current-sub-domain="currentSubDomain"
         :domains="domains"
