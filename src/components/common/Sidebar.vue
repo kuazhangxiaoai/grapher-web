@@ -336,6 +336,7 @@
             v-for="graph in graphs"
             :key="graph.id"
             class="graph-item"
+            :class="{ 'graph-item-active': String(props.activeGraphItem) === String(graph.id) }"
             @click="handleGraphClick(graph)"
           >
             <div class="graph-info">
@@ -605,6 +606,7 @@
 <script setup>
 import { ref, watch } from "vue";
 import { Search, Plus } from "@element-plus/icons-vue";
+import {string} from "three/tsl";
 
 // 复制重命名弹窗相关
 const copyDialogVisible = ref(false);
@@ -698,6 +700,10 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  activeGraphItem:{
+    type: String,
+    default: "",
+  }
 });
 
 // Use components from props directly
@@ -1684,6 +1690,7 @@ defineExpose({
   cursor: pointer;
 }
 
+.graph-item-active,
 .graph-item:hover {
   border-color: rgba(61, 210, 176, 1);
 }
