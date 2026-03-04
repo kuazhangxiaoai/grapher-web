@@ -336,7 +336,10 @@
             v-for="graph in graphs"
             :key="graph.id"
             class="graph-item"
-            :class="{ 'graph-item-active': String(props.activeGraphItem) === String(graph.id) }"
+            :class="{
+              'graph-item-active':
+                String(props.activeGraphItem) === String(graph.id),
+            }"
             @click="handleGraphClick(graph)"
           >
             <div class="graph-info">
@@ -531,6 +534,7 @@
                   selectedComponent ===
                   (component.nodeTemplateName ||
                     component.relationTemplateName),
+                'component-item-relationship': !component.nodeTemplateId,
               }"
               draggable="true"
               @dragstart="
@@ -606,7 +610,7 @@
 <script setup>
 import { ref, watch } from "vue";
 import { Search, Plus } from "@element-plus/icons-vue";
-import {string} from "three/tsl";
+import { string } from "three/tsl";
 
 // 复制重命名弹窗相关
 const copyDialogVisible = ref(false);
@@ -700,10 +704,10 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
-  activeGraphItem:{
+  activeGraphItem: {
     type: String,
     default: "",
-  }
+  },
 });
 
 // Use components from props directly
@@ -1607,7 +1611,20 @@ defineExpose({
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 140px;
+  max-width: 120px;
+}
+
+.component-item-relationship .component-name::before {
+  content: "";
+  width: 16px;
+  height: 16px;
+  background-image: url("@/assets/images/定向.png");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  margin-right: 8px;
+  display: inline-block;
+  vertical-align: middle;
 }
 
 .component-item:hover,

@@ -631,11 +631,13 @@ const initGraph = () => {
           };
 
           if (relationshipType === "定向") {
+            style.startArrow = false;
             style.endArrow = true;
           } else if (relationshipType === "双向") {
             style.startArrow = true;
             style.endArrow = true;
           } else if (relationshipType === "循环") {
+            style.startArrow = false;
             style.endArrow = true;
           }
 
