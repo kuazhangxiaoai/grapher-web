@@ -965,7 +965,7 @@ const handleTopicClick = async (topic, skipComponentLibrarySearch = false) => {
             // 计算画布大小，使用容器大小
             const { width: canvasWidth, height: canvasHeight } =
               getCanvasSize();
-            const padding = 100; // 减小边距，让节点更靠近画布边缘
+            const padding = 20; // 减小边距，让节点更靠近画布边缘
 
             // 生成均匀分散的位置
             response.data.nodeTemplates.forEach((template, index) => {
@@ -983,22 +983,27 @@ const handleTopicClick = async (topic, skipComponentLibrarySearch = false) => {
                 x = canvasWidth / 2;
                 y = canvasHeight / 2;
               } else {
-                // 多个节点时使用圆形布局，均匀分布在一个圆周上
+                // 多个节点时使用混合布局，结合椭圆分布和随机分布，避免中间空白
                 const centerX = canvasWidth / 2;
                 const centerY = canvasHeight / 2;
-                // 计算圆的半径，考虑边距，增加半径使节点更分散
-                const radius = Math.min(
-                  (canvasWidth - 2 * padding) / 1.5,
-                  (canvasHeight - 2 * padding) / 1.5,
-                );
+                // 计算椭圆的长轴和短轴，考虑边距
+                const semiMajorAxis = (canvasWidth - 2 * padding*4) / 2; // 长轴半径
+                const semiMinorAxis = (canvasHeight - 2 * padding) / 2; // 短轴半径
                 // 计算每个节点的角度
                 const angle = (2 * Math.PI * index) / nodeCount;
-                // 计算节点位置
-                x = centerX + radius * Math.cos(angle);
-                y = centerY + radius * Math.sin(angle);
+
+                // 为了避免中间空白，使用随机半径，让节点分布在不同距离的位置
+                const randomRadiusFactor = 0.5 + Math.random() * 0.5; // 0.5 到 1 之间的随机因子
+                // 计算节点位置（椭圆公式，使用随机半径）
+                x =
+                  centerX +
+                  semiMajorAxis * randomRadiusFactor * Math.cos(angle);
+                y =
+                  centerY +
+                  semiMinorAxis * randomRadiusFactor * Math.sin(angle);
 
                 // 添加一些随机偏移，增加分散度
-                const randomOffset = 50; // 偏移量
+                const randomOffset = 60; // 偏移量
                 x += (Math.random() - 0.5) * randomOffset;
                 y += (Math.random() - 0.5) * randomOffset;
               }
@@ -1386,64 +1391,16 @@ const handleSavePropertyPanel = (data) => {
       relationshipTypes.value.push(data.relationshipName);
     }
 
-    // 创建新的关系边并添加到图谱边数据中
-    if (sourceNodeId.value && targetNodeId.value) {
-      const relationshipName = data.relationshipName || "关系";
-      const relationshipType = data.relationshipType || "定向";
-      const properties = data.entityProperties || [];
+    // 注意：不再手动添加关系边，因为保存成功后会通过 update-nodes 事件从接口获取最新数据并更新
+    console.log("关系保存成功，等待接口数据更新");
 
-      // 使用原始的节点ID作为关系的source和target
-      const sourceId = originalSourceNodeId.value;
-      const targetId = originalTargetNodeId.value;
-
-      // 创建第一条边：A→B
-      const newEdge1 = {
-        id: (Date.now() + 1).toString(),
-        source: sourceId.toString(),
-        target: targetId.toString(),
-        data: {
-          name: relationshipName,
-          type: relationshipType,
-          properties: properties,
-        },
-        // 存储节点模板ID，用于后端保存
-        sourceNodeTemplateId: sourceNodeId.value,
-        targetNodeTemplateId: targetNodeId.value,
-        isLibraryFlag: data.addToComponentLibrary ? "1" : "0",
-      };
-      graphEdges.value.push(newEdge1);
-      console.log("新创建的关系边1:", newEdge1);
-
-      // 如果是循环关系，创建第二条边：B→A
-      if (relationshipType === "循环") {
-        const newEdge2 = {
-          id: Date.now().toString(),
-          source: targetId.toString(),
-          target: sourceId.toString(),
-          data: {
-            name: relationshipName,
-            type: relationshipType,
-            properties: properties,
-          },
-          // 存储节点模板ID，用于后端保存
-          sourceNodeTemplateId: targetNodeId.value,
-          targetNodeTemplateId: sourceNodeId.value,
-          isLibraryFlag: data.addToComponentLibrary ? "1" : "0",
-        };
-        graphEdges.value.push(newEdge2);
-        console.log("新创建的关系边2:", newEdge2);
-      }
-
-      console.log("当前graphEdges数组:", graphEdges.value);
-
-      // 清空源节点和目标节点ID，准备下一次连线
-      sourceNodeId.value = null;
-      targetNodeId.value = null;
-      originalSourceNodeId.value = null;
-      originalTargetNodeId.value = null;
-      // 退出连线模式
-      isConnecting.value = false;
-    }
+    // 清空源节点和目标节点ID，准备下一次连线
+    sourceNodeId.value = null;
+    targetNodeId.value = null;
+    originalSourceNodeId.value = null;
+    originalTargetNodeId.value = null;
+    // 退出连线模式
+    isConnecting.value = false;
   }
 
   // 更新当前子领域的数量
@@ -2093,7 +2050,7 @@ const handleUpdateNodes = (templateData) => {
 
     // 计算画布大小，使用容器大小
     const { width: canvasWidth, height: canvasHeight } = getCanvasSize();
-    const padding = 100; // 减小边距，让节点更靠近画布边缘
+    const padding = 20; // 减小边距，让节点更靠近画布边缘
 
     templateData.nodeTemplates.forEach((template, index) => {
       // 添加节点模板名称到实体类型数组
@@ -2108,22 +2065,23 @@ const handleUpdateNodes = (templateData) => {
         x = canvasWidth / 2;
         y = canvasHeight / 2;
       } else {
-        // 多个节点时使用圆形布局，均匀分布在一个圆周上
+        // 多个节点时使用混合布局，结合椭圆分布和随机分布，避免中间空白
         const centerX = canvasWidth / 2;
         const centerY = canvasHeight / 2;
-        // 计算圆的半径，考虑边距，增加半径使节点更分散
-        const radius = Math.min(
-          (canvasWidth - 2 * padding) / 1.5,
-          (canvasHeight - 2 * padding) / 1.5,
-        );
+        // 计算椭圆的长轴和短轴，考虑边距
+        const semiMajorAxis = (canvasWidth - 2 * padding*4) / 2; // 长轴半径
+        const semiMinorAxis = (canvasHeight - 2 * padding) / 2; // 短轴半径
         // 计算每个节点的角度
         const angle = (2 * Math.PI * index) / nodeCount;
-        // 计算节点位置
-        x = centerX + radius * Math.cos(angle);
-        y = centerY + radius * Math.sin(angle);
+        
+        // 为了避免中间空白，使用随机半径，让节点分布在不同距离的位置
+        const randomRadiusFactor = 0.5 + Math.random() * 0.5; // 0.5 到 1 之间的随机因子
+        // 计算节点位置（椭圆公式，使用随机半径）
+        x = centerX + semiMajorAxis * randomRadiusFactor * Math.cos(angle);
+        y = centerY + semiMinorAxis * randomRadiusFactor * Math.sin(angle);
 
         // 添加一些随机偏移，增加分散度
-        const randomOffset = 50; // 偏移量
+        const randomOffset = 60; // 偏移量
         x += (Math.random() - 0.5) * randomOffset;
         y += (Math.random() - 0.5) * randomOffset;
       }
