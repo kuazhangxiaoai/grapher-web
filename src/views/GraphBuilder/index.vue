@@ -84,10 +84,12 @@
         :edges="editorEdges"
         @add-entity="handleEditorAddEntity"
         @node-drag-end="handleEditorNodeDragEnd"
+        @quit="handleEditorQuit"
     />
     <AddNodeDialog
         v-model:visible="showAddNodeDialog"
         :position="addNodePosition"
+        :node-types="nodeTypes"
         @add-node="handleAddNodeConfirm"
         @cancel="handleAddNodeCancel"
     />
@@ -125,6 +127,7 @@ const contentRef = ref(null);
 const textRef = ref<InstanceType<typeof Text> | null>(null);
 const {currentPage, markList} = storeToRefs(textStore)
 const textUrl = ref("");
+const nodeTypes = ref([])
 const {graphTypeString2Integer} = useConverter()
 // 从localStorage读取状态，或使用默认值
 const loadState = () => {
@@ -1246,7 +1249,7 @@ const handleModeChange = (mode) => {
 };
 
 // 编辑器中右键添加节点：只写入 editorNodes，不写入 graphNodes（不传给 GraphViewer）
-const handleEditorAddEntity = (position: { x: number; y: number }) => {
+const handleEditorAddEntity = async (position: { x: number; y: number }) => {
   addNodePosition.value = position;
   // 创建临时节点
   const tempNode = {
@@ -1255,9 +1258,18 @@ const handleEditorAddEntity = (position: { x: number; y: number }) => {
     type: "virtual",
     x: position.x,
     y: position.y,
-    properties: [{ name: "名字", type: "string" }, { name: "日期", type: "date" }],
+    properties: [],
   };
+  //const response = await projectService.getNodeTypes(currentSubDomainId.value)
+  //if(response && response.data)
+  //{
+  //  response.data.forEach((nodeType) => {
+  //    console.log(nodeType);
+  //  })
+  //}
+
   editorNodes.value.push(tempNode);
+  //打开添加节点对话框
   showAddNodeDialog.value = true;
 };
 
@@ -1310,6 +1322,16 @@ const handleEditorNodeDragEnd = (data: { nodeId: string | number; position: { x:
       break;
     }
   }
+};
+
+// GraphEditor 顶部工具条 - 退出
+// 这里只负责关闭编辑器，不把编辑中的节点/边写回 GraphViewer
+const handleEditorQuit = () => {
+  showEditor.value = false;
+  // 可选：清空编辑器内部数据，避免下次残留
+  editorNodes.value = [];
+  editorEdges.value = [];
+  hanleRefresh();
 };
 
 const openGraphEditor = () => {

@@ -6,6 +6,13 @@
       @mousemove="handleMouseMove"
   >
     <div ref="graphRef" class="graph-canvas"></div>
+    <EditorTool
+        class="editor-tool"
+        @submit="handleSubmitClick"
+        @clear="handleClearClick"
+        @quit="handleQuitClick"
+    >
+    </EditorTool>
     <EditorContextMenu
         v-if="showContextMenu"
         :position="contextMenuPosition"
@@ -38,6 +45,7 @@ import {
 } from "vue";
 import { Graph } from "@antv/g6";
 import EditorContextMenu from "@/components/editor/EditorContextMenu.vue";
+import EditorTool from "@/components/editor/EditorTool.vue";
 
 // 内边距配置常量
 const PADDING = {
@@ -81,6 +89,10 @@ const emit = defineEmits([
   "node-drag",
   "node-drag-end",
   "connection-complete",
+  // GraphEditor 顶部工具条相关事件
+  "submit",
+  "clear",
+  "quit",
 ]);
 
 // 临时连线相关状态
@@ -1936,6 +1948,21 @@ const zoomOut = () => {
   }
 };
 
+// 处理提交：向父组件抛出 submit 事件
+const handleSubmitClick = () => {
+  emit("submit");
+};
+
+// 处理退出：向父组件抛出 quit 事件
+const handleQuitClick = () => {
+  emit("quit");
+};
+
+// 处理清除：向父组件抛出 clear 事件
+const handleClearClick = () => {
+  emit("clear");
+};
+
 // 监听数据变化
 watch(
     [() => props.nodes, () => props.edges],
@@ -2043,6 +2070,12 @@ defineExpose({
   font-weight: bold;
   margin: 0 2px;
   min-width: 50px;
+}
+
+.editor-tool{
+  position: absolute;
+  bottom: 5%;
+  height: 45px;
 }
 
 :deep(.g6-node-rect) {

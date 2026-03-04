@@ -8,6 +8,9 @@
       :edges="props.edges"
       @add-entity="onAddEntity"
       @node-drag-end="onNodeDragEnd"
+      @submit="onSubmit"
+      @clear="onClear"
+      @quit="onQuit"
     />
   </div>
 </template>
@@ -22,6 +25,9 @@ const graphContainerRef = ref(null);
 const emit = defineEmits<{
   (e: "add-entity", position: { x: number; y: number }): void;
   (e: "node-drag-end", data: { nodeId: string | number; position: { x: number; y: number }; data?: unknown }): void;
+  (e: "submit"): void;
+  (e: "clear"): void;
+  (e: "quit"): void;
 }>();
 
 const props = withDefaults(
@@ -67,6 +73,19 @@ const onNodeDragEnd = (data: { nodeId: string | number; position: { x: number; y
   emit("node-drag-end", data);
 };
 
+// 顶部工具条事件向上抛出，由父级（GraphBuilder/index）决定具体行为
+const onSubmit = () => {
+  emit("submit");
+};
+
+const onClear = () => {
+  emit("clear");
+};
+
+const onQuit = () => {
+  emit("quit");
+};
+
 //初始化图谱
 const initGraph = () => {
 
@@ -104,7 +123,6 @@ const initGraph = () => {
   left: 0;
   top: 0;
   width: 100%;
-  height: 5%;
   background-color: #4caf50;
 }
 
