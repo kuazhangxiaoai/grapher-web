@@ -225,9 +225,7 @@
           size="small"
           class="save-btn"
           @click="handleSavePropertyPanel"
-          >保存{{
-            currentOperation === "relationship" ? relationTemplateId : "llll"
-          }}</el-button
+          >保存</el-button
         >
       </div>
     </div>
