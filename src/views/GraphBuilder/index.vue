@@ -80,8 +80,24 @@
         v-if="showEditor"
         style="z-index: 9"
         :marks="markList"
-    >
-    </GraphEditor>
+        :nodes="editorNodes"
+        :edges="editorEdges"
+        @add-entity="handleEditorAddEntity"
+        @node-drag-end="handleEditorNodeDragEnd"
+    />
+    <AddNodeDialog
+        v-model:visible="showAddNodeDialog"
+        :position="addNodePosition"
+        @add-node="handleAddNodeConfirm"
+        @cancel="handleAddNodeCancel"
+    />
+    <AddNodePropertyDialog
+        v-model:visible="showAddNodePropertyDialog"
+        :node-name="nodeForPropertyDialog?.name"
+        :initial-properties="nodeForPropertyDialog?.properties"
+        @confirm="handleNodePropertyConfirm"
+        @cancel="handleAddNodeCancel"
+    />
   </div>
 </template>
 
@@ -91,6 +107,8 @@ import { ElMessageBox } from "element-plus";
 import { ElMessage as Message } from "element-plus";
 import Sidebar from "@/components/common/Sidebar.vue";
 import AddGraphDialog from "@/components/common/AddGraphDialog.vue";
+import AddNodeDialog from "@/components/common/AddNodeDialog.vue";
+import AddNodePropertyDialog from "@/components/common/AddNodePropertyDialog.vue";
 import projectService from "@/services/graph.ts"
 import Text from "@/components/article/Text.vue";
 import {useConverter} from "@/mock/modules/converter.ts";
@@ -196,10 +214,17 @@ const targetNodeId = ref(null);
 const currentMode = ref("graph");
 //开启 graphEditor
 const showEditor = ref(false);
+// 编辑器内使用的节点/边（与 GraphViewer 的 graphNodes/graphEdges 分离，不传回给 GraphViewer）
+const editorNodes = ref([]);
+const editorEdges = ref([]);
 //当前目录层级
 const currentLevel= ref(0);
 //文本信息
-const currentMarks = ref<Mark[]>([]);
+const showAddNodeDialog = ref(false);
+const addNodePosition = ref({ x: 0, y: 0 });
+const showAddNodePropertyDialog = ref(false);
+/** 当前在配置属性的节点（AddNodeDialog 确定后创建，用于属性弹窗回写） */
+const nodeForPropertyDialog = ref(null);
 
 // ============ 历史搜索记录相关 ============
 // 存储在不同上下文中的历史记录
@@ -371,7 +396,6 @@ const saveState = () => {
     subSubDomains: subSubDomains.value,
     hasData: hasData.value,
     graphs: graphs.value,
-    graphNodes: graphNodes.value,
     currentLevel: currentLevel.value,
   };
   localStorage.setItem("GrapherPageState", JSON.stringify(state));
@@ -1017,6 +1041,11 @@ const handleDrop = (event) => {
   hasData.value = true;
 };
 
+// 点击取消时移除编辑器内的临时节点（id 为 virtualNode）
+const handleAddNodeCancel = () => {
+  editorNodes.value = editorNodes.value.filter((n) => String(n.id) !== "virtualNode");
+}
+
 // 处理节点鼠标按下
 const handleNodeMouseDown = (event, nodeId) => {
   // 处理节点鼠标按下事件
@@ -1216,9 +1245,79 @@ const handleModeChange = (mode) => {
   currentMode.value = mode;
 };
 
-//
+// 编辑器中右键添加节点：只写入 editorNodes，不写入 graphNodes（不传给 GraphViewer）
+const handleEditorAddEntity = (position: { x: number; y: number }) => {
+  addNodePosition.value = position;
+  // 创建临时节点
+  const tempNode = {
+    id: "virtualNode",
+    name: " ",
+    type: "virtual",
+    x: position.x,
+    y: position.y,
+    properties: [{ name: "名字", type: "string" }, { name: "日期", type: "date" }],
+  };
+  editorNodes.value.push(tempNode);
+  showAddNodeDialog.value = true;
+};
+
+// AddNodeDialog 点击确定：用正式节点替换临时节点，并弹出属性弹窗
+const handleAddNodeConfirm = (payload: { name: string; type: string | null; position?: { x: number; y: number } }) => {
+  const pos = payload.position ?? addNodePosition.value;
+  const newNodeId = Date.now();
+  //const defaultProperties = [{ name: "名字", type: "string" }, { name: "日期", type: "date" }];
+  const newNode = {
+    id: newNodeId,
+    name: payload.name?.trim(),
+    type: payload.type ,
+    x: pos.x,
+    y: pos.y,
+    //properties: defaultProperties,
+  };
+  editorNodes.value = editorNodes.value.map((n) =>
+    String(n.id) === "virtualNode" ? newNode : n
+  );
+  nodeForPropertyDialog.value = { ...newNode };
+  showAddNodePropertyDialog.value = true;
+};
+
+// AddNodePropertyDialog 确定：把配置的属性写回对应节点
+const handleNodePropertyConfirm = (properties: { name: string; type: string }[]) => {
+  const id = nodeForPropertyDialog.value?.id;
+  if (id == null) return;
+  const list = editorNodes.value;
+  for (let i = 0; i < list.length; i++) {
+    if (String(list[i].id) === String(id)) {
+      editorNodes.value[i] = { ...list[i], properties: properties?.length ? properties : list[i].properties };
+      break;
+    }
+  }
+  nodeForPropertyDialog.value = null;
+};
+
+const handleNodePropertyCancel = () => {
+  nodeForPropertyDialog.value = null;
+};
+
+// 编辑器中节点拖拽结束：只更新 editorNodes 中的位置
+const handleEditorNodeDragEnd = (data: { nodeId: string | number; position: { x: number; y: number }; data?: unknown }) => {
+  const nodeId = data.nodeId;
+  const position = data.position;
+  for (let i = 0; i < editorNodes.value.length; i++) {
+    const node = editorNodes.value[i];
+    if (String(node.id) === String(nodeId)) {
+      editorNodes.value[i] = { ...node, x: position.x, y: position.y };
+      break;
+    }
+  }
+};
+
 const openGraphEditor = () => {
   showEditor.value = !showEditor.value;
+  if (showEditor.value) {
+    editorNodes.value = JSON.parse(JSON.stringify(graphNodes.value));
+    editorEdges.value = JSON.parse(JSON.stringify(graphEdges.value));
+  }
 }
 
 const hanleRefresh = () => {

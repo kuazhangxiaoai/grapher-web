@@ -10,6 +10,12 @@ export enum GraphTypeInteger{
     Free = 2,
 }
 
+export interface NodeProperty {
+    key?: string;
+    type: string;
+    value?: unknown;
+}
+
 export interface GraphConfig {
     id: string;
     name: string;

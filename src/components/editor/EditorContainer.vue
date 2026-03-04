@@ -41,16 +41,16 @@ import EditorContextMenu from "@/components/editor/EditorContextMenu.vue";
 
 // 内边距配置常量
 const PADDING = {
-  width: 20,
+  width: 40,
   label: 28,
   vertical: 18,
   horizontal: 12,
   baseHeight: 60,
   lineHeight: 18,
-  minWidth: 180,
-  maxWidth: 400,
-  minHeight: 70,
-  maxHeight: 400,
+  minWidth: 30,
+  maxWidth: 60,
+  minHeight: 30,
+  maxHeight: 60,
 };
 
 const props = defineProps({
@@ -128,166 +128,40 @@ const calculateTextWidth = (text, fontSize = 12) => {
   return context.measureText(text).width;
 };
 
-// 计算点到矩形边框的最近点
-const getPointOnRect = (point, rect) => {
-  const { x, y, width, height } = rect;
-  const rectCenterX = x;
-  const rectCenterY = y;
-  const rectHalfWidth = width / 2;
-  const rectHalfHeight = height / 2;
-
-  // 计算点相对于矩形中心的位置
-  const relativeX = point.x - rectCenterX;
-  const relativeY = point.y - rectCenterY;
-
-  // 计算归一化的方向向量
-  const maxRatio = Math.max(
-      Math.abs(relativeX) / rectHalfWidth,
-      Math.abs(relativeY) / rectHalfHeight,
-  );
-
-  if (maxRatio === 0) {
-    // 点在矩形中心，返回右边界中点
-    return { x: rectCenterX + rectHalfWidth, y: rectCenterY };
-  }
-
-  // 计算矩形边框上的点
-  const normalizedX = relativeX / maxRatio;
-  const normalizedY = relativeY / maxRatio;
-
-  return { x: rectCenterX + normalizedX, y: rectCenterY + normalizedY };
+// 圆形节点：根据文字和字体尺寸计算直径
+const CIRCLE_PADDING_H = 24; // 水平内边距（左右各一份）
+const CIRCLE_MIN_DIAMETER = 56;
+const CIRCLE_MAX_DIAMETER = 240;
+const CIRCLE_LABEL_FONT_SIZE = 14;
+const CIRCLE_LABEL_FONT_SIZE_MED = 13; // 名称较长时
+const CIRCLE_LABEL_FONT_SIZE_SMALL = 12; // 名称很长时
+const getCircleLabelFontSize = (name) => {
+  if (!name || name.length > 20) return CIRCLE_LABEL_FONT_SIZE_SMALL;
+  if (name.length > 12) return CIRCLE_LABEL_FONT_SIZE_MED;
+  return CIRCLE_LABEL_FONT_SIZE;
 };
-
-// 获取节点的矩形信息
-const getNodeRect = (node) => {
-  // 计算节点大小
-  const nodeSize = calculateNodeSize({ data: node });
-  return {
-    x: node.x,
-    y: node.y,
-    width: nodeSize.width,
-    height: nodeSize.height,
-  };
-};
-
-// 计算节点所需尺寸
-const calculateNodeSize = (nodeData) => {
+const calculateCircleDiameter = (nodeData) => {
   const data = nodeData.data || {};
-  const name = data.name || "未命名";
-  const properties = data.properties || {};
-
-  const nameFontSize = 14;
-  const nameWidth = calculateTextWidth(name, nameFontSize) + PADDING.width * 2;
-
-  let maxPropertyWidth = 0;
-
-  if (Array.isArray(properties)) {
-    properties.forEach((property, index) => {
-      if (typeof property === "object" && property !== null) {
-        const propName = property.name || `属性${index + 1}`;
-        const propType = property.type || "string";
-        const propText = `${propName}: ${propType}`;
-        const propWidth = calculateTextWidth(propText) + PADDING.width * 2;
-        maxPropertyWidth = Math.max(maxPropertyWidth, propWidth);
-      } else {
-        const propText = `属性${index + 1}: ${property}`;
-        const propWidth = calculateTextWidth(propText) + PADDING.width * 2;
-        maxPropertyWidth = Math.max(maxPropertyWidth, propWidth);
-      }
-    });
-  } else if (typeof properties === "object" && properties !== null) {
-    Object.entries(properties).forEach(([key, value]) => {
-      let propText = "";
-      if (typeof value === "object" && value !== null && value.type) {
-        propText = `${key}: ${value.type}`;
-      } else if (typeof value === "object" && value !== null) {
-        propText = `${key}: ${JSON.stringify(value)}`;
-      } else {
-        propText = `${key}: ${value}`;
-      }
-      const propWidth = calculateTextWidth(propText) + PADDING.width * 2;
-      maxPropertyWidth = Math.max(maxPropertyWidth, propWidth);
-    });
-  }
-
-  const contentWidth = Math.max(nameWidth, maxPropertyWidth);
-  const totalWidth = Math.max(
-      PADDING.minWidth,
-      Math.min(PADDING.maxWidth, contentWidth),
+  const name = (data.name || "未命名").toString();
+  const fontSize = getCircleLabelFontSize(name);
+  const textWidth = calculateTextWidth(name, fontSize);
+  const diameter = textWidth + CIRCLE_PADDING_H * 2;
+  return Math.max(
+    CIRCLE_MIN_DIAMETER,
+    Math.min(CIRCLE_MAX_DIAMETER, diameter),
   );
-
-  let propertyLines = 0;
-
-  if (Array.isArray(properties)) {
-    propertyLines = properties.length;
-  } else if (typeof properties === "object" && properties !== null) {
-    propertyLines = Object.keys(properties).length;
-  }
-
-  const contentHeight = PADDING.baseHeight + propertyLines * PADDING.lineHeight;
-  const totalHeight = Math.max(
-      PADDING.minHeight,
-      Math.min(PADDING.maxHeight, contentHeight),
-  );
-
-  return {
-    width: totalWidth,
-    height: totalHeight,
-  };
 };
 
-// 格式化节点标签文本
-const formatLabelText = (data) => {
-  // 类型映射：英文 -> 中文
-  const typeMap = {
-    string: "文本",
-    number: "数字",
-    date: "日期",
-    boolean: "布尔",
-    array: "数组",
-    object: "对象",
-    integer: "整数",
-    float: "浮点数",
-    datetime: "日期时间",
-  };
 
+// 格式化节点标签文本（仅显示节点名称，不显示属性）
+const formatLabelText = (data) => {
   const nodeData = data.data || {};
   const name = nodeData.name || "未命名";
-  const properties = nodeData.properties || {};
-
-  let text = `\n${name}\n--------------------------\n`;
-
-  if (Array.isArray(properties)) {
-    properties.forEach((property, index) => {
-      if (typeof property === "object" && property !== null) {
-        const propName = property.name || `属性${index + 1}`;
-        const propType = property.type || "string";
-        const chineseType = typeMap[propType] || propType;
-        text += `${propName}           ${chineseType}\n`;
-      } else {
-        text += `属性${index + 1}          ${property}\n`;
-      }
-    });
-  } else if (typeof properties === "object" && properties !== null) {
-    Object.entries(properties).forEach(([key, value]) => {
-      if (typeof value === "object" && value !== null && value.type) {
-        const chineseType = typeMap[value.type] || value.type;
-        text += `${key}          ${chineseType}\n`;
-      } else if (typeof value === "object" && value !== null) {
-        text += `${key}          ${JSON.stringify(value)}\n`;
-      } else {
-        text += `${key}          ${value}\n`;
-      }
-    });
-  } else {
-    text += `${properties}\n`;
-  }
-
-  return text;
+  return `\n${name}\n`;
 };
 
 function hexToRgba(hex, opacity) {
-  console.log("hex2222222222222222222", hex, opacity);
+  console.log("hex", hex, opacity);
   // 处理 rgb() 格式
   const rgbMatch = hex.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
   if (rgbMatch) {
@@ -345,20 +219,17 @@ const initGraph = () => {
       let nodeX = node.x || width / 2;
       let nodeY = node.y || height / 2;
 
-      const nodeSize = calculateNodeSize({
+      const diameter = calculateCircleDiameter({
         data: {
-          name: node.name || "节点",
-          type: node.type || "人物",
-          properties: node.properties || [
-            { name: "名字", type: "string" },
-            { name: "日期", type: "date" },
-          ],
+          name: node.name,
+          type: node.type,
+          properties: node.properties,
         },
       });
 
       // 边界检查，确保节点不超出画布范围
-      const nodeHalfWidth = nodeSize.width / 2;
-      const nodeHalfHeight = nodeSize.height / 2;
+      const nodeHalfWidth = diameter / 2;
+      const nodeHalfHeight = diameter / 2;
       nodeX = Math.max(nodeHalfWidth, Math.min(width - nodeHalfWidth, nodeX));
       nodeY = Math.max(
           nodeHalfHeight,
@@ -373,14 +244,11 @@ const initGraph = () => {
 
       const formattedNode = {
         id: nodeId,
-        type: "rect",
+        type: "circle",
         data: {
-          name: node.name || "节点",
-          type: node.type || "人物",
-          properties: node.properties || [
-            { name: "名字", type: "string" },
-            { name: "日期", type: "date" },
-          ],
+          name: node.name,
+          type: node.type,
+          properties: node.properties,
           backgroundColor: node.backgroundColor || "#43D7B5",
         },
         style: {
@@ -389,8 +257,7 @@ const initGraph = () => {
           fill: "#fff",
           stroke: node.backgroundColor || "#43D7B5",
           lineWidth: 2,
-          radius: 8,
-          size: [nodeSize.width, nodeSize.height],
+          size: diameter,
           shadowColor: "rgba(78,89,105,0.25)",
           shadowBlur: 10,
           shadowOffsetX: 0,
@@ -413,18 +280,14 @@ const initGraph = () => {
         edges: props.edges,
       },
       node: {
-        type: "rect",
+        type: "circle",
         style: {
           fill: "#fff",
           stroke: (data) => {
             return data.data?.backgroundColor || "#43D7B5";
           },
           lineWidth: 2,
-          radius: 8,
-          size: (data) => {
-            const nodeSize = calculateNodeSize(data);
-            return [nodeSize.width, nodeSize.height];
-          },
+          size: (data) => calculateCircleDiameter(data),
           shadowColor: "rgba(78,89,105,0.18)",
           shadowBlur: 10,
           shadowOffsetX: 0,
@@ -432,19 +295,14 @@ const initGraph = () => {
           labelText: formatLabelText,
           labelPlacement: "center",
           labelBackground: false,
-          labelFontSize: (data) => {
-            const name = data.data?.name || "";
-            if (name.length > 20) return 13;
-            if (name.length > 15) return 14;
-            return 14;
-          },
+          labelFontSize: (data) => getCircleLabelFontSize(data.data?.name ?? ""),
           labelFill: "#333",
           labelLineHeight: PADDING.lineHeight,
           labelPadding: [PADDING.vertical, PADDING.horizontal],
           labelTextBaseline: "middle",
           labelMaxWidth: (data) => {
-            const nodeSize = calculateNodeSize(data);
-            return nodeSize.width - PADDING.label;
+            const d = calculateCircleDiameter(data);
+            return Math.max(20, d - CIRCLE_PADDING_H * 2);
           },
           cursor: "pointer",
         },
@@ -467,12 +325,7 @@ const initGraph = () => {
               return hexToRgba(baseColor, 0.4);
             },
             shadowBlur: 35,
-            labelFontSize: (data) => {
-              const name = data.data?.name || "";
-              if (name.length > 20) return 13;
-              if (name.length > 15) return 14;
-              return 14;
-            },
+            labelFontSize: (data) => getCircleLabelFontSize(data.data?.name ?? ""),
             labelFill: "#333",
           },
         },
@@ -480,8 +333,8 @@ const initGraph = () => {
       // 注册节点类型
       register: {
         node: {
-          rect: {
-            shape: "rect",
+          circle: {
+            shape: "circle",
           },
         },
       },
@@ -1282,9 +1135,10 @@ const bindEvents = () => {
       for (const node of nodes) {
         if (node.id === virtualNodeId.value) continue;
 
-        const size = node.style.size || [180, 100];
-        const halfWidth = size[0] / 2;
-        const halfHeight = size[1] / 2;
+        const size = node.style.size ?? 180;
+        const half = typeof size === "number" ? size / 2 : Math.max(size[0], size[1]) / 2;
+        const halfWidth = half;
+        const halfHeight = half;
 
         if (
             x >= node.style.x - halfWidth &&
@@ -1670,9 +1524,10 @@ const handleContextMenu = (event) => {
         // 跳过虚拟节点
         if (node.id && node.id.toString().startsWith("virtual-")) continue;
 
-        const size = node.style.size || [180, 100];
-        const halfWidth = size[0] / 2;
-        const halfHeight = size[1] / 2;
+        const size = node.style.size ?? 180;
+        const half = typeof size === "number" ? size / 2 : Math.max(size[0], size[1]) / 2;
+        const halfWidth = half;
+        const halfHeight = half;
 
         if (
             transformedX >= node.style.x - halfWidth &&
@@ -1904,7 +1759,7 @@ const renderGraph = () => {
         );
       }
 
-      const nodeSize = calculateNodeSize({
+      const diameter = calculateCircleDiameter({
         data: {
           name: node.name || "节点",
           type: node.type || "人物",
@@ -1915,8 +1770,8 @@ const renderGraph = () => {
         },
       });
 
-      const nodeHalfWidth = nodeSize.width / 2;
-      const nodeHalfHeight = nodeSize.height / 2;
+      const nodeHalfWidth = diameter / 2;
+      const nodeHalfHeight = diameter / 2;
       nodeX = Math.max(nodeHalfWidth, Math.min(width - nodeHalfWidth, nodeX));
       nodeY = Math.max(
           nodeHalfHeight,
@@ -1929,7 +1784,7 @@ const renderGraph = () => {
 
       const formattedNode = {
         id: nodeId,
-        type: "rect",
+        type: "circle",
         data: {
           name: node.name || "节点",
           type: node.type || "人物",
@@ -1945,8 +1800,7 @@ const renderGraph = () => {
           fill: "#fff",
           stroke: node.backgroundColor || "#43D7B5",
           lineWidth: 2,
-          radius: 8,
-          size: [nodeSize.width, nodeSize.height],
+          size: diameter,
           shadowColor: "rgba(78,89,105,0.18)",
           shadowBlur: 10,
           shadowOffsetX: 0,

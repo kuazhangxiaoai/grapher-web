@@ -4,7 +4,11 @@
     <EditorContainer
       ref="graphContainerRef"
       class="graph-canvas"
-    ></EditorContainer>
+      :nodes="props.nodes"
+      :edges="props.edges"
+      @add-entity="onAddEntity"
+      @node-drag-end="onNodeDragEnd"
+    />
   </div>
 </template>
 <script setup lang="ts">
@@ -14,6 +18,11 @@ import type { Mark } from "@/configs/text";
 import EditorContainer from "@/components/editor/EditorContainer.vue";
 
 const graphContainerRef = ref(null);
+
+const emit = defineEmits<{
+  (e: "add-entity", position: { x: number; y: number }): void;
+  (e: "node-drag-end", data: { nodeId: string | number; position: { x: number; y: number }; data?: unknown }): void;
+}>();
 
 const props = withDefaults(
     defineProps<{
@@ -49,6 +58,14 @@ const content = computed(() => {
     .map((mark) => mark.content ?? "")
     .join("");
 });
+
+const onAddEntity = (position: { x: number; y: number }) => {
+  emit("add-entity", position);
+};
+
+const onNodeDragEnd = (data: { nodeId: string | number; position: { x: number; y: number }; data?: unknown }) => {
+  emit("node-drag-end", data);
+};
 
 //初始化图谱
 const initGraph = () => {
