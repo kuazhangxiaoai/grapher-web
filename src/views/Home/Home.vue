@@ -2000,15 +2000,21 @@ const handleEdgeClick = (edge) => {
     currentRelationTemplateId.value = edge.relationTemplateId || 0;
     currentNodeTemplateId.value = 0;
 
-    // 获取开始和结束节点名称
+    // 获取开始和结束节点
     const startNode = graphNodes.value.find(
       (node) => String(node.id) === String(edge.source),
     );
     const endNode = graphNodes.value.find(
       (node) => String(node.id) === String(edge.target),
     );
+    
+    // 设置开始和结束节点名称
     startNodeName.value = startNode ? startNode.name : "";
     endNodeName.value = endNode ? endNode.name : "";
+    
+    // 设置开始和结束节点模板ID
+    sourceNodeId.value = startNode ? (startNode.nodeTemplateId || Number(edge.source)) : null;
+    targetNodeId.value = endNode ? (endNode.nodeTemplateId || Number(edge.target)) : null;
 
     showPropertyPanel.value = true;
     console.log("设置showPropertyPanel为true");
