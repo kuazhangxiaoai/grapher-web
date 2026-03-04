@@ -100,15 +100,20 @@ const savedCenter = ref({ x: 0, y: 0 });
 // 保存节点位置的本地状态
 const nodePositions = ref(new Map());
 
-// 跟踪是否正在拖拽节点
+// 跟踪是否正在拖拽节点 - 增强的拖拽状态管理
 const isDragging = ref(false);
 const justFinishedDragging = ref(false);
-const dragStartPosition = ref({ x: 0, y: 0 });
+const dragStartPosition = ref({ x: 0, y: 0 }); // 屏幕坐标
 const dragStartNodePosition = ref({ x: 0, y: 0 });
 const dragStartNodeSize = ref({ width: 0, height: 0 });
 const dragStartZoom = ref(1);
+const dragStartTime = ref(0); // 记录拖拽开始时间
+const dragAccumulatedDistance = ref(0); // 累计拖拽距离
 
-const DRAG_THRESHOLD = 5;
+const DRAG_THRESHOLD = 5; // 拖拽阈值（像素）
+const DRAG_TIME_THRESHOLD = 200; // 拖拽时间阈值（毫秒）
+const CLICK_DEBOUNCE_TIME = 350; // 点击防抖时间（毫秒）
+
 const clickedNodeId = ref(null);
 const selectedNodeId = ref(null);
 
@@ -1076,16 +1081,18 @@ const updateVirtualNodePosition = (x, y) => {
   }
 };
 
-// 绑定事件
+// 绑定事件 - 主要修改在这里
 const bindEvents = () => {
   if (!graph.value) return;
 
   console.log("=== 开始绑定事件 ===");
   window.addEventListener("resize", handleResize);
 
-  // 节点点击事件
+  // 节点点击事件 - 增强的防拖拽判断
   graph.value.on("node:click", (event) => {
+    // 如果正在拖拽或刚刚结束拖拽，不触发点击事件
     if (isDragging.value || justFinishedDragging.value) {
+      console.log("拖拽中或刚刚结束拖拽，忽略点击事件");
       return;
     }
 
@@ -1145,12 +1152,20 @@ const bindEvents = () => {
           }
         }
 
+        console.log("节点点击事件触发，节点ID:", nodeId);
         emit("node-click", nodeData || { id: nodeId });
       }
     }
   });
 
+  // 边点击事件
   graph.value.on("edge:click", (event) => {
+    // 如果正在拖拽或刚刚结束拖拽，不触发边点击事件
+    if (isDragging.value || justFinishedDragging.value) {
+      console.log("拖拽中或刚刚结束拖拽，忽略边点击事件");
+      return;
+    }
+
     let edgeId = null;
     let edgeData = null;
 
@@ -1194,11 +1209,213 @@ const bindEvents = () => {
     }
   });
 
+  // 画布点击事件
   graph.value.on("canvas:click", (event) => {
+    // 如果正在拖拽或刚刚结束拖拽，不触发画布点击事件
+    if (isDragging.value || justFinishedDragging.value) {
+      console.log("拖拽中或刚刚结束拖拽，忽略画布点击事件");
+      return;
+    }
+
     if (isConnectingMode.value || pendingConnection.value) {
       cancelConnect();
     }
     emit("graph-click");
+  });
+
+  // 拖拽开始事件 - 增强的状态初始化
+  graph.value.on("node:dragstart", (event) => {
+    if (event.originalEvent) {
+      event.originalEvent.preventDefault();
+    }
+
+    const node = event.item;
+    if (!node) return;
+
+    const model = node.getModel();
+    const nodeSize = model.style.size || [180, 100];
+
+    // 使用屏幕坐标（clientX, clientY）而不是画布坐标
+    dragStartPosition.value = {
+      x: event.originalEvent?.clientX || event.x,
+      y: event.originalEvent?.clientY || event.y,
+    };
+    dragStartNodePosition.value = { x: model.style.x, y: model.style.y };
+    dragStartNodeSize.value = { width: nodeSize[0], height: nodeSize[1] };
+    dragStartZoom.value = graph.value.getZoom();
+    dragStartTime.value = Date.now();
+    dragAccumulatedDistance.value = 0;
+
+    // 重置拖拽状态
+    isDragging.value = false;
+    justFinishedDragging.value = false;
+
+    saveViewState();
+
+    emit("node-drag", {
+      type: "start",
+      nodeId: model.id,
+      data: model.data,
+      position: { x: model.style.x, y: model.style.y },
+    });
+  });
+
+  // 拖拽过程中 - 使用多种因素判断是否是真正的拖拽
+  graph.value.on("node:drag", (event) => {
+    const node = event.item;
+    if (!node) return;
+
+    // 使用屏幕坐标计算拖拽距离
+    const screenDeltaX =
+      (event.originalEvent?.clientX || 0) - dragStartPosition.value.x;
+    const screenDeltaY =
+      (event.originalEvent?.clientY || 0) - dragStartPosition.value.y;
+
+    // 计算累计拖拽距离
+    const currentDragDistance = Math.sqrt(
+      screenDeltaX * screenDeltaX + screenDeltaY * screenDeltaY,
+    );
+
+    // 更新累计距离（取最大值，避免来回移动导致距离变小）
+    dragAccumulatedDistance.value = Math.max(
+      dragAccumulatedDistance.value,
+      currentDragDistance,
+    );
+
+    // 计算节点位置变化
+    const deltaX = event.x - (event.dx || 0);
+    const deltaY = event.y - (event.dy || 0);
+
+    const adjustedDeltaX = deltaX / dragStartZoom.value;
+    const adjustedDeltaY = deltaY / dragStartZoom.value;
+
+    let newX = dragStartNodePosition.value.x + adjustedDeltaX;
+    let newY = dragStartNodePosition.value.y + adjustedDeltaY;
+
+    const halfWidth = dragStartNodeSize.value.width / 2;
+    const halfHeight = dragStartNodeSize.value.height / 2;
+
+    const canvasWidth = graphRef.value.clientWidth;
+    const canvasHeight = graphRef.value.clientHeight;
+
+    const topLeft = graph.value.getCanvasByViewport([0, 0]);
+    const bottomRight = graph.value.getCanvasByViewport([
+      canvasWidth,
+      canvasHeight,
+    ]);
+
+    const minX = topLeft[0] + halfWidth;
+    const maxX = bottomRight[0] - halfWidth;
+    const minY = topLeft[1] + halfHeight;
+    const maxY = bottomRight[1] - halfHeight;
+
+    newX = Math.max(minX, Math.min(maxX, newX));
+    newY = Math.max(minY, Math.min(maxY, newY));
+
+    graph.value.updateItem(node, {
+      style: {
+        x: newX,
+        y: newY,
+      },
+    });
+
+    // 使用多种因素判断是否真的是拖拽：
+    // 1. 拖拽距离超过阈值
+    // 2. 拖拽时间超过时间阈值（避免快速点击误判）
+    const dragDuration = Date.now() - dragStartTime.value;
+
+    if (
+      dragAccumulatedDistance.value > DRAG_THRESHOLD ||
+      (dragDuration > DRAG_TIME_THRESHOLD && currentDragDistance > 2)
+    ) {
+      if (!isDragging.value) {
+        isDragging.value = true;
+        console.log(
+          "检测到拖拽操作，距离:",
+          dragAccumulatedDistance.value,
+          "时间:",
+          dragDuration,
+        );
+      }
+    }
+
+    const model = node.getModel();
+    emit("node-drag", {
+      type: "dragging",
+      nodeId: model.id,
+      data: model.data,
+      position: { x: newX, y: newY },
+    });
+  });
+
+  // 拖拽结束事件 - 增强的防抖处理
+  graph.value.on("node:dragend", (event) => {
+    const node = event.item;
+    if (!node) return;
+
+    const model = node.getModel();
+    const position = { x: model.style.x, y: model.style.y };
+
+    const nodeId =
+      typeof model.id === "string" ? model.id : model.id.toString();
+    nodePositions.value.set(nodeId, position);
+
+    // 只有当确实是拖拽操作时才标记为刚刚结束拖拽
+    if (isDragging.value) {
+      justFinishedDragging.value = true;
+      console.log("拖拽结束，设置防抖标记，防抖时间:", CLICK_DEBOUNCE_TIME);
+
+      // 增加防抖时间，确保拖拽结束后不会立即触发点击
+      setTimeout(() => {
+        isDragging.value = false;
+        justFinishedDragging.value = false;
+        console.log("拖拽防抖标记清除");
+      }, CLICK_DEBOUNCE_TIME);
+    } else {
+      // 如果不是拖拽（只是点击），则不设置防抖标记
+      isDragging.value = false;
+      justFinishedDragging.value = false;
+    }
+
+    emit("node-drag-end", {
+      nodeId: model.id,
+      position: position,
+      data: model.data,
+    });
+  });
+
+  // 节点鼠标进入事件
+  graph.value.on("node:mouseenter", (event) => {
+    const node = event.item;
+    if (node) {
+      graph.value.setItemState(node, "active", true);
+    }
+  });
+
+  // 节点鼠标离开事件
+  graph.value.on("node:mouseleave", (event) => {
+    const node = event.item;
+    if (node) {
+      graph.value.setItemState(node, "active", false);
+    }
+  });
+
+  // 画布缩放事件
+  graph.value.on("canvas:zoom", () => {
+    if (graph.value) {
+      const currentZoom = graph.value.getZoom();
+      zoomLevel.value = Math.round(currentZoom * 100);
+      savedZoom.value = currentZoom;
+      // 缩放后进行边界检查
+      if (!isApplyingSavedPositions.value) {
+        validateAllNodePositions();
+      }
+    }
+  });
+
+  // 画布拖拽结束事件
+  graph.value.on("canvas:dragend", () => {
+    saveViewState();
   });
 
   // 使用原生 mousemove 事件来更新虚拟节点位置
@@ -1261,142 +1478,6 @@ const bindEvents = () => {
   if (graphRef.value) {
     graphRef.value.addEventListener("mousemove", handleNativeMouseMove);
   }
-
-  // 拖拽实现
-  graph.value.on("node:dragstart", (event) => {
-    if (event.originalEvent) {
-      event.originalEvent.preventDefault();
-    }
-
-    const node = event.item;
-    if (!node) return;
-
-    const model = node.getModel();
-    const nodeSize = model.style.size || [180, 100];
-
-    dragStartPosition.value = { x: event.x, y: event.y };
-    dragStartNodePosition.value = { x: model.style.x, y: model.style.y };
-    dragStartNodeSize.value = { width: nodeSize[0], height: nodeSize[1] };
-    dragStartZoom.value = graph.value.getZoom();
-
-    isDragging.value = false;
-    saveViewState();
-
-    emit("node-drag", {
-      type: "start",
-      nodeId: model.id,
-      data: model.data,
-      position: { x: model.style.x, y: model.style.y },
-    });
-  });
-
-  graph.value.on("node:drag", (event) => {
-    const node = event.item;
-    if (!node) return;
-
-    const deltaX = event.x - dragStartPosition.value.x;
-    const deltaY = event.y - dragStartPosition.value.y;
-
-    const adjustedDeltaX = deltaX / dragStartZoom.value;
-    const adjustedDeltaY = deltaY / dragStartZoom.value;
-
-    let newX = dragStartNodePosition.value.x + adjustedDeltaX;
-    let newY = dragStartNodePosition.value.y + adjustedDeltaY;
-
-    const halfWidth = dragStartNodeSize.value.width / 2;
-    const halfHeight = dragStartNodeSize.value.height / 2;
-
-    const canvasWidth = graphRef.value.clientWidth;
-    const canvasHeight = graphRef.value.clientHeight;
-
-    const topLeft = graph.value.getCanvasByViewport([0, 0]);
-    const bottomRight = graph.value.getCanvasByViewport([
-      canvasWidth,
-      canvasHeight,
-    ]);
-
-    const minX = topLeft[0] + halfWidth;
-    const maxX = bottomRight[0] - halfWidth;
-    const minY = topLeft[1] + halfHeight;
-    const maxY = bottomRight[1] - halfHeight;
-
-    newX = Math.max(minX, Math.min(maxX, newX));
-    newY = Math.max(minY, Math.min(maxY, newY));
-
-    graph.value.updateItem(node, {
-      style: {
-        x: newX,
-        y: newY,
-      },
-    });
-
-    const dragDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-    if (dragDistance > DRAG_THRESHOLD) {
-      isDragging.value = true;
-    }
-
-    const model = node.getModel();
-    emit("node-drag", {
-      type: "dragging",
-      nodeId: model.id,
-      data: model.data,
-      position: { x: newX, y: newY },
-    });
-  });
-
-  graph.value.on("node:dragend", (event) => {
-    const node = event.item;
-    if (!node) return;
-
-    const model = node.getModel();
-    const position = { x: model.style.x, y: model.style.y };
-
-    const nodeId =
-      typeof model.id === "string" ? model.id : model.id.toString();
-    nodePositions.value.set(nodeId, position);
-
-    justFinishedDragging.value = true;
-    setTimeout(() => {
-      isDragging.value = false;
-      justFinishedDragging.value = false;
-    }, 200);
-
-    emit("node-drag-end", {
-      nodeId: model.id,
-      position: position,
-      data: model.data,
-    });
-  });
-
-  graph.value.on("node:mouseenter", (event) => {
-    const node = event.item;
-    if (node) {
-      graph.value.setItemState(node, "active", true);
-    }
-  });
-
-  graph.value.on("node:mouseleave", (event) => {
-    const node = event.item;
-    if (node) {
-      graph.value.setItemState(node, "active", false);
-    }
-  });
-
-  graph.value.on("canvas:zoom", () => {
-    if (graph.value) {
-      const currentZoom = graph.value.getZoom();
-      zoomLevel.value = Math.round(currentZoom * 100);
-      savedZoom.value = currentZoom;
-      // 缩放后进行边界检查
-      if (!isApplyingSavedPositions.value) {
-        validateAllNodePositions();
-      }
-    }
-  });
-
-  graph.value.on("canvas:dragend", () => {
-    saveViewState();
-  });
 };
 
 // 处理右键点击事件
@@ -1500,6 +1581,7 @@ const handleContextMenu = (event) => {
 // 处理点击事件
 const handleClick = (event) => {
   if (isDragging.value || justFinishedDragging.value) {
+    console.log("拖拽中或刚刚结束拖拽，忽略画布容器的点击事件");
     return;
   }
 
@@ -1551,7 +1633,8 @@ const handleClick = (event) => {
           const originalNode = props.nodes.find(
             (n) => String(n.id) === String(node.id),
           );
-          emit("node-click", originalNode || node.data);
+          console.log("点击到节点:", originalNode || node.data);
+          // 这里不再直接 emit，因为 G6 的 node:click 事件会处理
           clickedOnNode = true;
           break;
         }
@@ -1564,6 +1647,11 @@ const handleClick = (event) => {
       emit("graph-click");
     }
   }
+};
+
+// 处理鼠标移动
+const handleMouseMove = (event) => {
+  // 可以添加一些鼠标移动的逻辑
 };
 
 // 处理窗口大小变化
@@ -1817,6 +1905,7 @@ onUnmounted(() => {
   }
   window.removeEventListener("resize", handleResize);
 
+  // 移除原生事件监听
   if (graphRef.value) {
     graphRef.value.removeEventListener("mousemove", handleNativeMouseMove);
   }
