@@ -522,6 +522,11 @@ const handleSavePropertyPanel = async () => {
         })),
       };
 
+      // 如果是修改操作，添加nodeTemplateId
+      if (props.nodeTemplateId > 0) {
+        templateData.nodeTemplateId = props.nodeTemplateId;
+      }
+
       // 调用保存接口
       await graph.saveNodeTemplate(templateData);
       // 保存成功后，调用查询接口更新节点数据
@@ -579,6 +584,11 @@ const handleSavePropertyPanel = async () => {
                         : "String",
         })),
       };
+
+      // 如果是修改操作，添加relationTemplateId
+      if (props.relationTemplateId > 0) {
+        relationTemplateData.relationTemplateId = props.relationTemplateId;
+      }
 
       // 调用保存接口
       await graph.saveRelationTemplate(relationTemplateData);
@@ -861,8 +871,10 @@ const handleConfirmAddProperty = async () => {
 }
 
 .entity-name-display {
-  background: #f6fcff;
-  border: 0.8px solid rgba(224, 226, 235, 1);
+  // background: #f6fcff;
+  // border: 0.8px solid rgba(224, 226, 235, 1);
+  background: #f5f5f5;
+  border: 0.8px solid #f5f5f5;
   border-radius: 4px;
   height: 40px;
   box-sizing: border-box;
