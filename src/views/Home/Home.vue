@@ -507,6 +507,7 @@ const handleAddDomain = async (name) => {
         await fetchAllDomains();
         newDomainName.value = "";
         showAddDialog.value = false;
+        ElMessage.success("新增成功");
       }
     } catch (error) {
       console.error("新增领域失败:", error);
@@ -1537,6 +1538,7 @@ const handleAddTopic = async (name) => {
         await fetchTopics(currentDomainObj.id);
         newTopicName.value = "";
         showAddTopicDialog.value = false;
+        ElMessage.success("新增成功");
       }
     } catch (error) {
       console.error("新增专题失败:", error);
