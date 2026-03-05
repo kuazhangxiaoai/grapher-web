@@ -23,7 +23,20 @@
           placeholder="请选择节点类型"
           style="width: 100%; height: 45px"
         >
-          <el-option v-for="item in props.nodeTypes" :label=item :value=item />
+          <el-option
+            v-for="(item, index) in props.nodeTemplates"
+            :key="item.name"
+            :label="item.name"
+            :value="item.name"
+          >
+            <span class="node-type-option">
+              <span class="node-type-text">{{ item.name }}</span>
+              <span
+                class="node-type-color-dot"
+                :style="{ backgroundColor: item.color }"
+              />
+            </span>
+          </el-option>
         </el-select>
       </el-form-item>
     </el-form>
@@ -39,7 +52,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import {onMounted, ref, watch} from "vue";
 
 export interface AddNodeForm {
   name: string;
@@ -56,12 +69,12 @@ const props = withDefaults(
     title?: string;
     /** 添加节点时的画布坐标，由父组件在打开弹窗时传入 */
     position?: { x: number; y: number };
-    nodeTypes: [];
+    nodeTemplates: [];
   }>(),
   {
     title: "添加节点",
     position: undefined,
-    nodeTypes: ["A", "B", "C"],
+    nodeTemplates: [],
   }
 );
 
@@ -143,6 +156,19 @@ const handleClose = () => {
   background-color: #f5f7fa !important;
   border-color: #c0c4cc !important;
   color: #606266 !important;
+}
+
+.node-type-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.node-type-color-dot {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  display: inline-block;
 }
 
 :global(.add-node-dialog .el-dialog__body) {

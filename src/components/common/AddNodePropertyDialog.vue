@@ -8,7 +8,7 @@
   >
     <el-form label-width="60px" class="property-form">
       <div
-        v-for="(item, index) in form.properties"
+        v-for="(item, index) in props.properties"
         :key="index"
         class="property-row"
       >
@@ -64,11 +64,9 @@ const emit = defineEmits<{
 
 const dialogVisible = ref(props.visible);
 
-const form = ref<{ properties: NodeProperty[] }>({
-  properties: [],
-});
 
-function initForm() {
+
+function init() {
   const list = props.properties?.length
     ? props.properties.map((p) => ({
         key: p.key ?? p.name,
@@ -76,7 +74,6 @@ function initForm() {
         value: p.value ?? "",
       }))
     : [];
-  form.value.properties = list;
 }
 
 watch(
@@ -84,7 +81,7 @@ watch(
   (newValue) => {
     dialogVisible.value = newValue;
     if (newValue) {
-      initForm();
+      init();
     }
   }
 );

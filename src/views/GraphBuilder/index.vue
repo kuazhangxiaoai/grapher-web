@@ -89,7 +89,7 @@
     <AddNodeDialog
         v-model:visible="showAddNodeDialog"
         :position="addNodePosition"
-        :node-types="nodeTypes"
+        :node-templates="nodeTemplates"
         @add-node="handleAddNodeConfirm"
         @cancel="handleAddNodeCancel"
     />
@@ -121,13 +121,14 @@ import {useTextStore} from "@/store/useTextStore";
 import GraphViewer from "@/views/GraphBuilder/GraphViewer.vue";
 import GraphEditor from "@/views/GraphBuilder/GraphEditor.vue";
 import type { Mark, Rect } from "@/configs/text"
+import type {NodeTemplate} from "@/configs/graph.js";
 
 const textStore = useTextStore();
 const contentRef = ref(null);
 const textRef = ref<InstanceType<typeof Text> | null>(null);
 const {currentPage, markList} = storeToRefs(textStore)
 const textUrl = ref("");
-const nodeTypes = ref([])
+const nodeTemplates = ref([])
 const {graphTypeString2Integer} = useConverter()
 // 从localStorage读取状态，或使用默认值
 const loadState = () => {
@@ -1277,13 +1278,18 @@ const handleEditorAddEntity = async (position: { x: number; y: number }) => {
     y: position.y,
     properties: [],
   };
-  //const response = await projectService.getNodeTypes(currentSubDomainId.value)
-  //if(response && response.data)
-  //{
-  //  response.data.forEach((nodeType) => {
-  //    console.log(nodeType);
-  //  })
-  //}
+  nodeTemplates.value = []
+  const response = await projectService.getNodeTypes(currentSubDomainId.value)
+  if(response && response.data)
+  {
+    response.data.forEach((item) => {
+      const nodeTemplate: NodeTemplate = {
+        name: item.nodeTemplateName,
+        color: item.nodeTemplateColor
+      }
+      nodeTemplates.value.push(nodeTemplate);
+    })
+  }
 
   editorNodes.value.push(tempNode);
   //打开添加节点对话框
