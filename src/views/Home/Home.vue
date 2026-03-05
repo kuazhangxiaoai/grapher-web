@@ -507,6 +507,7 @@ const handleAddDomain = async (name) => {
         await fetchAllDomains();
         newDomainName.value = "";
         showAddDialog.value = false;
+        ElMessage.success("新增成功");
       }
     } catch (error) {
       console.error("新增领域失败:", error);
@@ -987,7 +988,7 @@ const handleTopicClick = async (topic, skipComponentLibrarySearch = false) => {
                 const centerX = canvasWidth / 2;
                 const centerY = canvasHeight / 2;
                 // 计算椭圆的长轴和短轴，考虑边距
-                const semiMajorAxis = (canvasWidth - 2 * padding*4) / 2; // 长轴半径
+                const semiMajorAxis = (canvasWidth - 2 * padding * 4) / 2; // 长轴半径
                 const semiMinorAxis = (canvasHeight - 2 * padding) / 2; // 短轴半径
                 // 计算每个节点的角度
                 const angle = (2 * Math.PI * index) / nodeCount;
@@ -1537,6 +1538,7 @@ const handleAddTopic = async (name) => {
         await fetchTopics(currentDomainObj.id);
         newTopicName.value = "";
         showAddTopicDialog.value = false;
+        ElMessage.success("新增成功");
       }
     } catch (error) {
       console.error("新增专题失败:", error);
@@ -2007,14 +2009,18 @@ const handleEdgeClick = (edge) => {
     const endNode = graphNodes.value.find(
       (node) => String(node.id) === String(edge.target),
     );
-    
+
     // 设置开始和结束节点名称
     startNodeName.value = startNode ? startNode.name : "";
     endNodeName.value = endNode ? endNode.name : "";
-    
+
     // 设置开始和结束节点模板ID
-    sourceNodeId.value = startNode ? (startNode.nodeTemplateId || Number(edge.source)) : null;
-    targetNodeId.value = endNode ? (endNode.nodeTemplateId || Number(edge.target)) : null;
+    sourceNodeId.value = startNode
+      ? startNode.nodeTemplateId || Number(edge.source)
+      : null;
+    targetNodeId.value = endNode
+      ? endNode.nodeTemplateId || Number(edge.target)
+      : null;
 
     showPropertyPanel.value = true;
     console.log("设置showPropertyPanel为true");
@@ -2075,11 +2081,11 @@ const handleUpdateNodes = (templateData) => {
         const centerX = canvasWidth / 2;
         const centerY = canvasHeight / 2;
         // 计算椭圆的长轴和短轴，考虑边距
-        const semiMajorAxis = (canvasWidth - 2 * padding*4) / 2; // 长轴半径
+        const semiMajorAxis = (canvasWidth - 2 * padding * 4) / 2; // 长轴半径
         const semiMinorAxis = (canvasHeight - 2 * padding) / 2; // 短轴半径
         // 计算每个节点的角度
         const angle = (2 * Math.PI * index) / nodeCount;
-        
+
         // 为了避免中间空白，使用随机半径，让节点分布在不同距离的位置
         const randomRadiusFactor = 0.5 + Math.random() * 0.5; // 0.5 到 1 之间的随机因子
         // 计算节点位置（椭圆公式，使用随机半径）
@@ -2189,7 +2195,7 @@ const handleUpdateNodes = (templateData) => {
       });
     }
 
-    console.log("节点数据更新完成:", graphNodes.value);
+    console.log("节点数据更新完成:", graphNodes.value, graphEdges.value);
   }
 };
 

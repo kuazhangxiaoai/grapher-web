@@ -336,7 +336,10 @@
             v-for="graph in graphs"
             :key="graph.id"
             class="graph-item"
-            :class="{ 'graph-item-active': String(props.activeGraphItem) === String(graph.id) }"
+            :class="{
+              'graph-item-active':
+                String(props.activeGraphItem) === String(graph.id),
+            }"
             @click="handleGraphClick(graph)"
           >
             <div class="graph-info">
@@ -472,6 +475,17 @@
                   handleRelationshipTypeClick(template.relationTemplateName)
                 "
               >
+                <div
+                  class="relationship-icon"
+                  :class="{
+                    'relationship-icon-directed':
+                      template.relationTemplateType === '1',
+                    'relationship-icon-bidirectional':
+                      template.relationTemplateType === '2',
+                    'relationship-icon-loop':
+                      template.relationTemplateType === '3',
+                  }"
+                ></div>
                 {{ template.relationTemplateName }}
               </div>
             </div>
@@ -531,6 +545,7 @@
                   selectedComponent ===
                   (component.nodeTemplateName ||
                     component.relationTemplateName),
+                'component-item-relationship': !component.nodeTemplateId,
               }"
               draggable="true"
               @dragstart="
@@ -548,6 +563,18 @@
               "
             >
               <div class="component-name">
+                <div
+                  v-if="!component.nodeTemplateId"
+                  class="component-relationship-icon"
+                  :class="{
+                    'component-icon-directed':
+                      component.relationTemplateType === '1',
+                    'component-icon-bidirectional':
+                      component.relationTemplateType === '2',
+                    'component-icon-loop':
+                      component.relationTemplateType === '3',
+                  }"
+                ></div>
                 {{
                   component.nodeTemplateName || component.relationTemplateName
                 }}
@@ -606,7 +633,7 @@
 <script setup>
 import { ref, watch } from "vue";
 import { Search, Plus } from "@element-plus/icons-vue";
-import {string} from "three/tsl";
+import { string } from "three/tsl";
 
 // 复制重命名弹窗相关
 const copyDialogVisible = ref(false);
@@ -700,10 +727,10 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
-  activeGraphItem:{
+  activeGraphItem: {
     type: String,
     default: "",
-  }
+  },
 });
 
 // Use components from props directly
@@ -1540,14 +1567,43 @@ defineExpose({
   gap: 8px;
 }
 
-.relationship-type-item::before {
-  content: "";
+.relationship-icon {
   width: 16px;
   height: 16px;
-  background-image: url("@/assets/images/定向.png");
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
+}
+
+.relationship-icon-directed {
+  background-image: url("@/assets/images/单向.png");
+}
+
+.relationship-icon-bidirectional {
+  width: 18px;
+  height: 20px;
+  background-image: url("@/assets/images/双向.png");
+}
+
+.relationship-icon-loop {
+  background-image: url("@/assets/images/循环.png");
+}
+
+.relationship-type-item:hover .relationship-icon-directed,
+.relationship-type-item-selected .relationship-icon-directed {
+  background-image: url("@/assets/images/单向选中.png");
+}
+
+.relationship-type-item:hover .relationship-icon-bidirectional,
+.relationship-type-item-selected .relationship-icon-bidirectional {
+  width: 18px;
+  height: 20px;
+  background-image: url("@/assets/images/双向选中.png");
+}
+
+.relationship-type-item:hover .relationship-icon-loop,
+.relationship-type-item-selected .relationship-icon-loop {
+  background-image: url("@/assets/images/循环选中.png");
 }
 
 .relationship-type-item:hover,
@@ -1607,7 +1663,46 @@ defineExpose({
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 140px;
+  max-width: 120px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.component-relationship-icon {
+  width: 16px;
+  height: 16px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  flex-shrink: 0;
+}
+
+.component-icon-directed {
+  background-image: url("@/assets/images/单向.png");
+}
+
+.component-icon-bidirectional {
+  background-image: url("@/assets/images/双向.png");
+}
+
+.component-icon-loop {
+  background-image: url("@/assets/images/循环.png");
+}
+
+.component-item:hover .component-icon-directed,
+.component-item-selected .component-icon-directed {
+  background-image: url("@/assets/images/单向选中.png");
+}
+
+.component-item:hover .component-icon-bidirectional,
+.component-item-selected .component-icon-bidirectional {
+  background-image: url("@/assets/images/双向选中.png");
+}
+
+.component-item:hover .component-icon-loop,
+.component-item-selected .component-icon-loop {
+  background-image: url("@/assets/images/循环选中.png");
 }
 
 .component-item:hover,

@@ -624,7 +624,7 @@ const handleSavePropertyPanel = async () => {
     emit("save", saveData);
   } catch (error) {
     console.error("保存失败:", error);
-    ElMessage.error("保存失败，请重试");
+    // ElMessage.error("保存失败，请重试");
   }
 };
 
@@ -677,7 +677,7 @@ const handleDeletePropertyPanel = async () => {
     // 如果是用户取消操作，不显示错误信息
     if (error !== "cancel") {
       console.error("删除失败:", error);
-      ElMessage.error("删除失败，请重试");
+      // ElMessage.error("删除失败，请重试");
     }
   }
 };
