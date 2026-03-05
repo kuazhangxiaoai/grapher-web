@@ -95,33 +95,10 @@ export default {
   },
 
   /**delete Article*/
-  deleteArticle(
-    graphName: string,
-    topicName: string,
-    domainName: string,
-    userName: string,
-  ): Promise<any> {
-    return axios.post(`/serve_api/article/removeArticle`, {
-      graphName: graphName,
-      topicName: topicName,
-      domainName: domainName,
-      userName: userName,
-    });
+  deleteArticle(articleId: string): Promise<any> {
+    return axios.get(`/serve_api/article/deleteArticle?articleId=${articleId}`)
   },
-  /**get Article list*/
-  getArticleList(
-    topicName: string,
-    domainName: string,
-    userName: string,
-  ): Promise<any> {
-    return axios.get(`/serve_api/article/getArticleList`, {
-      params: {
-        topicName: topicName,
-        domainName: domainName,
-        userName: userName,
-      },
-    });
-  },
+
   /**获取topic下的所有节点模板*/
   getNodeTypes(topicId: string): Promise<any> {
     return axios.get(`/serve_api/template/queryNodeTemplate?topicId=${topicId}`);

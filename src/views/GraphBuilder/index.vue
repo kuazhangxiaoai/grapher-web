@@ -1187,7 +1187,24 @@ const handleEditGraph = (graph) => {
 const handleDeleteGraph = (id) => {
   console.log("删除图谱:", id);
   // 从图谱列表中移除
-  graphs.value = graphs.value.filter((graph) => graph.id !== id);
+
+  ElMessageBox.confirm(
+      "确定是否删除图谱吗",
+      "提示",
+      {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning",
+      }
+  ).then((result) => {
+    projectService.deleteArticle(id).then((response) => {
+      graphs.value = graphs.value.filter((graph) => graph.id !== id);
+      console.log(response);
+    })
+  }).catch((e)=>{
+    console.log("删除失败")
+    console.log(e)
+  })
 };
 
 // 处理添加组件到实体类型
