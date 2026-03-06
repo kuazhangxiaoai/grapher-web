@@ -1080,10 +1080,10 @@ const handleRelationshipTypeClick = (relationshipType) => {
 
 // 处理组件点击
 const handleComponentClick = (componentName) => {
-  selectedComponent.value = componentName;
-  selectedEntityType.value = "";
-  selectedRelationshipType.value = "";
-  emit("component-click", componentName);
+  // selectedComponent.value = componentName;
+  // selectedEntityType.value = "";
+  // selectedRelationshipType.value = "";
+  // emit("component-click", componentName);
 };
 
 // 组件库搜索图标点击事件
@@ -1652,7 +1652,7 @@ defineExpose({
   transition: all 0.3s;
   font-size: 14px;
   color: rgba(153, 153, 153, 0.6);
-  cursor: pointer;
+  // cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
