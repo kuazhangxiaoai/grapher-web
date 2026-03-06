@@ -96,7 +96,7 @@
     <AddNodePropertyDialog
         v-model:visible="showAddNodePropertyDialog"
         :node-name="nodeForPropertyDialog?.name"
-        :initial-properties="nodeForPropertyDialog?.properties"
+        :properties="nodeTemplateProperties"
         @confirm="handleNodePropertyConfirm"
         @cancel="handleAddNodeCancel"
     />
@@ -129,6 +129,7 @@ const textRef = ref<InstanceType<typeof Text> | null>(null);
 const {currentPage, markList} = storeToRefs(textStore)
 const textUrl = ref("");
 const nodeTemplates = ref([])
+const nodeTemplateProperties = ref([])
 const {graphTypeString2Integer} = useConverter()
 // 从localStorage读取状态，或使用默认值
 const loadState = () => {
@@ -176,14 +177,12 @@ const topicSearchOptions = ref([]);
 const showPropertyPanel = ref(false);
 const entityName = ref("");
 const entityDescription = ref("");
-const entityProperties = ref([
-  { name: "名字", type: "text", value: "" },
-  { name: "日期", type: "date", value: "" },
-  { name: "ID", type: "number", value: "" },
-]);
+const entityProperties = ref([]);
 const addToComponentLibrary = ref(true);
 const hasData = ref(false);
 const savedEntitiesCount = ref(0);
+
+
 const entityTypes = ref([]);
 const relationshipTypes = ref([]);
 // 当前操作类型：'entity' 或 'relationship'
@@ -1284,20 +1283,23 @@ const handleEditorAddEntity = async (position: { x: number; y: number }) => {
   {
     response.data.forEach((item) => {
       const nodeTemplate: NodeTemplate = {
+        id: item.nodeTemplateId,
         name: item.nodeTemplateName,
         color: item.nodeTemplateColor
       }
       nodeTemplates.value.push(nodeTemplate);
     })
+
   }
 
   editorNodes.value.push(tempNode);
   //打开添加节点对话框
+
   showAddNodeDialog.value = true;
 };
 
 // AddNodeDialog 点击确定：用正式节点替换临时节点，并弹出属性弹窗
-const handleAddNodeConfirm = (payload: { name: string; type: string | null; position?: { x: number; y: number } }) => {
+const handleAddNodeConfirm = (payload: { id: string; name: string , type: string, position?: { x: number; y: number } }) => {
   const pos = payload.position ?? addNodePosition.value;
   const newNodeId = Date.now();
   //const defaultProperties = [{ name: "名字", type: "string" }, { name: "日期", type: "date" }];
@@ -1313,7 +1315,24 @@ const handleAddNodeConfirm = (payload: { name: string; type: string | null; posi
     String(n.id) === "virtualNode" ? newNode : n
   );
   nodeForPropertyDialog.value = { ...newNode };
-  showAddNodePropertyDialog.value = true;
+
+  //请求节点模板属性
+  nodeTemplateProperties.value = [];
+  projectService.getNodeTemplateProperties(payload.id).then((response) => {
+    if (response && response.data){
+      response.data.forEach((item) => {
+        nodeTemplateProperties.value.push({
+          "key": item.propertyKey,
+          "value": "",
+          "type": item.propertyType,
+        });
+      })
+      if(nodeTemplateProperties.value.length > 0){
+        showAddNodePropertyDialog.value = true;
+      }
+
+    }
+  })
 };
 
 // AddNodePropertyDialog 确定：把配置的属性写回对应节点

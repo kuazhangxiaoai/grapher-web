@@ -52,14 +52,11 @@
 </template>
 
 <script setup lang="ts">
-import {onMounted, ref, watch} from "vue";
+import { ref, watch } from "vue";
+import type {NodeTemplate} from "@/configs/graph";
 
-export interface AddNodeForm {
-  name: string;
-  type: string;
-}
 
-export interface AddNodePayload extends AddNodeForm {
+export interface AddNodePayload extends NodeTemplate {
   position?: { x: number; y: number };
 }
 
@@ -69,12 +66,12 @@ const props = withDefaults(
     title?: string;
     /** 添加节点时的画布坐标，由父组件在打开弹窗时传入 */
     position?: { x: number; y: number };
-    nodeTemplates: [];
+    nodeTemplates: NodeTemplate[];
   }>(),
   {
     title: "添加节点",
     position: undefined,
-    nodeTemplates: [],
+    nodeTemplates: () => [],
   }
 );
 
@@ -82,12 +79,17 @@ const emit = defineEmits<{
   (e: "update:visible", value: boolean): void;
   (e: "add-node", payload: AddNodePayload): void;
   (e: "cancel"): void;
+  (e: "confirm"): void;
 }>();
 
 const dialogVisible = ref(props.visible);
-const form = ref<AddNodeForm>({
+
+/** 表单：name 为用户输入的节点名称，type 为选中的模板名称；选择类型后会同步该模板的 id、color */
+const form = ref<{ id: string; name: string; type: string; color: string | null }>({
+  id: "",
   name: "",
-  type: null,
+  type: "",
+  color: null,
 });
 
 watch(
@@ -96,9 +98,24 @@ watch(
     dialogVisible.value = newValue;
     if (newValue) {
       form.value = {
+        id: "",
         name: "",
-        type: null,
+        type: "",
+        color: null,
       };
+    }
+  }
+);
+
+// 根据选中的类型（模板 name）从 nodeTemplates 同步 id、color 到 form
+watch(
+  () => form.value.type,
+  (typeName) => {
+    if (!typeName || !props.nodeTemplates?.length) return;
+    const template = props.nodeTemplates.find((t: NodeTemplate) => t.name === typeName);
+    if (template) {
+      form.value.id = template.id ?? "";
+      form.value.color = template.color ?? null;
     }
   }
 );
@@ -113,7 +130,9 @@ const handleConfirm = () => {
   const name = form.value.name?.trim();
   if (!name) return;
   emit("add-node", {
-    name,
+    id: form.value.id,
+    name: form.value.name || null,
+    color: form.value.color || null,
     type: form.value.type || null,
     position: props.position,
   });

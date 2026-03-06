@@ -102,5 +102,10 @@ export default {
   /**获取topic下的所有节点模板*/
   getNodeTypes(topicId: string): Promise<any> {
     return axios.get(`/serve_api/template/queryNodeTemplate?topicId=${topicId}`);
+  },
+
+  /**获取nodeTemplate 属性*/
+  getNodeTemplateProperties(nodeTemplateId: string): Promise<any> {
+    return axios.get(`/serve_api/template/queryNodeTemplateProperties?nodeTemplateId=${nodeTemplateId}`);
   }
 };

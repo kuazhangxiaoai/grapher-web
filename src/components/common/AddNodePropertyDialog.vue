@@ -14,14 +14,14 @@
       >
         <el-form-item :label="item.key + ' :'" class="property-item">
           <el-input
-              v-if="item.type === 'string'"
+              v-if="item.type === 'String'"
               v-model="item.value"
               placeholder="属性值"
               clearable
               style="width: 140px"
           />
           <el-date-picker
-              v-if="item.type === 'date'"
+              v-if="item.type === 'Date'"
               v-model="item.value"
               style="width: 140px"/>
         </el-form-item>
@@ -63,8 +63,6 @@ const emit = defineEmits<{
 }>();
 
 const dialogVisible = ref(props.visible);
-
-
 
 function init() {
   const list = props.properties?.length
