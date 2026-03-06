@@ -536,8 +536,14 @@ const handleSavePropertyPanel = async () => {
           // 触发更新事件，通知父组件更新节点数据
           emit("update-nodes", templateResponse.data);
         }
+        // 调用组件库查询接口更新组件库数据
+        const libraryResponse = await graph.queryLibraryTemplate("");
+        if (libraryResponse && libraryResponse.data) {
+          // 触发更新事件，通知父组件更新组件库数据
+          emit("update-library", libraryResponse.data);
+        }
       } catch (error) {
-        console.error("更新节点数据失败:", error);
+        console.error("更新数据失败:", error);
       }
     } else if (props.currentOperation === "relationship") {
       // 检查 startNodeTemplateId 和 endNodeTemplateId 是否为空
@@ -599,8 +605,14 @@ const handleSavePropertyPanel = async () => {
           // 触发更新事件，通知父组件更新节点数据
           emit("update-nodes", templateResponse.data);
         }
+        // 调用组件库查询接口更新组件库数据
+        const libraryResponse = await graph.queryLibraryTemplate("");
+        if (libraryResponse && libraryResponse.data) {
+          // 触发更新事件，通知父组件更新组件库数据
+          emit("update-library", libraryResponse.data);
+        }
       } catch (error) {
-        console.error("更新节点数据失败:", error);
+        console.error("更新数据失败:", error);
       }
     }
 
@@ -667,8 +679,14 @@ const handleDeletePropertyPanel = async () => {
         // 触发更新事件，通知父组件更新节点数据
         emit("update-nodes", templateResponse.data);
       }
+      // 调用组件库查询接口更新组件库数据
+      const libraryResponse = await graph.queryLibraryTemplate("");
+      if (libraryResponse && libraryResponse.data) {
+        // 触发更新事件，通知父组件更新组件库数据
+        emit("update-library", libraryResponse.data);
+      }
     } catch (error) {
-      console.error("更新节点数据失败:", error);
+      console.error("更新数据失败:", error);
     }
 
     // 关闭属性面板

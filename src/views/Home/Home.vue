@@ -2200,6 +2200,28 @@ const handleUpdateNodes = (templateData) => {
   }
 };
 
+// 处理更新组件库数据
+const handleUpdateLibrary = (libraryData) => {
+  console.log("更新组件库数据:", libraryData);
+  if (libraryData) {
+    // 合并节点模板和关系模板
+    const allComponents = [];
+    if (libraryData.nodeTemplates && Array.isArray(libraryData.nodeTemplates)) {
+      allComponents.push(...libraryData.nodeTemplates);
+    }
+    if (
+      libraryData.relationTemplates &&
+      Array.isArray(libraryData.relationTemplates)
+    ) {
+      allComponents.push(...libraryData.relationTemplates);
+    }
+    components.value = allComponents;
+    console.log("组件库更新完成，共", allComponents.length, "个组件");
+  } else {
+    components.value = [];
+  }
+};
+
 // 处理清除选中状态
 const handleClearSelections = () => {
   // 这里不需要做任何操作，因为 Sidebar 组件会处理清除选中状态的逻辑
@@ -2315,6 +2337,7 @@ const handleClearSelections = () => {
       @save="handleSavePropertyPanel"
       @add-property="handleAddProperty"
       @update-nodes="handleUpdateNodes"
+      @update-library="handleUpdateLibrary"
     />
 
     <!-- 新增领域对话框 -->
