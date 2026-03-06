@@ -17,9 +17,9 @@ export interface NodeProperty {
 }
 
 export interface NodeTemplate {
+    id: string;
     name: string;
     color: string;
-    properties: NodeProperty[];
 }
 
 export interface GraphConfig {
