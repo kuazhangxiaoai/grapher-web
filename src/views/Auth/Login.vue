@@ -33,7 +33,7 @@
           </p>
         </div>
 
-        <div class="form-options">
+        <!-- <div class="form-options">
           <div class="remember-me">
             <input type="checkbox" id="remember" v-model="rememberMe" />
             <label for="remember">记住我</label>
@@ -41,7 +41,7 @@
           <router-link to="/forgot" class="forgot-password">
             忘记密码?
           </router-link>
-        </div>
+        </div> -->
 
         <button type="submit" class="auth-button" :disabled="isLoading">
           {{ isLoading ? "登录中..." : "登录" }}
@@ -99,10 +99,10 @@ const validateForm = (): boolean => {
 
 const handleLogin = async () => {
   if (!validateForm()) return;
-  if(localStorage.getItem("homePageState")){
+  if (localStorage.getItem("homePageState")) {
     localStorage.removeItem("homePageState");
   }
-  
+
   errorMessage.value = "";
   isLoading.value = true;
   try {

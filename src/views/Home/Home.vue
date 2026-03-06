@@ -1438,7 +1438,8 @@ const handleSavePropertyPanel = (data) => {
 };
 
 const handleAddProperty = () => {
-  entityProperties.value.push({ name: "", type: "string", value: "" });
+  // 此方法不再需要，因为属性添加逻辑已在 PropertyPanel 组件中本地处理
+  console.log("add-property event received");
 };
 
 // 处理拖拽开始

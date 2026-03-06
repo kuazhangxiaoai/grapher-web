@@ -723,9 +723,6 @@ const handleConfirmAddProperty = async () => {
   // 等待 DOM 更新
   await nextTick();
 
-  // 触发添加属性事件，传递新属性数据
-  emit("add-property", newProp);
-
   // 关闭对话框
   addPropertyDialogVisible.value = false;
 
@@ -733,7 +730,7 @@ const handleConfirmAddProperty = async () => {
   newProperty.value = { name: "", type: "string" };
 
   // 成功提示
-  ElMessage.success("属性添加成功");
+  // ElMessage.success("属性添加成功");
 
   // 3秒后重置添加状态
   setTimeout(() => {
