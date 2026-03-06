@@ -1,34 +1,30 @@
 <template>
-  <div
-      class="graph-container"
-      @contextmenu="handleContextMenu"
-      @click="handleClick"
-      @mousemove="handleMouseMove"
-  >
-    <div ref="graphRef" class="graph-canvas"></div>
-    <EditorTool
-        class="editor-tool"
-        @submit="handleSubmitClick"
-        @clear="handleClearClick"
-        @quit="handleQuitClick"
+  <div class="editor-container-wrapper">
+    <div
+        class="graph-container"
+        @contextmenu="handleContextMenu"
+        @click="handleClick"
+        @mousemove="handleMouseMove"
+        @dragover.prevent
+        @drop.prevent="handleDropEntityTemplate"
     >
-    </EditorTool>
-    <EditorContextMenu
-        v-if="showContextMenu"
-        :position="contextMenuPosition"
-        :is-node-click="isNodeClick"
-        @add-entity="handleAddEntity"
-        @create-relationship="handleCreateRelationship"
-        @close="showContextMenu = false"
-    />
-    <div class="zoom-controls">
-      <button class="zoom-btn" @click="zoomIn">
-        <img src="@/assets/images/放大.png" alt="放大" class="zoom-icon" />
-      </button>
-      <div class="zoom-level">{{ zoomLevel }}%</div>
-      <button class="zoom-btn" @click="zoomOut">
-        <img src="@/assets/images/缩小.png" alt="缩小" class="zoom-icon" />
-      </button>
+      <div ref="graphRef" class="graph-canvas"></div>
+      <EditorTool
+          class="editor-tool"
+          @submit="handleSubmitClick"
+          @clear="handleClearClick"
+          @quit="handleQuitClick"
+      >
+      </EditorTool>
+      <div class="zoom-controls">
+        <button class="zoom-btn" @click="zoomIn">
+          <img src="@/assets/images/放大.png" alt="放大" class="zoom-icon" />
+        </button>
+        <div class="zoom-level">{{ zoomLevel }}%</div>
+        <button class="zoom-btn" @click="zoomOut">
+          <img src="@/assets/images/缩小.png" alt="缩小" class="zoom-icon" />
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -44,8 +40,9 @@ import {
   computed,
 } from "vue";
 import { Graph } from "@antv/g6";
-import EditorContextMenu from "@/components/editor/EditorContextMenu.vue";
 import EditorTool from "@/components/editor/EditorTool.vue";
+
+const DRAG_MIME = "application/x-grapher-node-template";
 
 // 内边距配置常量
 const PADDING = {
@@ -78,10 +75,14 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  nodeTemplates: {
+    type: Array,
+    default: () => [],
+  },
 });
 
 const emit = defineEmits([
-  "add-entity",
+  "add-entity-from-template",
   "create-relationship",
   "node-click",
   "edge-click",
@@ -89,7 +90,6 @@ const emit = defineEmits([
   "node-drag",
   "node-drag-end",
   "connection-complete",
-  // GraphEditor 顶部工具条相关事件
   "submit",
   "clear",
   "quit",
@@ -266,7 +266,7 @@ const initGraph = () => {
         style: {
           x: nodeX,
           y: nodeY,
-          fill: "#fff",
+          fill: node.backgroundColor || "#43D7B5",
           stroke: node.backgroundColor || "#43D7B5",
           lineWidth: 2,
           size: diameter,
@@ -294,10 +294,8 @@ const initGraph = () => {
       node: {
         type: "circle",
         style: {
-          fill: "#fff",
-          stroke: (data) => {
-            return data.data?.backgroundColor || "#43D7B5";
-          },
+          fill: (data) => data.data?.backgroundColor || "#43D7B5",
+          stroke: (data) => data.data?.backgroundColor || "#43D7B5",
           lineWidth: 2,
           size: (data) => calculateCircleDiameter(data),
           shadowColor: "rgba(78,89,105,0.18)",
@@ -1494,6 +1492,55 @@ const handleMouseMove = (event) => {
   // 这个方法保留但不使用，因为我们用 graph 的 mousemove 事件
 };
 
+// 处理从 LeftTemplatePanel 拖拽实体类型到画布的放置事件
+const handleDropEntityTemplate = (event) => {
+  event.preventDefault();
+
+  if (!graphRef.value) {
+    return;
+  }
+
+  const dataTransfer = event.dataTransfer;
+  if (!dataTransfer) {
+    return;
+  }
+
+  const raw = dataTransfer.getData(DRAG_MIME);
+  if (!raw) {
+    return;
+  }
+
+  let template;
+  try {
+    template = JSON.parse(raw);
+  } catch (e) {
+    console.warn("解析拖拽模板数据失败:", e);
+    return;
+  }
+
+  const rect = graphRef.value.getBoundingClientRect();
+  const canvasX = event.clientX - rect.left;
+  const canvasY = event.clientY - rect.top;
+
+  let graphX = canvasX;
+  let graphY = canvasY;
+
+  try {
+    if (graph.value && graph.value.getCanvasByViewport) {
+      const point = graph.value.getCanvasByViewport([canvasX, canvasY]);
+      graphX = point[0] || canvasX;
+      graphY = point[1] || canvasY;
+    }
+  } catch (e) {
+    console.warn("坐标转换失败，使用画布坐标作为回退:", e);
+  }
+
+  emit("add-entity-from-template", {
+    position: { x: graphX, y: graphY },
+    template,
+  });
+};
+
 const clickedNodeId = ref(null);
 const selectedNodeId = ref(null);
 
@@ -1809,7 +1856,7 @@ const renderGraph = () => {
         style: {
           x: nodeX,
           y: nodeY,
-          fill: "#fff",
+          fill: node.backgroundColor || "#43D7B5",
           stroke: node.backgroundColor || "#43D7B5",
           lineWidth: 2,
           size: diameter,
@@ -1864,18 +1911,6 @@ const renderGraph = () => {
   }
 };
 
-// 处理添加节点
-const handleAddEntity = () => {
-  console.log("handleAddEntity called");
-  console.log("准确位置:", clickCanvasPosition.value);
-
-  emit("add-entity", {
-    x: clickCanvasPosition.value.x,
-    y: clickCanvasPosition.value.y,
-  });
-
-  showContextMenu.value = false;
-};
 
 // 处理创建关系
 const handleCreateRelationship = () => {
@@ -2012,9 +2047,18 @@ defineExpose({
 </script>
 
 <style scoped>
-.graph-container {
+.editor-container-wrapper {
   position: relative;
   width: 100%;
+  height: 100%;
+  display: flex;
+  overflow: hidden;
+}
+
+
+.graph-container {
+  position: relative;
+  flex: 1;
   height: 100%;
   overflow: hidden;
 }

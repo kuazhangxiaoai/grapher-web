@@ -28,7 +28,7 @@ import {ref, computed, watch} from 'vue';
 import { usePdfiumEngine } from '@embedpdf/engines/vue';
 import { EmbedPDF } from '@embedpdf/core/vue';
 import { createPluginRegistration } from '@embedpdf/core';
-
+import { init, WrappedPdfiumModule } from '@embedpdf/pdfium';
 import { ViewportPluginPackage } from '@embedpdf/plugin-viewport/vue';
 import { ScrollPluginPackage } from '@embedpdf/plugin-scroll/vue';
 import { DocumentContent, DocumentManagerPluginPackage } from '@embedpdf/plugin-document-manager/vue';
@@ -38,7 +38,10 @@ import { SelectionPluginPackage } from '@embedpdf/plugin-selection/vue';
 import TextSelection from "@/components/article/TextSelection.vue";
 import type { Mark } from "@/configs/text";
 
+//const { engine, isLoading } = usePdfiumEngine({wasmUrl: "http://localhost:8090/pdf/pdfium.wasm"}); => product.env
 const { engine, isLoading } = usePdfiumEngine();
+
+
 const props = defineProps<{
   src?: string | null;
   page?: number;

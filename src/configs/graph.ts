@@ -22,6 +22,19 @@ export interface NodeTemplate {
     color: string;
 }
 
+export interface EdgeTemplate {
+    id: string;
+    name: string;
+    from: string;
+    to: string;
+}
+
+export interface EdgeProperty {
+    key?: string;
+    type?: string;
+    value?: unknown;
+}
+
 export interface GraphConfig {
     id: string;
     name: string;

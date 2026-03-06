@@ -77,44 +77,33 @@
       />
     </div>
     <GraphEditor
+        ref="graphEditorRef"
         v-if="showEditor"
         style="z-index: 9"
         :marks="markList"
         :nodes="editorNodes"
         :edges="editorEdges"
-        @add-entity="handleEditorAddEntity"
+        :topic-id="currentSubDomainId"
         @node-drag-end="handleEditorNodeDragEnd"
+        @add-entity-from-template="handleEditorAddEntity"
+        @update:node="handleEditorUpdateNode"
+        @update:edge="handleEditorUpdateEdge"
         @quit="handleEditorQuit"
-    />
-    <AddNodeDialog
-        v-model:visible="showAddNodeDialog"
-        :position="addNodePosition"
-        :node-templates="nodeTemplates"
-        @add-node="handleAddNodeConfirm"
-        @cancel="handleAddNodeCancel"
-    />
-    <AddNodePropertyDialog
-        v-model:visible="showAddNodePropertyDialog"
-        :node-name="nodeForPropertyDialog?.name"
-        :properties="nodeTemplateProperties"
-        @confirm="handleNodePropertyConfirm"
-        @cancel="handleAddNodeCancel"
+        @close-right="handleClosePropertyPanel"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from "vue";
+import { ref, onMounted, watch, nextTick } from "vue";
 import { ElMessageBox } from "element-plus";
 import { ElMessage as Message } from "element-plus";
 import Sidebar from "@/components/common/Sidebar.vue";
 import AddGraphDialog from "@/components/common/AddGraphDialog.vue";
-import AddNodeDialog from "@/components/common/AddNodeDialog.vue";
-import AddNodePropertyDialog from "@/components/common/AddNodePropertyDialog.vue";
 import projectService from "@/services/graph.ts"
 import Text from "@/components/article/Text.vue";
 import {useConverter} from "@/mock/modules/converter.ts";
-import {GraphConfig} from "@/configs/graph.js";
+import {GraphConfig, type NodeProperty} from "@/configs/graph.js";
 import TextTool from "@/components/article/TextTool.vue";
 import {storeToRefs} from "pinia";
 import {useTextStore} from "@/store/useTextStore";
@@ -122,10 +111,12 @@ import GraphViewer from "@/views/GraphBuilder/GraphViewer.vue";
 import GraphEditor from "@/views/GraphBuilder/GraphEditor.vue";
 import type { Mark, Rect } from "@/configs/text"
 import type {NodeTemplate} from "@/configs/graph.js";
+import {template} from "lodash";
 
 const textStore = useTextStore();
 const contentRef = ref(null);
 const textRef = ref<InstanceType<typeof Text> | null>(null);
+const graphEditorRef = ref<InstanceType<typeof GraphEditor> | null>(null);
 const {currentPage, markList} = storeToRefs(textStore)
 const textUrl = ref("");
 const nodeTemplates = ref([])
@@ -182,7 +173,6 @@ const addToComponentLibrary = ref(true);
 const hasData = ref(false);
 const savedEntitiesCount = ref(0);
 
-
 const entityTypes = ref([]);
 const relationshipTypes = ref([]);
 // 当前操作类型：'entity' 或 'relationship'
@@ -222,12 +212,11 @@ const editorNodes = ref([]);
 const editorEdges = ref([]);
 //当前目录层级
 const currentLevel= ref(0);
-//文本信息
-const showAddNodeDialog = ref(false);
-const addNodePosition = ref({ x: 0, y: 0 });
-const showAddNodePropertyDialog = ref(false);
+
 /** 当前在配置属性的节点（AddNodeDialog 确定后创建，用于属性弹窗回写） */
 const nodeForPropertyDialog = ref(null);
+/** 拖放/右键添加节点时的画布坐标（供 AddNodeDialog 确定时使用） */
+const addNodePosition = ref({ x: 0, y: 0 });
 
 // ============ 历史搜索记录相关 ============
 // 存储在不同上下文中的历史记录
@@ -954,23 +943,14 @@ const handleCreateRelationship = (sourceId) => {
 };
 
 const handleClosePropertyPanel = () => {
-  showPropertyPanel.value = false;
+  // 关闭时清除编辑器中的临时节点（拖入未确认的 virtualNode）
+  editorNodes.value = editorNodes.value.filter((n) => String(n.id) !== "virtualNode");
 
   // 关闭属性面板后，清除虚线
-  if (currentOperation.value === "relationship" && contentRef.value) {
-    contentRef.value.resetConnectionState();
-    console.log("关闭属性面板后，调用resetConnectionState方法清除虚线");
-  }
-};
-
-const handleCancelPropertyPanel = () => {
-  showPropertyPanel.value = false;
-
-  // 取消属性面板后，清除虚线
-  if (currentOperation.value === "relationship" && contentRef.value) {
-    contentRef.value.resetConnectionState();
-    console.log("取消属性面板后，调用resetConnectionState方法清除虚线");
-  }
+  //if (currentOperation.value === "relationship" && contentRef.value) {
+  //  contentRef.value.resetConnectionState();
+  //  console.log("关闭属性面板后，调用resetConnectionState方法清除虚线");
+  //}
 };
 
 // 处理连接完成
@@ -1044,10 +1024,6 @@ const handleDrop = (event) => {
   hasData.value = true;
 };
 
-// 点击取消时移除编辑器内的临时节点（id 为 virtualNode）
-const handleAddNodeCancel = () => {
-  editorNodes.value = editorNodes.value.filter((n) => String(n.id) !== "virtualNode");
-}
 
 // 处理节点鼠标按下
 const handleNodeMouseDown = (event, nodeId) => {
@@ -1265,89 +1241,56 @@ const handleModeChange = (mode) => {
   currentMode.value = mode;
 };
 
-// 编辑器中右键添加节点：只写入 editorNodes，不写入 graphNodes（不传给 GraphViewer）
-const handleEditorAddEntity = async (position: { x: number; y: number }) => {
+// 编辑器中拖放实体类型添加节点：只写入 editorNodes，按模板颜色渲染
+const handleEditorAddEntity = (payload:{position: { x: number; y: number }, template: NodeTemplate }) => {
+  const position = payload.position;
   addNodePosition.value = position;
-  // 创建临时节点
+  const templateColor = payload.template?.color ?? "#43D7B5";
+  // 创建临时节点（使用 backgroundColor 供 EditorContainer 按模板颜色渲染）
   const tempNode = {
     id: "virtualNode",
     name: " ",
     type: "virtual",
+    nodeTemplateId: payload.template?.id,
     x: position.x,
     y: position.y,
-    properties: [],
+    backgroundColor: templateColor,
+    properties: [] as NodeProperty[],
   };
-  nodeTemplates.value = []
-  const response = await projectService.getNodeTypes(currentSubDomainId.value)
-  if(response && response.data)
-  {
-    response.data.forEach((item) => {
-      const nodeTemplate: NodeTemplate = {
-        id: item.nodeTemplateId,
-        name: item.nodeTemplateName,
-        color: item.nodeTemplateColor
-      }
-      nodeTemplates.value.push(nodeTemplate);
-    })
-
-  }
-
   editorNodes.value.push(tempNode);
-  //打开添加节点对话框
-
-  showAddNodeDialog.value = true;
+  // 选中该节点并打开右侧属性面板，GraphEditor 会根据 nodeTemplateId 拉取模板属性
+  nextTick(() => {
+    graphEditorRef.value?.setSelectedNode?.(tempNode);
+  });
 };
 
-// AddNodeDialog 点击确定：用正式节点替换临时节点，并弹出属性弹窗
+// AddNodeDialog 点击确定：用正式节点替换临时节点，并弹出属性弹窗（保留模板颜色）
 const handleAddNodeConfirm = (payload: { id: string; name: string , type: string, position?: { x: number; y: number } }) => {
   const pos = payload.position ?? addNodePosition.value;
   const newNodeId = Date.now();
-  //const defaultProperties = [{ name: "名字", type: "string" }, { name: "日期", type: "date" }];
+  const virtualNode = editorNodes.value.find((n) => String(n.id) === "virtualNode");
+  const backgroundColor = (virtualNode && "backgroundColor" in virtualNode ? virtualNode.backgroundColor : undefined) ?? "#43D7B5";
   const newNode = {
     id: newNodeId,
     name: payload.name?.trim(),
-    type: payload.type ,
+    type: payload.type,
+    nodeTemplateId: payload.id,
     x: pos.x,
     y: pos.y,
-    //properties: defaultProperties,
+    backgroundColor,
+    properties: [] as NodeProperty[],
   };
   editorNodes.value = editorNodes.value.map((n) =>
     String(n.id) === "virtualNode" ? newNode : n
   );
   nodeForPropertyDialog.value = { ...newNode };
 
-  //请求节点模板属性
-  nodeTemplateProperties.value = [];
-  projectService.getNodeTemplateProperties(payload.id).then((response) => {
-    if (response && response.data){
-      response.data.forEach((item) => {
-        nodeTemplateProperties.value.push({
-          "key": item.propertyKey,
-          "value": "",
-          "type": item.propertyType,
-        });
-      })
-      if(nodeTemplateProperties.value.length > 0){
-        showAddNodePropertyDialog.value = true;
-      }
-
-    }
-  })
+  // 选中新节点，右侧属性面板会显示该节点信息并拉取模板属性
+  nextTick(() => {
+    graphEditorRef.value?.setSelectedNode?.(newNode);
+  });
 };
 
-// AddNodePropertyDialog 确定：把配置的属性写回对应节点
-const handleNodePropertyConfirm = (properties: { name: string; type: string }[]) => {
-  const id = nodeForPropertyDialog.value?.id;
-  if (id == null) return;
-  const list = editorNodes.value;
-  for (let i = 0; i < list.length; i++) {
-    if (String(list[i].id) === String(id)) {
-      editorNodes.value[i] = { ...list[i], properties: properties?.length ? properties : list[i].properties };
-      break;
-    }
-  }
-  nodeForPropertyDialog.value = null;
-};
 
 const handleNodePropertyCancel = () => {
   nodeForPropertyDialog.value = null;
@@ -1361,6 +1304,31 @@ const handleEditorNodeDragEnd = (data: { nodeId: string | number; position: { x:
     const node = editorNodes.value[i];
     if (String(node.id) === String(nodeId)) {
       editorNodes.value[i] = { ...node, x: position.x, y: position.y };
+      break;
+    }
+  }
+};
+
+// 右侧属性面板更新节点：同步到 editorNodes
+const handleEditorUpdateNode = (payload: { id: string | number; name?: string; properties?: unknown }) => {
+  const id = payload.id;
+  for (let i = 0; i < editorNodes.value.length; i++) {
+    if (String(editorNodes.value[i].id) === String(id)) {
+      editorNodes.value[i] = { ...editorNodes.value[i], ...payload };
+      break;
+    }
+  }
+};
+
+// 右侧属性面板更新边：同步到 editorEdges
+const handleEditorUpdateEdge = (payload: { source: string | number; target: string | number; data?: unknown; id?: string | number }) => {
+  const edges = editorEdges.value;
+  const match = (e: { source: string | number; target: string | number; id?: string | number }) =>
+    String(e.source) === String(payload.source) && String(e.target) === String(payload.target) ||
+    (payload.id != null && String(e.id) === String(payload.id));
+  for (let i = 0; i < edges.length; i++) {
+    if (match(edges[i])) {
+      editorEdges.value[i] = { ...edges[i], ...payload };
       break;
     }
   }
@@ -1389,6 +1357,8 @@ const hanleRefresh = () => {
   textStore.clearMarkList()
   showEditor.value = false;
 }
+
+
 </script>
 
 <style scoped lang="scss">
