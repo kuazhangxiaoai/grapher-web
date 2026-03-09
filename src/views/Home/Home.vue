@@ -61,7 +61,7 @@ const entityDescription = ref("");
 //   { name: "ID", type: "number", value: "" },
 // ]);
 const entityProperties = ref([]);
-const addToComponentLibrary = ref(true);
+const addToComponentLibrary = ref(false);
 const hasData = ref(false);
 const savedEntitiesCount = ref(0);
 const entityTypes = ref([]);
@@ -1132,7 +1132,7 @@ const handleAddEntity = (position) => {
   //   { name: "ID", type: "number", value: "" },
   // ];
   entityProperties.value = [];
-  addToComponentLibrary.value = true;
+  addToComponentLibrary.value = false;
   currentOperation.value = "entity";
   currentNodeTemplateId.value = 0;
   currentRelationTemplateId.value = 0;
@@ -1162,7 +1162,7 @@ const handleCreateRelationship = (sourceId) => {
   //   { name: "ID", type: "number", value: "" },
   // ];
   entityProperties.value = [];
-  addToComponentLibrary.value = true;
+  addToComponentLibrary.value = false;
 
   currentOperation.value = "relationship";
   currentNodeTemplateId.value = 0;
@@ -1354,7 +1354,7 @@ const handleConnectionComplete = (targetId) => {
   //   { name: "ID", type: "number", value: "" },
   // ];
   entityProperties.value = [];
-  addToComponentLibrary.value = true;
+  addToComponentLibrary.value = false;
 
   // 设置当前操作类型为关系
   currentOperation.value = "relationship";
@@ -1759,7 +1759,7 @@ const handleEntityTypeClick = (entityType) => {
     entityDescription.value = "";
     entityProperties.value = [];
     backgroundColor.value = "#43D7B5";
-    addToComponentLibrary.value = true;
+    addToComponentLibrary.value = false;
     currentNodeTemplateId.value = 0;
     currentRelationTemplateId.value = 0;
   }
@@ -1854,7 +1854,7 @@ const handleRelationshipTypeClick = (relationshipTypeName) => {
     // 如果找不到模板信息，重置默认值
     relationshipType.value = "定向";
     entityProperties.value = [];
-    addToComponentLibrary.value = true;
+    addToComponentLibrary.value = false;
     currentRelationTemplateId.value = 0;
     currentNodeTemplateId.value = 0;
     startNodeName.value = "";
@@ -1973,7 +1973,7 @@ const handleComponentClick = (componentName) => {
     entityDescription.value = "";
     entityProperties.value = [];
     backgroundColor.value = "#43D7B5";
-    addToComponentLibrary.value = true;
+    addToComponentLibrary.value = false;
     currentNodeTemplateId.value = 0;
     currentRelationTemplateId.value = 0;
   }
@@ -2328,8 +2328,12 @@ const handleUpdateNodes = (templateData) => {
         graphEdges.value.push(newEdge);
       });
     }
-
-    console.log("节点数据更新完成:", graphNodes.value, graphEdges.value);
+    if (contentRef.value.graphContainerRef) {
+      contentRef.value.graphContainerRef.forceRedraw();
+      // 或
+      contentRef.value.graphContainerRef.refreshCanvas();
+    }
+    console.log("节点数据更新完成22222:", graphNodes.value, graphEdges.value);
   }
 };
 

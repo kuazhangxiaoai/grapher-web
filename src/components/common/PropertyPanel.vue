@@ -348,7 +348,7 @@ const props = defineProps({
   },
   addToComponentLibrary: {
     type: Boolean,
-    default: true,
+    default: false,
   },
   backgroundColor: {
     type: String,

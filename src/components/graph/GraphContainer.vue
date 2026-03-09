@@ -155,7 +155,7 @@ const createCustomNode = (model) => {
     return h(
       "div",
       {
-        "data-node-id": model.id, // 添加节点ID属性，用于DOM检测
+        "data-node-id": model.id,
         style: {
           width: "100%",
           height: "auto",
@@ -175,6 +175,11 @@ const createCustomNode = (model) => {
           cursor: "pointer",
           userSelect: "none",
           pointerEvents: "auto",
+          // 关键：添加抗锯齿样式
+          WebkitFontSmoothing: "antialiased",
+          MozOsxFontSmoothing: "grayscale",
+          textRendering: "optimizeLegibility",
+          fontSmooth: "always",
         },
       },
       [
@@ -320,7 +325,7 @@ const calculateNodeSize = (nodeData) => {
     Math.min(PADDING.maxWidth, contentWidth),
   );
 
-  // 计算高度 - 更准确地反映实际渲染高度
+  // 计算高度
   const contentHeight = PADDING.baseHeight + propertyLines * PADDING.lineHeight;
   const totalHeight = Math.max(
     PADDING.minHeight,
@@ -429,14 +434,18 @@ const validateAllNodePositions = () => {
         halfHeight,
       );
 
-      if (clamped.x !== node.style.x || clamped.y !== node.style.y) {
+      // 强制位置为整数，避免子像素渲染导致的模糊
+      const roundedX = Math.round(clamped.x);
+      const roundedY = Math.round(clamped.y);
+
+      if (roundedX !== node.style.x || roundedY !== node.style.y) {
         needUpdate = true;
         return {
           ...node,
           style: {
             ...node.style,
-            x: clamped.x,
-            y: clamped.y,
+            x: roundedX,
+            y: roundedY,
           },
         };
       }
@@ -475,14 +484,18 @@ const applySavedNodePositions = () => {
       const nodeId = typeof node.id === "string" ? node.id : node.id.toString();
       if (nodePositions.value.has(nodeId)) {
         const savedPos = nodePositions.value.get(nodeId);
-        if (savedPos.x !== node.style.x || savedPos.y !== node.style.y) {
+        // 强制位置为整数
+        const roundedX = Math.round(savedPos.x);
+        const roundedY = Math.round(savedPos.y);
+
+        if (roundedX !== node.style.x || roundedY !== node.style.y) {
           needUpdate = true;
           return {
             ...node,
             style: {
               ...node.style,
-              x: savedPos.x,
-              y: savedPos.y,
+              x: roundedX,
+              y: roundedY,
             },
           };
         }
@@ -522,6 +535,10 @@ const initGraph = () => {
     const formattedNodes = props.nodes.map((node) => {
       let nodeX = node.x || width / 2;
       let nodeY = node.y || height / 2;
+
+      // 强制位置为整数
+      nodeX = Math.round(nodeX);
+      nodeY = Math.round(nodeY);
 
       const nodeSize = calculateNodeSize({
         data: {
@@ -854,7 +871,6 @@ const startConnect = async (nodeId) => {
     const nodes = currentData.nodes || [];
     const edges = currentData.edges || [];
 
-    // 创建完全透明的虚拟节点，确保不接收鼠标事件
     const virtualNode = {
       id: vNodeId,
       type: "circle",
@@ -866,7 +882,7 @@ const startConnect = async (nodeId) => {
         fill: "transparent",
         stroke: "transparent",
         lineWidth: 0,
-        pointerEvents: "none", // 确保不接收鼠标事件
+        pointerEvents: "none",
       },
     };
 
@@ -881,7 +897,7 @@ const startConnect = async (nodeId) => {
         lineDash: [6, 4],
         endArrow: true,
         opacity: 0.9,
-        pointerEvents: "none", // 确保临时边不接收鼠标事件
+        pointerEvents: "none",
       },
     };
 
@@ -1339,8 +1355,8 @@ const bindEvents = () => {
 
     graph.value.updateItem(node, {
       style: {
-        x: newX,
-        y: newY,
+        x: Math.round(newX),
+        y: Math.round(newY),
       },
     });
 
@@ -1471,7 +1487,6 @@ const bindEvents = () => {
   graph.value.on("canvas:contextmenu", (evt) => {
     evt.preventDefault();
 
-    // 保存点击位置用于添加实体
     if (graph.value && graphRef.value) {
       try {
         const [x, y] = graph.value.getCanvasByClient([
@@ -1492,21 +1507,17 @@ const bindEvents = () => {
     showContextMenu.value = true;
   });
 
-  // 使用原生 mousemove 事件，通过 DOM 元素检测节点
+  // 使用原生 mousemove 事件
   const handleNativeMouseMove = (e) => {
-    // 只在连线模式下且没有待确认连线时才处理
     if (!virtualNodeId.value || !graph.value || pendingConnection.value) return;
 
     try {
-      // 获取鼠标在画布中的坐标（用于虚拟节点移动）
       const [x, y] = graph.value.getCanvasByClient([e.clientX, e.clientY]);
       lastMousePos.value = { x, y };
 
-      // 使用 elementsFromPoint 获取当前鼠标下的所有元素
       const elements = document.elementsFromPoint(e.clientX, e.clientY);
       let hoveredNodeId = null;
 
-      // 查找第一个带有 data-node-id 属性的元素（排除虚拟节点）
       for (const element of elements) {
         const nodeId = element.getAttribute?.("data-node-id");
         if (nodeId && !nodeId.startsWith("virtual-")) {
@@ -1515,9 +1526,7 @@ const bindEvents = () => {
         }
       }
 
-      // 如果有悬停的节点
       if (hoveredNodeId) {
-        // 从图数据中获取节点信息
         const currentData = graph.value.getData();
         const allNodes = currentData.nodes || [];
         const hoveredNode = allNodes.find(
@@ -1525,28 +1534,22 @@ const bindEvents = () => {
         );
 
         if (hoveredNode) {
-          // 只有当悬停的节点发生变化时（刚进入节点），才更新虚拟节点到节点中心
           if (
             !mouseOverNodeId.value ||
             String(hoveredNode.id) !== String(mouseOverNodeId.value)
           ) {
             mouseOverNodeId.value = hoveredNode.id;
-
-            // 将虚拟节点固定在节点中心
             updateVirtualNodePosition(
               hoveredNode.style.x,
               hoveredNode.style.y,
               hoveredNode.style.size || [180, 100],
             );
           }
-          // 鼠标在节点内移动时不更新位置
         }
       } else {
-        // 如果鼠标不在任何节点上
         if (mouseOverNodeId.value) {
           mouseOverNodeId.value = null;
         }
-        // 跟随鼠标移动
         updateVirtualNodePosition(x, y);
       }
     } catch (error) {
@@ -1554,12 +1557,10 @@ const bindEvents = () => {
     }
   };
 
-  // 添加原生事件监听
   if (graphRef.value) {
     graphRef.value.addEventListener("mousemove", handleNativeMouseMove);
   }
 
-  // 保存事件处理函数引用，以便在卸载时移除
   graph.value._nativeMouseMoveHandler = handleNativeMouseMove;
 };
 
@@ -1609,6 +1610,10 @@ const renderGraph = () => {
         nodeX = savedPosition.x;
         nodeY = savedPosition.y;
       }
+
+      // 强制节点位置为整数
+      nodeX = Math.round(nodeX);
+      nodeY = Math.round(nodeY);
 
       const nodeSize = calculateNodeSize({
         data: {
@@ -1810,7 +1815,6 @@ onUnmounted(() => {
   }
   window.removeEventListener("resize", handleResize);
 
-  // 移除原生事件监听
   if (graphRef.value && graph.value && graph.value._nativeMouseMoveHandler) {
     graphRef.value.removeEventListener(
       "mousemove",
@@ -1897,5 +1901,19 @@ defineExpose({
   font-weight: bold;
   margin: 0 2px;
   min-width: 50px;
+}
+</style>
+
+<style>
+/* 全局抗锯齿样式 - 不影响功能 */
+.g6-canvas canvas {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+[data-node-id] {
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  text-rendering: optimizeLegibility !important;
 }
 </style>
