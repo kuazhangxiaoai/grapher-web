@@ -3,7 +3,10 @@ import message from '@/utils/message'
 import router from '@/router';
 import mockConfig from '@/config/mock';
 
-const instance = axios.create({ timeout: 1000 * 300 })
+const instance = axios.create({ 
+  timeout: 1000 * 300,
+  baseURL: import.meta.env.VITE_API_BASE_URL || ''
+ })
 // 请求拦截器：添加 Authorization 头
 instance.interceptors.request.use(
   config => {

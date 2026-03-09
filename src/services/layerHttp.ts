@@ -7,7 +7,7 @@ interface Res<T = any> {
 }
 
 export const useHttpClient = () => {
-  const baseHref = 'http://10.11.52.243:8098';
+  const baseHref = import.meta.env.VITE_API_BASE_URL || 'http://10.11.52.243:8098';
 
   const get = async <T = any>(url: string): Promise<Res<T>> => {
     const data: Res<T> = await axios

@@ -1,8 +1,7 @@
 // import axios from './config'
 import axios from "axios";
 // export const SERVER_URL = 'http://localhost:5000'
-export const SERVER_URL =
-  import.meta.env.MODE === "development" ? "/api" : "/api";
+export const SERVER_URL = import.meta.env.VITE_API_BASE_URL || "";
 
 export default {
   getMockData(filename: string): Promise<any> {

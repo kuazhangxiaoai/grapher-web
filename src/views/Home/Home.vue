@@ -844,7 +844,7 @@ const handleCopyDomain = async (id, newName) => {
     ElMessage.success("复制领域成功");
   } catch (error) {
     console.error("复制领域失败:", error);
-    ElMessage.error("复制领域失败，请重试");
+    // ElMessage.error("复制领域失败，请重试");
   }
 };
 
@@ -863,7 +863,7 @@ const handleCopyTopic = async (id, newName) => {
     ElMessage.success("复制专题成功");
   } catch (error) {
     console.error("复制专题失败:", error);
-    ElMessage.error("复制专题失败，请重试");
+    // ElMessage.error("复制专题失败，请重试");
   }
 };
 
@@ -1367,14 +1367,18 @@ const handleConnectionComplete = (targetId) => {
 };
 
 const handleSavePropertyPanel = (data) => {
+  showPropertyPanel.value = false;
   // 保存实体或关系的属性
   hasData.value = true;
   savedEntitiesCount.value += 1;
-
   // 根据当前操作类型处理
   if (data.currentOperation === "entity") {
-    // 将当前填写的实体名称添加到实体类型数组中（如果不存在）
-    if (data.entityName && !entityTypes.value.includes(data.entityName)) {
+    // 只有当操作不来自组件库时，才将实体名称添加到实体类型数组中
+    if (
+      !data.isFromComponentLibrary &&
+      data.entityName &&
+      !entityTypes.value.includes(data.entityName)
+    ) {
       entityTypes.value.push(data.entityName);
     }
 
@@ -1384,8 +1388,9 @@ const handleSavePropertyPanel = (data) => {
     // 注意：这里不再手动添加节点，因为保存成功后会通过 update-nodes 事件从接口获取最新数据并更新
     console.log("节点保存成功，等待接口数据更新");
   } else if (data.currentOperation === "relationship") {
-    // 将当前填写的关系名称添加到关系类型数组中（如果不存在）
+    // 只有当操作不来自组件库时，才将关系名称添加到关系类型数组中
     if (
+      !data.isFromComponentLibrary &&
       data.relationshipName &&
       !relationshipTypes.value.includes(data.relationshipName)
     ) {
@@ -1412,7 +1417,8 @@ const handleSavePropertyPanel = (data) => {
     currentSubDomainObj.count += 1;
   }
 
-  showPropertyPanel.value = false;
+  // 重置操作来源标记
+  isFromComponentLibrary.value = false;
 
   // 清除节点选中状态
   if (contentRef.value && contentRef.value.clearNodeSelection) {
@@ -1700,10 +1706,32 @@ const handleEntityTypeClick = (entityType) => {
   console.log("点击实体类型:", entityType);
   console.log("Before setting showPropertyPanel:", showPropertyPanel.value);
 
+  // 设置操作来源为非组件库
+  isFromComponentLibrary.value = false;
+
   // 设置 Sidebar 组件中的选中状态
   if (sidebarRef.value && sidebarRef.value.setSelectedEntityType) {
     sidebarRef.value.setSelectedEntityType(entityType);
     console.log("设置实体类型选中状态:", entityType);
+  }
+
+  // 清除之前的选中状态
+  if (contentRef.value) {
+    contentRef.value.clearNodeSelection();
+    contentRef.value.clearEdgesSelection();
+  }
+
+  // 高亮画布中所有对应类型的节点
+  if (contentRef.value && contentRef.value.graphContainerRef) {
+    const graph = contentRef.value.graphContainerRef.graph;
+    if (graph) {
+      const nodes = graph.getData().nodes || [];
+      nodes.forEach((node) => {
+        if (node.data && node.data.name === entityType) {
+          graph.setElementState(node.id, ["selected"]);
+        }
+      });
+    }
   }
 
   // 打开属性面板，设置当前操作类型为实体
@@ -1745,10 +1773,32 @@ const handleRelationshipTypeClick = (relationshipTypeName) => {
   console.log("点击关系类型:", relationshipTypeName);
   console.log("Before setting showPropertyPanel:", showPropertyPanel.value);
 
+  // 设置操作来源为非组件库
+  isFromComponentLibrary.value = false;
+
   // 设置 Sidebar 组件中的选中状态
   if (sidebarRef.value && sidebarRef.value.setSelectedRelationshipType) {
     sidebarRef.value.setSelectedRelationshipType(relationshipTypeName);
     console.log("设置关系类型选中状态:", relationshipTypeName);
+  }
+
+  // 清除之前的选中状态
+  if (contentRef.value) {
+    contentRef.value.clearNodeSelection();
+    contentRef.value.clearEdgesSelection();
+  }
+
+  // 高亮画布中所有对应类型的连线
+  if (contentRef.value && contentRef.value.graphContainerRef) {
+    const graph = contentRef.value.graphContainerRef.graph;
+    if (graph) {
+      const edges = graph.getData().edges || [];
+      edges.forEach((edge) => {
+        if (edge.data && edge.data.name === relationshipTypeName) {
+          graph.setElementState(edge.id, ["selected"]);
+        }
+      });
+    }
   }
 
   // 打开属性面板，设置当前操作类型为关系
@@ -1820,10 +1870,41 @@ const handleComponentClick = (componentName) => {
   console.log("点击组件:", componentName);
   console.log("Before setting showPropertyPanel:", showPropertyPanel.value);
 
+  // 设置操作来源为组件库
+  isFromComponentLibrary.value = true;
+
   // 设置 Sidebar 组件中的选中状态
   if (sidebarRef.value && sidebarRef.value.setSelectedComponent) {
     sidebarRef.value.setSelectedComponent(componentName);
     console.log("设置组件选中状态:", componentName);
+  }
+
+  // 清除之前的选中状态
+  if (contentRef.value) {
+    contentRef.value.clearNodeSelection();
+    contentRef.value.clearEdgesSelection();
+  }
+
+  // 高亮画布中所有对应组件的元素
+  if (contentRef.value && contentRef.value.graphContainerRef) {
+    const graph = contentRef.value.graphContainerRef.graph;
+    if (graph) {
+      // 检查节点
+      const nodes = graph.getData().nodes || [];
+      nodes.forEach((node) => {
+        if (node.data && node.data.name === componentName) {
+          graph.setElementState(node.id, ["selected"]);
+        }
+      });
+
+      // 检查连线
+      const edges = graph.getData().edges || [];
+      edges.forEach((edge) => {
+        if (edge.data && edge.data.name === componentName) {
+          graph.setElementState(edge.id, ["selected"]);
+        }
+      });
+    }
   }
 
   // 从components数组中查找对应的组件信息
@@ -1959,7 +2040,7 @@ const handleAddComponentToModel = async (component) => {
     );
     ElMessage.success("添加成功");
   } catch (error) {
-    ElMessage.error("添加失败，请重试");
+    // ElMessage.error("添加失败，请重试");
     console.error("添加组件到模型失败:", error);
   }
 };
@@ -1967,6 +2048,9 @@ const handleAddComponentToModel = async (component) => {
 // 存储当前选中的节点或连线的模板ID
 const currentNodeTemplateId = ref(0);
 const currentRelationTemplateId = ref(0);
+
+// 标记当前操作是否来自组件库
+const isFromComponentLibrary = ref(false);
 
 // 组件库列表
 const components = ref([]);
@@ -1986,6 +2070,28 @@ const handleNodeClick = (node) => {
   currentRelationTemplateId.value = 0;
   showPropertyPanel.value = true;
   console.log("设置showPropertyPanel为true");
+
+  // 同步左侧面板高亮
+  if (sidebarRef.value) {
+    // 清除之前的选中状态
+    sidebarRef.value.handleClearSelections();
+
+    // 检查是否在实体模板列表中
+    if (entityTypes.value.includes(node.name)) {
+      // 设置实体模板选中状态
+      if (sidebarRef.value.setSelectedEntityType) {
+        sidebarRef.value.setSelectedEntityType(node.name);
+      }
+    } else {
+      // 检查是否在组件库中
+      const component = components.value.find(
+        (comp) => comp.nodeTemplateName === node.name,
+      );
+      if (component && sidebarRef.value.setSelectedComponent) {
+        sidebarRef.value.setSelectedComponent(node.name);
+      }
+    }
+  }
 };
 
 // 处理边点击
@@ -2010,6 +2116,29 @@ const handleEdgeClick = (edge) => {
     const endNode = graphNodes.value.find(
       (node) => String(node.id) === String(edge.target),
     );
+
+    // 同步左侧面板高亮
+    if (sidebarRef.value) {
+      // 清除之前的选中状态
+      sidebarRef.value.handleClearSelections();
+
+      const relationshipName = edge.data?.name || "";
+      // 检查是否在关系模板列表中
+      if (relationshipTypes.value.includes(relationshipName)) {
+        // 设置关系模板选中状态
+        if (sidebarRef.value.setSelectedRelationshipType) {
+          sidebarRef.value.setSelectedRelationshipType(relationshipName);
+        }
+      } else {
+        // 检查是否在组件库中
+        const component = components.value.find(
+          (comp) => comp.relationTemplateName === relationshipName,
+        );
+        if (component && sidebarRef.value.setSelectedComponent) {
+          sidebarRef.value.setSelectedComponent(relationshipName);
+        }
+      }
+    }
 
     // 设置开始和结束节点名称
     startNodeName.value = startNode ? startNode.name : "";
@@ -2054,8 +2183,10 @@ const handleUpdateNodes = (templateData) => {
   if (templateData && templateData.nodeTemplates) {
     // 清空现有节点数据
     graphNodes.value = [];
-    // 清空实体类型数组，准备重新构建
+    // // 只有当操作不来自组件库时，才清空和更新实体类型数组
+    // if (!isFromComponentLibrary.value) {
     entityTypes.value = [];
+    // }
 
     // 为节点模板分配位置（均匀分散分布）
     const nodeCount = templateData.nodeTemplates.length;
@@ -2066,11 +2197,13 @@ const handleUpdateNodes = (templateData) => {
     const padding = 20; // 减小边距，让节点更靠近画布边缘
 
     templateData.nodeTemplates.forEach((template, index) => {
-      // 添加节点模板名称到实体类型数组
+      // 只有当操作不来自组件库时，才添加节点模板名称到实体类型数组
+      // if (!isFromComponentLibrary.value && template.nodeTemplateName) {
+      //   entityTypes.value.push(template.nodeTemplateName);
+      // }
       if (template.nodeTemplateName) {
         entityTypes.value.push(template.nodeTemplateName);
       }
-
       // 计算节点位置：如果只有一个节点，放在中心；否则使用圆形布局均匀分布
       let x, y;
       if (nodeCount === 1) {
@@ -2333,6 +2466,7 @@ const handleClearSelections = () => {
       :end-node-template-id="targetNodeId"
       :node-template-id="currentNodeTemplateId"
       :relation-template-id="currentRelationTemplateId"
+      :is-from-component-library="isFromComponentLibrary"
       @close="handleClosePropertyPanel"
       @save="handleSavePropertyPanel"
       @add-property="handleAddProperty"

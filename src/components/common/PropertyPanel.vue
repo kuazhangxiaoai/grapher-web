@@ -54,13 +54,23 @@
                 "
                 class="property-row"
               >
-                <div class="property-name">
-                  {{ property.name || "未命名属性" }}
+                <div class="property-name-container">
+                  <div class="property-name">
+                    {{ property.name || "未命名属性" }}
+                  </div>
+                  <el-button
+                    type="text"
+                    class="delete-property-btn"
+                    @click="handleDeleteProperty(index)"
+                  >
+                    ×
+                  </el-button>
                 </div>
                 <el-select
                   v-model="property.type"
                   style="width: 100%"
                   :popper-append-to-body="false"
+                  :disabled="nodeTemplateId > 0 && !property.isNew"
                 >
                   <el-option label="文本" value="string"></el-option>
                   <el-option label="日期" value="date"></el-option>
@@ -167,13 +177,23 @@
                 "
                 class="property-row"
               >
-                <div class="property-name">
-                  {{ property.name || "未命名属性" }}
+                <div class="property-name-container">
+                  <div class="property-name">
+                    {{ property.name || "未命名属性" }}
+                  </div>
+                  <el-button
+                    type="text"
+                    class="delete-property-btn"
+                    @click="handleDeleteProperty(index)"
+                  >
+                    ×
+                  </el-button>
                 </div>
                 <el-select
                   v-model="property.type"
                   style="width: 100%"
                   :popper-append-to-body="false"
+                  :disabled="relationTemplateId > 0 && !property.isNew"
                 >
                   <el-option label="文本" value="string"></el-option>
                   <el-option label="日期" value="date"></el-option>
@@ -207,6 +227,7 @@
           size="small"
           class="close-btn"
           @click="handleClosePropertyPanel"
+          :disabled="isLoading"
           >关闭</el-button
         >
         <el-button
@@ -214,6 +235,8 @@
           size="small"
           class="delete-btn"
           @click="handleDeletePropertyPanel"
+          :loading="isLoading"
+          :disabled="isLoading"
           v-if="
             (currentOperation === 'entity' && nodeTemplateId > 0) ||
             (currentOperation === 'relationship' && relationTemplateId > 0)
@@ -225,6 +248,8 @@
           size="small"
           class="save-btn"
           @click="handleSavePropertyPanel"
+          :loading="isLoading"
+          :disabled="isLoading"
           >保存</el-button
         >
       </div>
@@ -349,6 +374,10 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
+  isFromComponentLibrary: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits(["close", "cancel", "save", "add-property"]);
@@ -365,6 +394,9 @@ const localEndNodeName = ref(props.endNodeName);
 const localAddToComponentLibrary = ref(props.addToComponentLibrary);
 const localBackgroundColor = ref("#43D7B5");
 
+// 加载状态
+const isLoading = ref(false);
+
 // 新增属性对话框相关
 const addPropertyDialogVisible = ref(false);
 const newProperty = ref({ name: "", type: "string" });
@@ -375,6 +407,7 @@ const isAddingProperty = ref(false);
 // 初始化属性列表
 localEntityProperties.value = props.entityProperties.map((prop) => ({
   ...prop,
+  isNew: false, // 标记为现有属性
 }));
 
 // 监听属性变化，同步更新本地状态（但跳过添加属性时的更新）
@@ -386,8 +419,11 @@ watch(
       console.log("Skipping props update during property addition");
       return;
     }
-    // 深拷贝新值
-    localEntityProperties.value = newValue.map((prop) => ({ ...prop }));
+    // 深拷贝新值，并标记为现有属性
+    localEntityProperties.value = newValue.map((prop) => ({
+      ...prop,
+      isNew: false,
+    }));
     console.log("Properties updated from props:", localEntityProperties.value);
   },
   { deep: true },
@@ -403,6 +439,7 @@ watch(
       localEntityDescription.value = props.entityDescription;
       localEntityProperties.value = props.entityProperties.map((prop) => ({
         ...prop,
+        isNew: false, // 标记为现有属性
       }));
       localRelationshipName.value = props.relationshipName;
       localRelationshipDescription.value = props.relationshipDescription;
@@ -495,6 +532,10 @@ const handleSavePropertyPanel = async () => {
       ElMessage.warning("请先选择专题");
       return;
     }
+
+    // 设置加载状态
+    isLoading.value = true;
+
     if (props.currentOperation === "entity") {
       // 构建保存到接口的数据
       const templateData = {
@@ -529,26 +570,11 @@ const handleSavePropertyPanel = async () => {
 
       // 调用保存接口
       await graph.saveNodeTemplate(templateData);
-      // 保存成功后，调用查询接口更新节点数据
-      try {
-        const templateResponse = await graph.queryTemplate(props.topicId);
-        if (templateResponse && templateResponse.data) {
-          // 触发更新事件，通知父组件更新节点数据
-          emit("update-nodes", templateResponse.data);
-        }
-        // 调用组件库查询接口更新组件库数据
-        const libraryResponse = await graph.queryLibraryTemplate("");
-        if (libraryResponse && libraryResponse.data) {
-          // 触发更新事件，通知父组件更新组件库数据
-          emit("update-library", libraryResponse.data);
-        }
-      } catch (error) {
-        console.error("更新数据失败:", error);
-      }
     } else if (props.currentOperation === "relationship") {
       // 检查 startNodeTemplateId 和 endNodeTemplateId 是否为空
       if (!props.startNodeTemplateId || !props.endNodeTemplateId) {
         ElMessage.warning("请选择关系的起始节点和结束节点");
+        isLoading.value = false;
         return;
       }
 
@@ -598,22 +624,6 @@ const handleSavePropertyPanel = async () => {
 
       // 调用保存接口
       await graph.saveRelationTemplate(relationTemplateData);
-      // 保存成功后，调用查询接口更新节点数据
-      try {
-        const templateResponse = await graph.queryTemplate(props.topicId);
-        if (templateResponse && templateResponse.data) {
-          // 触发更新事件，通知父组件更新节点数据
-          emit("update-nodes", templateResponse.data);
-        }
-        // 调用组件库查询接口更新组件库数据
-        const libraryResponse = await graph.queryLibraryTemplate("");
-        if (libraryResponse && libraryResponse.data) {
-          // 触发更新事件，通知父组件更新组件库数据
-          emit("update-library", libraryResponse.data);
-        }
-      } catch (error) {
-        console.error("更新数据失败:", error);
-      }
     }
 
     // 保存成功提示
@@ -632,10 +642,40 @@ const handleSavePropertyPanel = async () => {
       relationshipType: localRelationshipType.value,
       addToComponentLibrary: localAddToComponentLibrary.value,
       backgroundColor: localBackgroundColor.value,
+      isFromComponentLibrary: props.isFromComponentLibrary,
     };
-    emit("save", saveData);
+
+    // 异步更新数据，不阻塞面板关闭
+    setTimeout(async () => {
+      try {
+        // 并行调用查询接口获取最新数据
+        const [templateResponse, libraryResponse] = await Promise.all([
+          graph.queryTemplate(props.topicId),
+          graph.queryLibraryTemplate(""),
+        ]);
+
+        if (templateResponse && templateResponse.data) {
+          // 触发更新事件，通知父组件更新节点数据
+          emit("update-nodes", templateResponse.data);
+        }
+
+        if (libraryResponse && libraryResponse.data) {
+          // 触发更新事件，通知父组件更新组件库数据
+          emit("update-library", libraryResponse.data);
+        }
+      } catch (error) {
+        console.error("更新数据失败:", error);
+      }
+    }, 0);
+
+    // 延迟关闭面板，让用户看到加载状态和成功提示
+    setTimeout(() => {
+      isLoading.value = false;
+      emit("save", saveData);
+    }, 1000);
   } catch (error) {
     console.error("保存失败:", error);
+    isLoading.value = false;
     // ElMessage.error("保存失败，请重试");
   }
 };
@@ -649,10 +689,14 @@ const handleDeletePropertyPanel = async () => {
       type: "warning",
     });
 
+    // 设置加载状态
+    isLoading.value = true;
+
     if (props.currentOperation === "entity") {
       // 检查 nodeTemplateId 是否为空
       if (!props.nodeTemplateId) {
         ElMessage.warning("实体模板ID不能为空");
+        isLoading.value = false;
         return;
       }
       // 调用删除接口
@@ -661,6 +705,7 @@ const handleDeletePropertyPanel = async () => {
       // 检查 relationTemplateId 是否为空
       if (!props.relationTemplateId) {
         ElMessage.warning("关系模板ID不能为空");
+        isLoading.value = false;
         return;
       }
       // 调用删除接口
@@ -672,31 +717,41 @@ const handleDeletePropertyPanel = async () => {
     // 删除成功提示
     ElMessage.success("删除成功");
 
-    // 保存成功后，调用查询接口更新节点数据
-    try {
-      const templateResponse = await graph.queryTemplate(props.topicId);
-      if (templateResponse && templateResponse.data) {
-        // 触发更新事件，通知父组件更新节点数据
-        emit("update-nodes", templateResponse.data);
-      }
-      // 调用组件库查询接口更新组件库数据
-      const libraryResponse = await graph.queryLibraryTemplate("");
-      if (libraryResponse && libraryResponse.data) {
-        // 触发更新事件，通知父组件更新组件库数据
-        emit("update-library", libraryResponse.data);
-      }
-    } catch (error) {
-      console.error("更新数据失败:", error);
-    }
+    // 异步更新数据，不阻塞面板关闭
+    setTimeout(async () => {
+      try {
+        // 并行调用查询接口获取最新数据
+        const [templateResponse, libraryResponse] = await Promise.all([
+          graph.queryTemplate(props.topicId),
+          graph.queryLibraryTemplate(""),
+        ]);
 
-    // 关闭属性面板
-    emit("close");
+        if (templateResponse && templateResponse.data) {
+          // 触发更新事件，通知父组件更新节点数据
+          emit("update-nodes", templateResponse.data);
+        }
+
+        if (libraryResponse && libraryResponse.data) {
+          // 触发更新事件，通知父组件更新组件库数据
+          emit("update-library", libraryResponse.data);
+        }
+      } catch (error) {
+        console.error("更新数据失败:", error);
+      }
+    }, 0);
+
+    // 延迟关闭面板，让用户看到加载状态和成功提示
+    setTimeout(() => {
+      isLoading.value = false;
+      emit("close");
+    }, 1000);
   } catch (error) {
     // 如果是用户取消操作，不显示错误信息
     if (error !== "cancel") {
       console.error("删除失败:", error);
       // ElMessage.error("删除失败，请重试");
     }
+    isLoading.value = false;
   }
 };
 
@@ -722,6 +777,7 @@ const handleConfirmAddProperty = async () => {
     name: newProperty.value.name.trim(),
     type: newProperty.value.type,
     value: "",
+    isNew: true, // 标记为新属性
   };
 
   console.log("Adding new property:", newProp);
@@ -759,6 +815,14 @@ const handleConfirmAddProperty = async () => {
     "Final properties:",
     JSON.parse(JSON.stringify(localEntityProperties.value)),
   );
+};
+
+// 删除属性
+const handleDeleteProperty = (index) => {
+  // 从本地数组中删除属性
+  localEntityProperties.value.splice(index, 1);
+  console.log("Property deleted at index:", index);
+  console.log("Updated properties:", localEntityProperties.value);
 };
 
 // 点击外部关闭属性面板
@@ -964,6 +1028,31 @@ const handleConfirmAddProperty = async () => {
   :deep(.el-select__caret) {
     font-size: 12px;
   }
+}
+
+.property-name-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.delete-property-btn {
+  font-size: 16px;
+  color: #999;
+  padding: 0;
+  margin-left: 8px;
+  line-height: 1;
+  min-width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.delete-property-btn:hover {
+  color: #e54949;
+  background: none;
 }
 
 .lines {

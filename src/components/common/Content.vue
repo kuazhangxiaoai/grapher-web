@@ -188,6 +188,7 @@ defineExpose({
   resetConnectionState,
   clearNodeSelection,
   clearEdgesSelection,
+  graphContainerRef,
 });
 
 // 图谱边数据（使用从props传递过来的数据）

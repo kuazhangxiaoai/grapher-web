@@ -48,6 +48,7 @@
     "echarts": "^5.5.1",
     "element-plus": "^2.13.2",
     "file-saver": "^2.0.5",
+    "g6-extension-vue": "^0.1.0",
     "hfmath": "^0.0.2",
     "html-to-image": "^1.11.11",
     "jszip": "^3.10.1",
