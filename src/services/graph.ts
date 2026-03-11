@@ -72,8 +72,10 @@ export default {
     );
   },
   /** 输入topickId,获取graph*/
-  getGraphList(topicId: object): Promise<any> {
-    return axios.get(`/serve_api/article/selectArticle?topicId=${topicId}`);
+  getGraphList(topicId: string, condition: string = ""): Promise<any> {
+    return axios.get(
+      `/serve_api/article/selectArticle?topicId=${topicId}${condition ? `&condition=${condition}` : ""}`,
+    );
   },
   /** create Article*/
   addArticle(graphData): Promise<any> {
@@ -83,7 +85,9 @@ export default {
     formData.append("createMethod", graphData.createMethod);
     formData.append("fileSize", "123");
     formData.append("topicId", graphData.topicId);
-    formData.append("multipartFile", graphData.uploadedFile);
+    if (graphData.uploadedFile) {
+      formData.append("multipartFile", graphData.uploadedFile);
+    }
     return axios.post(`/serve_api/article/addArticle`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
@@ -96,16 +100,58 @@ export default {
 
   /**delete Article*/
   deleteArticle(articleId: string): Promise<any> {
-    return axios.get(`/serve_api/article/deleteArticle?articleId=${articleId}`)
+    return axios.get(`/serve_api/article/deleteArticle?articleId=${articleId}`);
   },
 
   /**获取topic下的所有节点模板*/
   getNodeTypes(topicId: string): Promise<any> {
-    return axios.get(`/serve_api/template/queryNodeTemplate?topicId=${topicId}`);
+    return axios.get(
+      `/serve_api/template/queryNodeTemplate?topicId=${topicId}`,
+    );
   },
 
   /**获取nodeTemplate 属性*/
   getNodeTemplateProperties(nodeTemplateId: string): Promise<any> {
-    return axios.get(`/serve_api/template/queryNodeTemplateProperties?nodeTemplateId=${nodeTemplateId}`);
-  }
+    return axios.get(
+      `/serve_api/template/queryNodeTemplateProperties?nodeTemplateId=${nodeTemplateId}`,
+    );
+  },
+  /** 节点/关系模版查询 */
+  queryRelationTemplate(topicId: number): Promise<any> {
+    return axios.get(
+      `/serve_api/template/queryRelationTemplate?topicId=${topicId}`,
+    );
+  },
+  /** 段落分词接口 */
+  segmentSequence(data: Object): Promise<any> {
+    return axios.post(`/serve_api/sequence/segmentSequence`, data);
+  },
+  /** 段落列表查询接口 */
+  getSequenceList(articleId: String): Promise<any> {
+    return axios.get(
+      `/serve_api/sequence/getSequenceList?articleId=${articleId}`,
+    );
+  },
+  /** 段落对应图谱保存提交接口 */
+  saveGraph(data: Object): Promise<any> {
+    return axios.post(`/serve_api/sequence/saveGraph`, data);
+  },
+  /** 段落对应图谱查询接口 */
+  getGraphBySequenceId(sequenceId: String): Promise<any> {
+    return axios.get(
+      `/serve_api/sequence/getGraphBySequenceId?sequenceId=${sequenceId}`,
+    );
+  },
+  /** 文章对应图谱查询接口 */
+  getGraphByArticleId(articleId: String): Promise<any> {
+    return axios.get(
+      `/serve_api/sequence/getGraphByArticleId?articleId=${articleId}`,
+    );
+  },
+  /** 查询接口 */
+  queryRelationTemplateProperties(relationTemplateId: String): Promise<any> {
+    return axios.get(
+      `/serve_api/template/queryRelationTemplateProperties?relationTemplateId=${relationTemplateId}`,
+    );
+  },
 };

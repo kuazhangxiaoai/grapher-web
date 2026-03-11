@@ -7,13 +7,9 @@
       @dragenter.prevent
     >
       <!-- 子子级页面内容 -->
-      <div v-if="currentSubDomain" class="sub-sub-domain-content">
-        <!-- 新建图谱对话框 -->
-        <div v-if="showGraphDialog" class="create-graph-dialog">
-        </div>
-        <!-- G6关系图 - 仅在本体设计模式下显示 -->
-        <div v-else-if="currentMode === 'ontology'" class="relationship-graph">
-          <GraphContainer
+      <div class="sub-sub-domain-content">
+        <div class="relationship-graph">
+          <EditorContainer
             ref="graphContainerRef"
             :nodes="props.graphNodes"
             :edges="props.graphEdges"
@@ -29,28 +25,10 @@
             @edge-click="handleEdgeClick"
             @graph-click="handleGraphClick"
             @node-drag-end="handleNodeDragEnd"
+            @quit="handleQuit"
+            @clear="handleClear"
+            @save-graph="handleSaveGraph"
           />
-        </div>
-        <!-- 图谱构建模式下的图谱 -->
-        <div v-else-if="currentMode === 'graph'" class="relationship-graph">
-          <GraphContainer
-            ref="graphContainerRef"
-            :nodes="props.graphNodes"
-            :edges="props.graphEdges"
-            :is-connecting="props.isConnecting"
-            @add-entity="handleAddEntity"
-            @create-relationship="
-              (sourceId) => handleCreateRelationship(sourceId)
-            "
-            @connection-complete="
-              (targetId) => handleConnectionComplete(targetId)
-            "
-            @node-click="handleNodeClick"
-            @edge-click="handleEdgeClick"
-            @graph-click="handleGraphClick"
-            @node-drag-end="handleNodeDragEnd"
-          />
-          <div class="tool-container"></div>
         </div>
       </div>
     </div>
@@ -60,7 +38,7 @@
 <script setup>
 import { ref, watch } from "vue";
 import { Plus } from "@element-plus/icons-vue";
-import GraphContainer from "@/components/graph/GraphContainer.vue";
+import EditorContainer from "./EditorContainer.vue";
 
 const graphContainerRef = ref(null);
 
@@ -108,6 +86,10 @@ const emit = defineEmits([
   "node-drag-end",
   "node-click",
   "edge-click",
+  "quit",
+  "submit",
+  "clear",
+  "save-graph",
   "drop",
 ]);
 
@@ -190,6 +172,29 @@ const handleGraphClick = (event) => {
 const handleNodeDragEnd = (data) => {
   console.log("Content组件接收到节点拖拽结束事件:", data);
   emit("node-drag-end", data);
+};
+
+// 处理退出
+const handleQuit = () => {
+  console.log("Content组件接收到退出事件");
+  emit("quit");
+};
+
+// 处理提交
+const handleSubmit = () => {
+  console.log("Content组件接收到提交事件");
+  emit("submit");
+};
+
+// 处理清除
+const handleClear = () => {
+  console.log("Content组件接收到清除事件");
+  emit("clear");
+};
+// 处理保存图谱
+const handleSaveGraph = () => {
+  console.log("Content组件接收到保存图谱事件");
+  emit("save-graph");
 };
 
 // 处理拖放

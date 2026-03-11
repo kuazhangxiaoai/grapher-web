@@ -12,7 +12,7 @@ export const useTextStore = defineStore('textStore', {
         topicName: null as string,
         domainId: null as string,
         domainName: null as string,
-        markList: [] as Mark[],
+        markList: JSON.parse(localStorage.getItem('markInfo') || '[]') as Mark[],
     }),
     actions: {
         setTotalPages(totalPages: number) {
@@ -41,12 +41,18 @@ export const useTextStore = defineStore('textStore', {
         },
         addMark(mark: Mark){
             this.markList.push(mark);
+            this.savePageInfo();
         },
         setMarkList(markList: Mark[]){
             this.markList = markList;
+            this.savePageInfo();
+        },
+        setArticleId(articleId: string){
+            this.articleId = articleId;
         },
         clearMarkList(){
             this.markList = [];
+            this.savePageInfo();
         },
         getMarkList(){
             return this.markList;

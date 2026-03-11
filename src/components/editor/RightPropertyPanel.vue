@@ -1,422 +1,1180 @@
 <template>
-  <aside class="right-property-panel">
-    <!-- 根据选中类型只显示其一：未选择 / 节点属性 / 关系属性 -->
-    <div class="panel-content">
-      <!-- 未选择：提示先选节点或关系 -->
-      <div
-        v-if="!selectedNode && !selectedEdge"
-        class="section"
-      >
-      </div>
-
-      <!-- 节点属性：仅编辑节点时显示 -->
-      <div v-else-if="selectedNode" class="section">
-        <div class="header">
-          <div class="title">节点属性</div>
+  <aside class="right-panel" v-if="showPropertyPanel">
+    <div class="property-panel">
+      <div class="property-panel-header">
+        <div class="header-left">
+          <img src="@/assets/images/面板设置.png" alt="属性面板图标" />
+          <h3>属性面板</h3>
         </div>
-        <div class="body">
-          <el-form
-            ref="nodeFormRef"
-            :model="nodeForm"
-            label-position="top"
-            size="small"
-            class="property-form"
-          >
-            <el-form-item label="名称" prop="name">
-              <el-input
-                v-model="nodeForm.name"
-                placeholder="节点名称"
-                clearable
-              />
-            </el-form-item>
-            <template v-if="propertyList.length > 0">
-              <el-form-item
-                v-for="(item, index) in propertyList"
-                :key="item.key ?? index"
-                :label="(item.key || '属性') + ' :'"
-                :prop="'props.' + String(item.key || `field_${index}`)"
+      </div>
+      <div class="property-panel-body">
+        <!-- 实体属性 -->
+        <div v-if="currentOperation === 'entity'">
+          <div class="property-item">
+            <label>实体名称</label>
+            <el-input
+              v-model="localEntityName"
+              placeholder="请输入~"
+            ></el-input>
+          </div>
+          <div class="property-item">
+            <label>定义描述</label>
+            <el-input
+              v-model="localEntityDescription"
+              placeholder="请输入~"
+              type="textarea"
+              :maxlength="60"
+              resize="none"
+              :rows="3"
+            ></el-input>
+          </div>
+          <div class="property-item">
+            <div class="property-label">
+              <label>属性</label>
+              <span class="property-count"
+                >{{ localEntityProperties.length }}个</span
               >
-                <el-input
-                  v-if="item.type === 'String' || !item.type"
-                  v-model="nodeForm.props[item.key ?? `field_${index}`]"
-                  placeholder="属性值"
-                  clearable
-                />
-                <el-input-number
-                  v-else-if="item.type === 'Number'"
-                  v-model="nodeForm.props[item.key ?? `field_${index}`]"
-                  controls-position="right"
-                  class="full-width"
-                />
-                <el-date-picker
-                  v-else-if="item.type === 'Date'"
-                  v-model="nodeForm.props[item.key ?? `field_${index}`]"
-                  type="date"
-                  value-format="YYYY-MM-DD"
-                  placeholder="选择日期"
-                  class="full-width"
-                />
-                <el-select
-                  v-else-if="item.type === 'Boolean'"
-                  v-model="nodeForm.props[item.key ?? `field_${index}`]"
-                  placeholder="请选择"
-                  class="full-width"
-                >
-                  <el-option label="是" :value="true" />
-                  <el-option label="否" :value="false" />
-                </el-select>
-                <el-input
-                  v-else
-                  v-model="nodeForm.props[item.key ?? `field_${index}`]"
-                  placeholder="属性值"
-                  clearable
-                />
-              </el-form-item>
-            </template>
-            <div v-else class="empty-hint small">该节点类型暂无属性定义</div>
-          </el-form>
-        </div>
-      </div>
-
-      <!-- 关系属性：仅编辑关系时显示 -->
-      <div v-else-if="selectedEdge" class="section">
-        <div class="header">
-          <div class="title">关系属性</div>
-        </div>
-        <div class="body">
-          <el-form
-            ref="edgeFormRef"
-            :model="edgeForm"
-            label-position="top"
-            size="small"
-            class="property-form"
-          >
-            <el-form-item label="关系名称" prop="name">
-              <el-input
-                v-model="edgeForm.name"
-                placeholder="关系名称"
-                clearable
-              />
-            </el-form-item>
-            <el-form-item
-              v-if="selectedEdge.source !== undefined || selectedEdge.target !== undefined"
-              label="端点"
-            >
-              <div class="endpoints">
-                {{ sourceLabel }} → {{ targetLabel }}
+            </div>
+            <div class="properties-list">
+              <div
+                v-if="localEntityProperties.length === 0"
+                class="empty-properties"
+              >
+                暂无属性
               </div>
-            </el-form-item>
-            <template v-if="edgePropertyList.length > 0">
-              <el-form-item
-                v-for="(item, index) in edgePropertyList"
-                :key="(item.key || index) + '-edge'"
-                :label="(item.key || '属性') + ' :'"
-                :prop="'props.' + String(item.key || `field_${index}`)"
+              <div
+                v-for="(property, index) in localEntityProperties"
+                :key="'prop-' + index + '-' + (property.name || index)"
+                class="property-row"
               >
-                <el-input
-                  v-if="item.type === 'String' || !item.type"
-                  v-model="edgeForm.props[item.key ?? `field_${index}`]"
-                  placeholder="属性值"
-                  clearable
-                />
-                <el-input-number
-                  v-else-if="item.type === 'Number'"
-                  v-model="edgeForm.props[item.key ?? `field_${index}`]"
-                  controls-position="right"
-                  class="full-width"
-                />
-                <el-date-picker
-                  v-else-if="item.type === 'Date'"
-                  v-model="edgeForm.props[item.key ?? `field_${index}`]"
-                  type="date"
-                  value-format="YYYY-MM-DD"
-                  placeholder="选择日期"
-                  class="full-width"
-                />
-                <el-input
-                  v-else
-                  v-model="edgeForm.props[item.key ?? `field_${index}`]"
-                  placeholder="属性值"
-                  clearable
-                />
-              </el-form-item>
-            </template>
-          </el-form>
+                <div class="property-name-container">
+                  <div class="property-name">
+                    {{ property.name || "未命名属性" }}
+                  </div>
+                  <el-button
+                    v-if="nodeTemplateId==0"
+                    type="text"
+                    class="delete-property-btn"
+                    @click="handleDeleteProperty(index)"
+                  >
+                    ×
+                  </el-button>
+                </div>
+                <template v-if="!isFromCanvas && !isCreatingRelationship">
+                  <el-select
+                    v-model="property.type"
+                    style="width: 100%"
+                    :popper-append-to-body="false"
+                    :disabled="nodeTemplateId > 0 && !property.isNew"
+                  >
+                    <el-option label="文本" value="string"></el-option>
+                    <el-option label="日期" value="date"></el-option>
+                    <el-option label="数字" value="number"></el-option>
+                    <el-option label="布尔" value="boolean"></el-option>
+                    <el-option label="对象" value="object"></el-option>
+                    <el-option label="数组" value="array"></el-option>
+                  </el-select>
+                </template>
+                <template v-else>
+                  <el-input
+                    v-model="property.value"
+                    style="width: 100%"
+                    placeholder="请输入值"
+                    @blur="handleInputBlur(property, index)"
+                  ></el-input>
+                </template>
+              </div>
+            </div>
+            <el-button
+              v-if="nodeTemplateId==0"
+              type="primary"
+              size="small"
+              class="add-property-btn"
+              @click="handleAddProperty"
+            >
+              <el-icon class="plusIcon"><Plus /></el-icon> 新增属性
+            </el-button>
+          </div>
+          <div class="property-item">
+            <label>背景颜色</label>
+            <el-color-picker
+              v-model="localBackgroundColor"
+              show-alpha
+              size="large"
+            ></el-color-picker>
+          </div>
+          <!-- <div class="property-item lines">
+            <label>加入组件库</label>
+            <el-switch
+              v-model="localAddToComponentLibrary"
+              active-text=""
+            ></el-switch>
+          </div> -->
+        </div>
+
+        <!-- 关系属性 -->
+        <div v-else-if="currentOperation === 'relationship'">
+          <div class="property-item">
+            <label>关系名称</label>
+            <el-input
+              v-model="localRelationshipName"
+              placeholder="请输入~"
+            ></el-input>
+          </div>
+          <!-- <div class="property-item">
+            <label>定义描述</label>
+            <el-input
+              v-model="localRelationshipDescription"
+              placeholder="请输入~"
+              type="textarea"
+              :maxlength="60"
+              resize="none"
+              :rows="3"
+            ></el-input>
+          </div> -->
+          <div class="property-item">
+            <label>关系类型</label>
+            <el-select
+              v-model="localRelationshipType"
+              style="width: 100%"
+              :popper-append-to-body="false"
+            >
+              <el-option label="定向" value="定向"></el-option>
+              <el-option label="双向" value="双向"></el-option>
+              <el-option label="循环" value="循环"></el-option>
+            </el-select>
+          </div>
+          <div class="property-item">
+            <label>开始实体</label>
+            <div class="entity-name-display">
+              {{ localStartNodeName || "无" }}
+            </div>
+          </div>
+          <div class="property-item">
+            <label>结束实体</label>
+            <div class="entity-name-display">
+              {{ localEndNodeName || "无" }}
+            </div>
+          </div>
+          <div class="property-item">
+            <label>触发词</label>
+            <el-select
+              v-model="selectedTriggerWord"
+              style="width: 100%"
+              :popper-append-to-body="false"
+              filterable
+              clearable
+              placeholder="请选择触发词"
+              @visible-change="handleTriggerWordVisible"
+            >
+              <el-option
+                v-for="(item, index) in triggerWordList"
+                :key="index"
+                :label="item.word"
+                :value="item.offset"
+              ></el-option>
+            </el-select>
+          </div>
+          <div class="property-item">
+            <div class="property-label">
+              <label>属性</label>
+              <span class="property-count"
+                >{{ localEntityProperties.length }}个</span
+              >
+            </div>
+            <div class="properties-list">
+              <div
+                v-if="localEntityProperties.length === 0"
+                class="empty-properties"
+              >
+                暂无属性
+              </div>
+              <div
+                v-for="(property, index) in localEntityProperties"
+                :key="'prop-' + index + '-' + (property.name || index)"
+                class="property-row"
+              >
+                <div class="property-name-container">
+                  <div class="property-name">
+                    {{ property.name || "未命名属性" }}
+                  </div>
+                  <el-button
+                    v-if="relationTemplateId==0"
+                    type="text"
+                    class="delete-property-btn"
+                    @click="handleDeleteProperty(index)"
+                  >
+                    ×
+                  </el-button>
+                </div>
+                <template v-if="!isFromCanvas && !isCreatingRelationship">
+                  <el-select
+                    v-model="property.type"
+                    style="width: 100%"
+                    :popper-append-to-body="false"
+                    :disabled="relationTemplateId > 0 && !property.isNew"
+                  >
+                    <el-option label="文本" value="string"></el-option>
+                    <el-option label="日期" value="date"></el-option>
+                    <el-option label="数字" value="number"></el-option>
+                    <el-option label="布尔" value="boolean"></el-option>
+                    <el-option label="对象" value="object"></el-option>
+                    <el-option label="数组" value="array"></el-option>
+                  </el-select>
+                </template>
+                <template v-else>
+                  <el-input
+                    v-model="property.value"
+                    style="width: 100%"
+                    placeholder="请输入值"
+                    @blur="handleInputBlur(property, index)"
+                  ></el-input>
+                </template>
+              </div>
+            </div>
+            <el-button
+             v-if="relationTemplateId==0&&isCreatingRelationship"
+              type="primary"
+              size="small"
+              class="add-property-btn"
+              @click="handleAddProperty"
+            >
+              <el-icon class="plusIcon"><Plus /></el-icon> 新增属性
+            </el-button>
+          </div>
+          <!-- <div class="property-item lines">
+            <label>加入组件库</label>
+            <el-switch
+              v-model="localAddToComponentLibrary"
+              active-text=""
+            ></el-switch>
+          </div> -->
         </div>
       </div>
-    </div>
-
-    <!-- 底部操作按钮 -->
-    <div class="footer">
-      <el-button class="cancel-btn" size="small" @click="handleCancel">
-        取消
-      </el-button>
-      <el-button class="save-btn" type="primary" size="small" @click="handleSave">
-        保存
-      </el-button>
+      <div class="property-panel-footer">
+        <el-button
+          size="small"
+          class="close-btn"
+          @click="handleClosePropertyPanel"
+          :disabled="isLoading"
+          >关闭</el-button
+        >
+        <!-- <el-button
+          type="danger"
+          size="small"
+          class="delete-btn"
+          @click="handleDeletePropertyPanel"
+          :loading="isLoading"
+          :disabled="isLoading"
+          v-if="currentOperation === 'entity'&&(isFromCanvas||nodeTemplateId == 0)"
+          >删除</el-button
+        >
+        <el-button
+          type="danger"
+          size="small"
+          class="delete-btn"
+          @click="handleDeletePropertyPanel"
+          :loading="isLoading"
+          :disabled="isLoading"
+          v-if="currentOperation === 'relationship'&&(isCreatingRelationship||relationTemplateId ==0)"
+          >删除</el-button
+        > -->
+        <el-button
+          type="success"
+          size="small"
+          class="save-btn"
+          @click="handleSavePropertyPanel"
+          :loading="isLoading"
+          :disabled="isLoading"
+          v-if="currentOperation === 'entity'&&(isFromCanvas||nodeTemplateId == 0)"
+          >保存</el-button
+        >
+        <el-button
+          type="success"
+          size="small"
+          class="save-btn"
+          @click="handleSavePropertyPanel"
+          :loading="isLoading"
+          :disabled="isLoading"
+          v-if="currentOperation === 'relationship'&&(isCreatingRelationship||relationTemplateId ==0)"
+          >保存</el-button
+        >
+      </div>
     </div>
   </aside>
+
+  <!-- 新增属性对话框 -->
+  <el-dialog
+    v-model="addPropertyDialogVisible"
+    title="新增属性"
+    width="460px"
+    :close-on-click-modal="false"
+    :close-on-press-escape="false"
+  >
+    <el-form :model="newProperty" label-width="80px">
+      <el-form-item label="属性名称" required>
+        <el-input
+          v-model="newProperty.name"
+          placeholder="请输入属性名称"
+          clearable
+        ></el-input>
+      </el-form-item>
+      <el-form-item label="属性类型">
+        <el-select v-model="newProperty.type" style="width: 100%">
+          <el-option label="文本" value="string"></el-option>
+          <el-option label="日期" value="date"></el-option>
+          <el-option label="数字" value="number"></el-option>
+          <el-option label="布尔" value="boolean"></el-option>
+          <el-option label="对象" value="object"></el-option>
+          <el-option label="数组" value="array"></el-option>
+        </el-select>
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <span class="dialog-footer">
+        <el-button class="cancel-btn" @click="addPropertyDialogVisible = false"
+          >取消</el-button
+        >
+        <el-button
+          class="confirm-btn"
+          type="primary"
+          @click="handleConfirmAddProperty"
+          >确定</el-button
+        >
+      </span>
+    </template>
+  </el-dialog>
 </template>
 
-<script setup lang="ts">
-import { ref, watch, computed } from "vue";
-import type { NodeProperty, EdgeProperty } from "@/configs/graph";
+<script setup>
+import { ref, watch, nextTick, onMounted, onUnmounted } from "vue";
+import { Plus } from "@element-plus/icons-vue";
+import { ElMessage, ElMessageBox } from "element-plus";
+import graph from "@/services/graph";
 
-export type EditorNode = {
-  id: string | number;
-  name?: string;
-  type?: string;
-  x?: number;
-  y?: number;
-  color?: string;
-  backgroundColor?: string;
-  properties?: NodeProperty[];
-  nodeTemplateId?: string | number;
-};
+const props = defineProps({
+  showPropertyPanel: {
+    type: Boolean,
+    default: false,
+  },
+  currentOperation: {
+    type: String,
+    default: "",
+  },
+  entityName: {
+    type: String,
+    default: "",
+  },
+  entityDescription: {
+    type: String,
+    default: "",
+  },
+  entityProperties: {
+    type: Array,
+    default: () => [],
+  },
+  relationshipName: {
+    type: String,
+    default: "",
+  },
+  relationshipDescription: {
+    type: String,
+    default: "",
+  },
+  relationshipType: {
+    type: String,
+    default: "定向",
+  },
+  startNodeName: {
+    type: String,
+    default: "",
+  },
+  endNodeName: {
+    type: String,
+    default: "",
+  },
+  addToComponentLibrary: {
+    type: Boolean,
+    default: false,
+  },
+  backgroundColor: {
+    type: String,
+    default: "#43D7B5",
+  },
+  topicId: {
+    type: String,
+    default: "",
+  },
+  startNodeTemplateId: {
+    type: Number,
+    default: 0,
+  },
+  endNodeTemplateId: {
+    type: Number,
+    default: 0,
+  },
+  nodeTemplateId: {
+    type: Number,
+    default: 0,
+  },
+  relationTemplateId: {
+    type: Number,
+    default: 0,
+  },
+  isFromComponentLibrary: {
+    type: Boolean,
+    default: false,
+  },
+  isFromCanvas: {
+    type: Boolean,
+    default: false,
+  },
+  isCreatingRelationship: {
+    type: Boolean,
+    default: false,
+  },
+  referenceContent: {
+    type: String,
+    default: "",
+  },
+});
 
-export type EditorEdge = {
-  id?: string | number;
-  source: string | number;
-  target: string | number;
-  data?: { name?: string; type?: string; [k: string]: unknown };
-  properties?: EdgeProperty[];
-};
+const emit = defineEmits(["close", "cancel", "save", "add-property"]);
 
-const props = withDefaults(
-  defineProps<{
-    selectedNode: EditorNode | null;
-    selectedEdge: EditorEdge | null;
-    /** 当前选中节点对应的模板属性（key/type），用于展示表单项 */
-    nodeTemplateProperties?: NodeProperty[];
-    /** 节点列表，用于解析边的 source/target 显示名称 */
-    nodes?: EditorNode[];
-  }>(),
-  {
-    nodeTemplateProperties: () => [],
-    nodes: () => [],
-  }
+// 本地状态
+const localEntityName = ref(props.entityName);
+const localEntityDescription = ref(props.entityDescription);
+const localEntityProperties = ref([]);
+const localRelationshipName = ref(props.relationshipName);
+const localRelationshipDescription = ref(props.relationshipDescription);
+const localRelationshipType = ref(props.relationshipType);
+const localStartNodeName = ref(props.startNodeName);
+const localEndNodeName = ref(props.endNodeName);
+const localAddToComponentLibrary = ref(props.addToComponentLibrary);
+const localBackgroundColor = ref("#43D7B5");
+
+// 触发词相关
+const triggerWordList = ref([]);
+const selectedTriggerWord = ref("");
+
+// 加载状态
+const isLoading = ref(false);
+
+// 新增属性对话框相关
+const addPropertyDialogVisible = ref(false);
+const newProperty = ref({ name: "", type: "string" });
+
+// 标记是否正在添加属性，避免被props更新覆盖
+const isAddingProperty = ref(false);
+
+// 初始化属性列表
+localEntityProperties.value = props.entityProperties.map((prop) => ({
+  ...prop,
+  isNew: false, // 标记为现有属性
+}));
+
+// 监听属性变化，同步更新本地状态（但跳过添加属性时的更新）
+watch(
+  () => props.entityProperties,
+  (newValue) => {
+    // 如果正在添加属性，跳过这次更新
+    if (isAddingProperty.value) {
+      console.log("Skipping props update during property addition");
+      return;
+    }
+    // 深拷贝新值，并标记为现有属性
+    localEntityProperties.value = newValue.map((prop) => ({
+      ...prop,
+      isNew: false,
+    }));
+    console.log("Properties updated from props:", localEntityProperties.value);
+  },
+  { deep: true },
 );
 
-const emit = defineEmits<{
-  (e: "update:node", node: EditorNode): void;
-  (e: "update:edge", edge: EditorEdge): void;
-  (e: "save"): void;
-  (e: "cancel"): void;
-}>();
-
-/** 节点表单数据：name + 动态属性 props */
-const nodeForm = ref<{ name: string; props: Record<string, unknown> }>({
-  name: "",
-  props: {},
-});
-
-/** 关系表单数据：name + 动态属性 props */
-const edgeForm = ref<{ name: string; props: Record<string, unknown> }>({
-  name: "",
-  props: {},
-});
-
-const nodeFormRef = ref();
-const edgeFormRef = ref();
-
-/** 合并模板属性与节点已有属性，得到可编辑列表（只读，用于同步到 localPropertyList） */
-function buildPropertyList(): NodeProperty[] {
-  const node = props.selectedNode;
-  const template = props.nodeTemplateProperties ?? [];
-  const existing = (node?.properties ?? []) as NodeProperty[];
-  const byKey = new Map<string, NodeProperty>();
-  template.forEach((p) => {
-    const key = (p.key ?? "").toString();
-    if (!key) return;
-    const exist = existing.find((e) => (e.key ?? "").toString() === key);
-    byKey.set(key, {
-      key,
-      type: p.type ?? "String",
-      value: exist?.value ?? p.value ?? "",
-    });
-  });
-  if (byKey.size === 0 && existing.length > 0) {
-    existing.forEach((p) => {
-      const key = (p.key ?? "").toString() || "未命名";
-      byKey.set(key, { key, type: p.type ?? "String", value: p.value ?? "" });
-    });
-  }
-  return Array.from(byKey.values());
-}
-
-/** 节点属性列表（key + type），用于渲染表单项，值在 nodeForm.props 中 */
-const propertyList = computed(() => buildPropertyList());
-
+// 监听showPropertyPanel变化，当它变为true时，重新从props中获取最新的值
 watch(
-  () => [props.selectedNode, props.nodeTemplateProperties] as const,
-  () => {
-    if (props.selectedNode) {
-      const list = buildPropertyList();
-      nodeForm.value = {
-        name: props.selectedNode.name ?? "",
-        props: Object.fromEntries(list.map((p) => [p.key ?? "", p.value ?? ""])),
-      };
-    } else {
-      nodeForm.value = { name: "", props: {} };
+  () => props.showPropertyPanel,
+  (newValue) => {
+    if (newValue) {
+      isAddingProperty.value = false; // 重置添加状态
+      localEntityName.value = props.entityName;
+      localEntityDescription.value = props.entityDescription;
+      localEntityProperties.value = props.entityProperties.map((prop) => ({
+        ...prop,
+        isNew: false, // 标记为现有属性
+      }));
+      localRelationshipName.value = props.relationshipName;
+      localRelationshipDescription.value = props.relationshipDescription;
+      localRelationshipType.value = props.relationshipType;
+      localStartNodeName.value = props.startNodeName;
+      localEndNodeName.value = props.endNodeName;
+      localAddToComponentLibrary.value = props.addToComponentLibrary;
+      localBackgroundColor.value = props.backgroundColor || "#43D7B5";
+      // 重置触发词相关状态
+      triggerWordList.value = [];
+      selectedTriggerWord.value = "";
+      console.log("Panel opened with properties:", localEntityProperties.value);
+      fetchTriggerWords("");
     }
   },
-  { immediate: true, deep: true }
 );
 
-function buildEdgePropertyList(): EdgeProperty[] {
-  const edge = props.selectedEdge;
-  const list = (edge?.properties ?? []) as EdgeProperty[];
-  if (list.length > 0) return list.map((p) => ({ ...p }));
-  const data = edge?.data;
-  if (data && typeof data === "object") {
-    return Object.entries(data)
-      .filter(([k]) => k !== "name" && k !== "type")
-      .map(([key, value]) => ({ key, type: "String" as string, value }));
-  }
-  return [];
-}
-
-/** 关系属性列表（key + type），用于渲染表单项，值在 edgeForm.props 中 */
-const edgePropertyList = computed(() => buildEdgePropertyList());
+// 监听其他props的变化
+watch(
+  () => props.entityName,
+  (newValue) => {
+    localEntityName.value = newValue;
+  },
+);
 
 watch(
-  () => props.selectedEdge,
-  (edge) => {
-    if (edge) {
-      const list = buildEdgePropertyList();
-      const name = edge.data?.name ?? (edge as unknown as { name?: string }).name ?? "";
-      edgeForm.value = {
-        name,
-        props: Object.fromEntries(list.map((p) => [p.key ?? "", p.value ?? ""])),
-      };
-    } else {
-      edgeForm.value = { name: "", props: {} };
-    }
+  () => props.entityDescription,
+  (newValue) => {
+    localEntityDescription.value = newValue;
   },
-  { immediate: true, deep: true }
 );
 
-const sourceLabel = computed(() => {
-  const edge = props.selectedEdge;
-  const nodes = props.nodes ?? [];
-  if (!edge) return "";
-  const id = edge.source;
-  const n = nodes.find((x) => String(x.id) === String(id));
-  return n?.name ?? String(id);
-});
+watch(
+  () => props.relationshipName,
+  (newValue) => {
+    localRelationshipName.value = newValue;
+  },
+);
 
-const targetLabel = computed(() => {
-  const edge = props.selectedEdge;
-  const nodes = props.nodes ?? [];
-  if (!edge) return "";
-  const id = edge.target;
-  const n = nodes.find((x) => String(x.id) === String(id));
-  return n?.name ?? String(id);
-});
+watch(
+  () => props.relationshipDescription,
+  (newValue) => {
+    localRelationshipDescription.value = newValue;
+  },
+);
 
-function emitNodeUpdate() {
-  const node = props.selectedNode;
-  if (!node) return;
-  const form = nodeForm.value;
-  const next: EditorNode = {
-    ...node,
-    name: (form.name as string)?.trim() || node.name,
-    properties: propertyList.value.map((p) => ({
-      key: p.key,
-      type: p.type,
-      value: form.props[p.key ?? ""],
-    })),
-  };
-  emit("update:node", next);
-}
+watch(
+  () => props.addToComponentLibrary,
+  (newValue) => {
+    localAddToComponentLibrary.value = newValue;
+  },
+);
 
-function emitEdgeUpdate() {
-  const edge = props.selectedEdge;
-  if (!edge) return;
-  const form = edgeForm.value;
-  const nextData = { ...(edge.data ?? {}), name: (form.name as string)?.trim() };
-  const next: EditorEdge = {
-    ...edge,
-    data: nextData,
-    properties: edgePropertyList.value.map((p) => ({
-      key: p.key,
-      type: p.type,
-      value: form.props[p.key ?? ""],
-    })),
-  };
-  emit("update:edge", next);
-}
+watch(
+  () => props.relationshipType,
+  (newValue) => {
+    localRelationshipType.value = newValue;
+  },
+);
 
-function handleSave() {
-  if (props.selectedNode) {
-    emitNodeUpdate();
-  } else if (props.selectedEdge) {
-    emitEdgeUpdate();
-  }
-  emit("save");
-}
+watch(
+  () => props.startNodeName,
+  (newValue) => {
+    localStartNodeName.value = newValue;
+  },
+);
 
-function handleCancel() {
-  if (props.selectedNode) {
-    const list = buildPropertyList();
-    nodeForm.value = {
-      name: props.selectedNode.name ?? "",
-      props: Object.fromEntries(list.map((p) => [p.key ?? "", p.value ?? ""])),
-    };
-  } else if (props.selectedEdge) {
-    const edge = props.selectedEdge;
-    const list = buildEdgePropertyList();
-    const name = edge.data?.name ?? (edge as unknown as { name?: string }).name ?? "";
-    edgeForm.value = {
-      name,
-      props: Object.fromEntries(list.map((p) => [p.key ?? "", p.value ?? ""])),
-    };
-  }
+watch(
+  () => props.endNodeName,
+  (newValue) => {
+    localEndNodeName.value = newValue;
+  },
+);
+
+watch(
+  () => props.backgroundColor,
+  (newValue) => {
+    localBackgroundColor.value = newValue || "#43D7B5";
+  },
+);
+
+const handleClosePropertyPanel = () => {
+  emit("close");
+};
+
+const handleCancelPropertyPanel = () => {
   emit("cancel");
-}
+};
+
+const handleSavePropertyPanel = async () => {
+  try {
+    // // 检查 topicId 是否为空
+    // if (!props.topicId) {
+    //   ElMessage.warning("请先选择专题");
+    //   return;
+    // }
+
+    // 设置加载状态
+    isLoading.value = true;
+
+    // 准备保存到父组件的数据
+  const saveData = {
+    currentOperation: props.currentOperation,
+    entityName: localEntityName.value,
+    entityDescription: localEntityDescription.value,
+    entityProperties: localEntityProperties.value.map((prop) => ({
+      ...prop,
+    })),
+    relationshipName: localRelationshipName.value,
+    relationshipDescription: localRelationshipDescription.value,
+    relationshipType: localRelationshipType.value,
+    addToComponentLibrary: localAddToComponentLibrary.value,
+    backgroundColor: localBackgroundColor.value,
+    isFromComponentLibrary: props.isFromComponentLibrary,
+    isFromCanvas: props.isFromCanvas,
+    selectedTriggerWord: selectedTriggerWord.value,
+  };
+
+    // 延迟关闭面板，让用户看到加载状态
+    setTimeout(() => {
+      isLoading.value = false;
+      emit("save", saveData);
+    }, 500);
+  } catch (error) {
+    console.error("保存失败:", error);
+    isLoading.value = false;
+  }
+};
+
+const handleDeletePropertyPanel = async () => {
+  try {
+    // 弹出确认对话框
+    await ElMessageBox.confirm("确定要删除吗？", "删除确认", {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning",
+    });
+
+    // 设置加载状态
+    isLoading.value = true;
+
+    if (props.currentOperation === "entity") {
+      // 检查 nodeTemplateId 是否为空
+      if (!props.nodeTemplateId) {
+        ElMessage.warning("实体模板ID不能为空");
+        isLoading.value = false;
+        return;
+      }
+      // 调用删除接口
+      await graph.deleteNodeTemplate({ nodeTemplateId: props.nodeTemplateId });
+    } else if (props.currentOperation === "relationship") {
+      // 检查 relationTemplateId 是否为空
+      if (!props.relationTemplateId) {
+        ElMessage.warning("关系模板ID不能为空");
+        isLoading.value = false;
+        return;
+      }
+      // 调用删除接口
+      await graph.deleteRelationTemplate({
+        relationTemplateId: props.relationTemplateId,
+      });
+    }
+
+    // 删除成功提示
+    ElMessage.success("删除成功");
+
+    // 异步更新数据，不阻塞面板关闭
+    setTimeout(async () => {
+      try {
+        // 并行调用查询接口获取最新数据
+        const [templateResponse, libraryResponse] = await Promise.all([
+          graph.queryTemplate(props.topicId),
+          graph.queryLibraryTemplate(""),
+        ]);
+
+        if (templateResponse && templateResponse.data) {
+          // 触发更新事件，通知父组件更新节点数据
+          emit("update-nodes", templateResponse.data);
+        }
+
+        if (libraryResponse && libraryResponse.data) {
+          // 触发更新事件，通知父组件更新组件库数据
+          emit("update-library", libraryResponse.data);
+        }
+      } catch (error) {
+        console.error("更新数据失败:", error);
+      }
+    }, 0);
+
+    // 延迟关闭面板，让用户看到加载状态和成功提示
+    setTimeout(() => {
+      isLoading.value = false;
+      emit("close");
+    }, 1000);
+  } catch (error) {
+    // 如果是用户取消操作，不显示错误信息
+    if (error !== "cancel") {
+      console.error("删除失败:", error);
+      // ElMessage.error("删除失败，请重试");
+    }
+    isLoading.value = false;
+  }
+};
+
+const handleAddProperty = () => {
+  // 重置新属性数据
+  newProperty.value = { name: "", type: "string" };
+  // 打开对话框
+  addPropertyDialogVisible.value = true;
+};
+
+const handleConfirmAddProperty = async () => {
+  // 验证属性名是否为空
+  if (!newProperty.value.name || newProperty.value.name.trim() === "") {
+    ElMessage.warning("请输入属性名称");
+    return;
+  }
+
+  // 设置添加状态，防止被props更新覆盖
+  isAddingProperty.value = true;
+
+  // 创建新属性对象
+  const newProp = {
+    name: newProperty.value.name.trim(),
+    type: newProperty.value.type,
+    value: "",
+    isNew: true, // 标记为新属性
+  };
+
+  console.log("Adding new property:", newProp);
+  console.log(
+    "Before addition:",
+    JSON.parse(JSON.stringify(localEntityProperties.value)),
+  );
+
+  // 直接添加到本地数组
+  localEntityProperties.value.push(newProp);
+
+  console.log(
+    "After addition:",
+    JSON.parse(JSON.stringify(localEntityProperties.value)),
+  );
+
+  // 等待 DOM 更新
+  await nextTick();
+
+  // 关闭对话框
+  addPropertyDialogVisible.value = false;
+
+  // 重置新属性数据
+  newProperty.value = { name: "", type: "string" };
+
+  // 成功提示
+  // ElMessage.success("属性添加成功");
+
+  // 3秒后重置添加状态
+  setTimeout(() => {
+    isAddingProperty.value = false;
+  }, 3000);
+
+  console.log(
+    "Final properties:",
+    JSON.parse(JSON.stringify(localEntityProperties.value)),
+  );
+};
+
+// 删除属性
+const handleDeleteProperty = (index) => {
+  // 从本地数组中删除属性
+  localEntityProperties.value.splice(index, 1);
+  console.log("Property deleted at index:", index);
+  console.log("Updated properties:", localEntityProperties.value);
+};
+
+// 获取触发词列表
+const fetchTriggerWords = async (sequenceContent = "") => {
+  if(props.referenceContent || sequenceContent){
+    try {
+      const response = await graph.segmentSequence({
+        sequenceContent: props.referenceContent || sequenceContent,
+      });
+      if (response && response.data) {
+        triggerWordList.value = response.data;
+      }
+    } catch (error) {
+      console.error("获取触发词列表失败:", error);
+    }
+      }
+  
+};
+
+// 处理触发词下拉框可见性变化
+const handleTriggerWordVisible = (visible) => {
+  if (visible) {
+    // fetchTriggerWords("");
+  }
+};
+
+// 验证属性值
+const validatePropertyValue = (value, type) => {
+  if (!value || value.trim() === "") {
+    return true; // 空值允许
+  }
+  
+  switch (type) {
+    case "string":
+      return true; // 字符串类型总是有效
+    case "number":
+      return !isNaN(Number(value));
+    case "boolean":
+      return value === "true" || value === "false" || value === "1" || value === "0";
+    case "date":
+      return !isNaN(Date.parse(value));
+    case "object":
+      try {
+        JSON.parse(value);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    case "array":
+      try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed);
+      } catch (e) {
+        return false;
+      }
+    default:
+      return true;
+  }
+};
+
+// 处理输入框失焦事件
+const handleInputBlur = (property, index) => {
+  if (!validatePropertyValue(property.value, property.type)) {
+    ElMessage.warning(`属性 "${property.name}" 的值类型不正确，请输入 ${property.type} 类型的值`);
+  }
+};
+
+onMounted(() => {
+  fetchTriggerWords("");
+});
+
 </script>
 
 <style scoped lang="scss">
-.right-property-panel {
+/* 右侧面板 */
+.right-panel {
   width: 260px;
-  min-width: 220px;
-  height: 100%;
-  background: #ffffff;
-  border-left: 1px solid rgba(226, 226, 226, 1);
-  display: flex;
-  flex-direction: column;
+  background-color: white;
   overflow: hidden;
-  padding: 6px 0 8px;
 }
 
-.panel-content {
+.property-panel {
+  position: absolute;
+  top: 0px;
+  right: 0;
+  width: 260px;
+  height:100%;
+  background-color: white;
+  box-shadow: -2px 0 4px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+}
+
+.property-panel-header {
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  background-color: white;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  img {
+    width: 21px;
+    height: 21px;
+  }
+}
+
+.header-left el-icon {
+  color: #67c23a;
+  font-size: 16px;
+}
+
+.property-panel-header h3 {
+  font-size: 18px;
+  color: #333333;
+  font-weight: 600;
+  margin: 0;
+}
+
+.property-panel-body {
   flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  padding: 0 24px 24px 24px;
+  overflow-y: auto;
 }
 
-.footer {
-  flex: 0 0 auto;
-  margin-top: auto;
-  padding: 12px;
+.property-item {
+  margin-bottom: 20px;
+
+  :deep(.el-input__wrapper) {
+    background: #f6fcff;
+    border: 0.8px solid rgba(224, 226, 235, 1);
+    border-radius: 4px;
+    height: 40px;
+    box-sizing: border-box;
+    box-shadow: none;
+  }
+
+  :deep(.el-input__inner) {
+    font-size: 14px;
+    color: #333333;
+  }
+
+  :deep(.el-textarea__inner) {
+    font-size: 14px;
+    color: #000000;
+    background: #ffffff;
+    border: 0.8px solid rgba(224, 226, 235, 1);
+    border-radius: 4px;
+    box-shadow: none;
+    resize: none;
+  }
+
+  :deep(.el-input__inner::placeholder) {
+    font-size: 14px;
+    color: #999;
+  }
+  :deep(.el-textarea__inner::placeholder) {
+    font-size: 13px;
+    color: #999;
+  }
+}
+
+.entity-name-display {
+  // background: #f6fcff;
+  // border: 0.8px solid rgba(224, 226, 235, 1);
+  background: #f5f5f5;
+  border: 0.8px solid #f5f5f5;
+  border-radius: 4px;
+  height: 40px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  font-size: 14px;
+  color: #333333;
+  font-weight: 500;
+}
+
+.property-item label {
+  display: block;
+  font-size: 14px;
+  color: #000000;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.property-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.property-count {
+  font-size: 14px;
+  color: #3dd2b0;
+  background: rgba(61, 210, 176, 0.1);
+  border-radius: 10px;
+  padding: 1px 10px;
+}
+
+.properties-list {
+  margin-bottom: 12px;
+  min-height: 40px;
+  max-height: 300px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.empty-properties {
+  color: #999;
+  font-size: 14px;
+  padding: 20px 0;
+  text-align: center;
+  width: 100%;
+}
+
+.property-row {
+  margin-bottom: 12px;
+  background: #f4f8fc;
+  border-radius: 4px;
+  padding: 6px 12px 10px 12px;
+  width: 100%;
+
+  :deep(.el-select__wrapper) {
+    background: #ffffff;
+    border: 0.5px solid rgba(224, 226, 235, 1);
+    border-radius: 4px;
+    height: 32px;
+    box-sizing: border-box;
+    box-shadow: none;
+    font-size: 12px;
+    color: #999999;
+  }
+
+  :deep(.el-select__caret) {
+    font-size: 12px;
+  }
+}
+
+.property-name-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.delete-property-btn {
+  font-size: 16px;
+  color: #999;
+  padding: 0;
+  margin-left: 8px;
+  line-height: 1;
+  min-width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.delete-property-btn:hover {
+  color: #e54949;
+  background: none;
+}
+
+.lines {
+  padding-top: 15px;
   border-top: 1px solid rgba(238, 238, 238, 1);
   display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  background: #fff;
-  position: relative;
-  z-index: 1;
+  align-items: center;
+  justify-content: space-between;
+}
+
+:deep(.el-switch.is-checked .el-switch__core) {
+  background-color: #3dd2b0;
+  border-color: #3dd2b0;
+}
+
+.property-name {
+  font-size: 14px;
+  color: #333333;
+  margin-bottom: 4px;
+  font-weight: 500;
+  word-break: break-all;
+}
+
+.add-property-btn {
+  width: 100%;
+
+  .plusIcon {
+    margin-right: 5px;
+    color: #999;
+    font-size: 12px;
+  }
+}
+
+.el-button--small {
+  border-radius: 4px;
+  font-size: 14px;
+  padding: 16px 11px;
+}
+
+.el-button--primary {
+  background-color: #ffffff;
+  font-size: 14px;
+  color: #999999;
+  border: 1px dashed rgba(213, 215, 222, 1);
+  font-weight: 400;
+}
+
+.el-button--primary:hover {
+  background-color: #3dd2b0;
+  color: #ffffff;
+}
+
+.el-button--primary:hover .plusIcon {
+  color: #ffffff;
+}
+
+.property-panel-footer {
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: white;
+  border-top: 1px solid #f0f0f0;
+}
+
+.close-btn {
+  flex: 1;
+  background: #f0f0f0;
+  border-radius: 4px;
+  border: none;
+  font-size: 14px;
+  color: #666666;
+  margin-right: 8px;
+}
+
+.delete-btn {
+  flex: 1;
+  background: #e54949;
+  border-radius: 4px;
+  border: none;
+  font-size: 14px;
+  color: #fff;
+  margin-right: 8px;
 }
 
 .save-btn {
+  flex: 2;
+  background: #3dd2b0;
+  border-radius: 4px;
+  border: none;
+  font-size: 14px;
+  color: #fff;
+}
+
+.el-select {
+  width: 100%;
+}
+
+.el-switch {
+  float: right;
+}
+
+.el-input {
+  margin-bottom: 0;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .right-panel {
+    width: 280px;
+  }
+
+  .property-panel {
+    width: 280px;
+  }
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.confirm-btn {
   background-color: rgba(61, 210, 176, 1) !important;
   border-color: rgba(61, 210, 176, 1) !important;
   color: white !important;
 }
 
-.save-btn:hover {
+.confirm-btn:hover {
   background-color: rgba(61, 210, 176, 0.9) !important;
   border-color: rgba(61, 210, 176, 0.9) !important;
 }
@@ -430,97 +1188,65 @@ function handleCancel() {
 .cancel-btn:hover {
   background-color: #f5f7fa !important;
   border-color: #c0c4cc !important;
+  color: #606266 !important;
 }
 
-.section {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  padding: 2px 0 6px;
-  border-bottom: 1px solid rgba(238, 238, 238, 1);
-  overflow: hidden;
+/* 弹框关闭按钮样式 */
+.el-dialog__headerbtn:hover .el-dialog__close {
+  color: rgba(61, 210, 176, 1) !important;
 }
 
-.header {
-  padding: 6px 12px 4px;
+/* 确保样式能够正确应用 */
+:global(.el-dialog__headerbtn:hover .el-dialog__close) {
+  color: rgba(61, 210, 176, 1) !important;
+}
+</style>
+
+<style lang="scss">
+/* 全局样式 */
+.el-select-dropdown__item {
+  font-size: 13px;
+  color: #333333;
 }
 
-.title {
-  font-size: 14px;
-  font-weight: 700;
+.el-select-dropdown__item:hover {
+  background-color: rgba(61, 210, 176, 0.1) !important;
+}
+
+.el-select-dropdown__item.selected,
+.el-select-dropdown__item.is-selected {
+  color: #3dd2b0 !important;
+  background-color: rgba(61, 210, 176, 0.1) !important;
+}
+
+/* 对话框样式 */
+.el-dialog__title {
+  font-size: 16px;
+  font-weight: 500;
   color: #333;
 }
 
-.body {
-  flex: 1;
-  min-height: 0;
-  padding: 8px 12px 12px;
-  overflow: auto;
+.el-dialog__body {
+  padding: 20px 20px 10px;
 }
 
-.property-form {
-  :deep(.el-form-item) {
-    margin-bottom: 12px;
-  }
-  :deep(.el-form-item:last-child) {
-    margin-bottom: 0;
-  }
-  :deep(.el-form-item__label) {
-    font-size: 12px;
-    color: #666;
-    height: auto;
-    line-height: 1.5;
-    padding-bottom: 4px;
-  }
+.el-dialog__footer {
+  padding: 10px 20px 20px;
+  border-top: none;
 }
 
-.full-width {
-  width: 100%;
+.el-form-item__label {
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
 }
 
-.endpoints {
-  font-size: 12px;
-  color: #666;
-  padding: 6px 8px;
-  background: rgba(245, 248, 251, 1);
-  border-radius: 6px;
+.el-form-item.is-required .el-form-item__label:before {
+  color: #e54949;
 }
 
-.empty-hint {
-  padding: 16px 12px;
-  font-size: 13px;
-  color: rgba(153, 153, 153, 1);
-  line-height: 1.5;
-
-  &.small {
-    padding: 8px 0;
-    font-size: 12px;
-  }
-}
-
-:deep(.el-input),
-:deep(.el-input-number),
-:deep(.el-date-picker),
-:deep(.el-select) {
-  width: 100%;
-}
-
-:deep(.el-input__wrapper),
-:deep(.el-input-number__wrapper) {
-  border-radius: 6px;
-  border: 1px solid rgba(226, 226, 226, 1);
-  box-shadow: none;
-}
-
-:deep(.el-input__wrapper:hover),
-:deep(.el-input-number__wrapper:hover) {
-  border-color: rgba(61, 210, 176, 0.6);
-}
-
-:deep(.el-input__wrapper.is-focus),
-:deep(.el-input-number__wrapper.is-focus) {
-  border-color: rgba(61, 210, 176, 1);
-  box-shadow: 0 0 0 1px rgba(61, 210, 176, 0.2);
+/* 修复 rows 属性警告 */
+.el-textarea__inner {
+  resize: none;
 }
 </style>

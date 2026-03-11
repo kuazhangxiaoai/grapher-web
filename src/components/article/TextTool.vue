@@ -1,11 +1,14 @@
-
 <template>
   <div class="graph-tool">
-    <div class="previous-page" title="上一页" @click="handlePreviousPageClick"/>
-    <div class="next-page" title="下一页" @click="handleNextPageClick"/>
-    <div class="jump-page" title="跳页至" @click="openJumpPageDialog"/>
-    <div class="refresh" title="刷新" @click="hanleRefreshClick"/>
-    <div class="edit" title="编辑图谱" @click="openGraphEditor"/>
+    <div
+      class="previous-page"
+      title="上一页"
+      @click="handlePreviousPageClick"
+    />
+    <div class="next-page" title="下一页" @click="handleNextPageClick" />
+    <div class="jump-page" title="跳页至" @click="openJumpPageDialog" />
+    <div class="refresh" title="刷新" @click="hanleRefreshClick" />
+    <div class="edit" title="编辑图谱" @click="openGraphEditor" />
     <JumpPageDialog
       v-if="showJumpPageDialog"
       :total-pages="textStore.totalPages"
@@ -17,21 +20,27 @@
 </template>
 
 <script setup lang="ts">
-import {ref} from "vue";
-import {useTextStore} from "@/store/useTextStore";
+import { ref } from "vue";
+import { useTextStore } from "@/store/useTextStore";
 import JumpPageDialog from "@/components/common/JumpPageDialog.vue";
 import { ElMessage as Message } from "element-plus";
 
-const emit = defineEmits(["next-page", "jump-page", "refresh", "previous-page", "edit-graph"]);
+const emit = defineEmits([
+  "next-page",
+  "jump-page",
+  "refresh",
+  "previous-page",
+  "edit-graph",
+]);
 const textStore = useTextStore();
 const showJumpPageDialog = ref(false);
 
 const handlePreviousPageClick = () => {
-  if(textStore.currentPage < 1) return;
+  if (textStore.currentPage < 1) return;
   textStore.previousPage();
   notifyPageChange(textStore.currentPage);
   emit("previous-page");
-}
+};
 
 const notifyPageChange = (num: number) => {
   const displayPage = num;
@@ -43,11 +52,11 @@ const notifyPageChange = (num: number) => {
 };
 
 const handleNextPageClick = () => {
-  if(textStore.currentPage >= textStore.totalPages) return;
-  textStore.nextPage()
+  if (textStore.currentPage >= textStore.totalPages) return;
+  textStore.nextPage();
   notifyPageChange(textStore.currentPage);
   emit("next-page");
-}
+};
 
 const openJumpPageDialog = () => {
   showJumpPageDialog.value = true;
@@ -62,23 +71,27 @@ const handleJumpPage = (page: number) => {
 
 const openGraphEditor = () => {
   emit("edit-graph");
-}
+};
 
 const hanleRefreshClick = () => {
   emit("refresh");
-}
-
+};
 </script>
 
 <style scoped lang="scss">
 .graph-tool {
   position: absolute;
   display: flex;
-  width: 202px;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
   height: 100%;
-  border: 2px solid #3dd2b0;
-  background-color: #f8f9fa;
-  border-radius: 10px;
+  background: #ffffff;
+  border: 0.5px solid rgba(226, 226, 226, 1);
+  box-shadow: 0px 8px 10px 0px rgba(78, 89, 105, 0.18);
+  border-radius: 50px;
+  padding: 15px 20px;
+  box-sizing: border-box;
 }
 .toolbar {
   flex-shrink: 0;
@@ -105,84 +118,89 @@ const hanleRefreshClick = () => {
   font-size: 12px;
   color: #606266;
 }
-.previous-page{
+.previous-page {
   position: relative;
   display: flex;
-  width: 20%;
-  height: 100%;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
   place-content: center;
   align-items: center;
   padding: 2px 2px;
-  background-image: url('@/assets/images/上一页.png');
+  background-image: url("@/assets/images/上一页.png");
   background-size: contain;
   border-bottom: 1px solid #e4e7ed;
 }
-.previous-page:hover{
+.previous-page:hover {
   cursor: pointer;
-  background-image: url('@/assets/images/上一页-点击.png');
+  background-image: url("@/assets/images/上一页-点击.png");
 }
-.next-page{
+.next-page {
   position: relative;
   display: flex;
-  width: 20%;
-  height: 100%;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
   place-content: center;
   align-items: center;
   padding: 2px 2px;
-  background-image: url('@/assets/images/下一页.png');
+  background-image: url("@/assets/images/下一页.png");
   background-size: contain;
   border-bottom: 1px solid #e4e7ed;
 }
-.next-page:hover{
+.next-page:hover {
   cursor: pointer;
-  background-image: url('@/assets/images/下一页-点击.png');
+  background-image: url("@/assets/images/下一页-点击.png");
 }
-.jump-page{
+.jump-page {
   position: relative;
   display: flex;
-  width: 20%;
-  height: 100%;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
   place-content: center;
   align-items: center;
   padding: 2px 2px;
-  background-image: url('@/assets/images/跳页.png');
+  background-image: url("@/assets/images/跳页.png");
   background-size: contain;
   border-bottom: 1px solid #e4e7ed;
 }
-.jump-page:hover{
+.jump-page:hover {
   cursor: pointer;
-  background-image: url('@/assets/images/跳页-点击.png');
+  background-image: url("@/assets/images/跳页-点击.png");
 }
-.refresh{
+.refresh {
   position: relative;
   display: flex;
-  width: 20%;
-  height: 100%;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
   place-content: center;
   align-items: center;
   padding: 2px 2px;
-  background-image: url('@/assets/images/刷新.png');
+  background-image: url("@/assets/images/刷新.png");
   background-size: contain;
   border-bottom: 1px solid #e4e7ed;
 }
-.refresh:hover{
+.refresh:hover {
   cursor: pointer;
-  background-image: url('@/assets/images/刷新-点击.png');
+  background-image: url("@/assets/images/刷新-点击.png");
 }
-.edit{
+.edit {
   position: relative;
   display: flex;
-  width: 20%;
-  height: 100%;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
   place-content: center;
   align-items: center;
   padding: 2px 2px;
-  background-image: url('@/assets/images/编辑1.png');
+  background-image: url("@/assets/images/编辑1.png");
   background-size: contain;
   border-bottom: 1px solid #e4e7ed;
 }
-.edit:hover{
+.edit:hover {
   cursor: pointer;
-  background-image: url('@/assets/images/编辑2.png');
+  background-image: url("@/assets/images/编辑2.png");
 }
 </style>

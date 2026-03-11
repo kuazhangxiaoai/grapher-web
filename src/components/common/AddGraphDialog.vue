@@ -1,5 +1,11 @@
 <template>
-  <el-dialog v-model="dialogVisible" :title="title" width="400px" :class="dialogClassName" @close="handleClose">
+  <el-dialog
+    v-model="dialogVisible"
+    :title="title"
+    width="400px"
+    :class="dialogClassName"
+    @close="handleClose"
+  >
     <el-form :model="form" label-width="85px">
       <el-form-item label="图谱名称">
         <el-input
@@ -27,16 +33,21 @@
           :auto-upload="false"
           :show-file-list="true"
         >
-          <el-button type="primary">上传附件</el-button>
-          <template #tip>
-            <div class="el-upload__tip">
-              支持上传 docx、pdf 等格式文件
-            </div>
-          </template>
+          <el-button class="upload-btn">
+            <Upload class="upload-icon" />
+            上传附件
+          </el-button>
+          <!-- <template #tip>
+            <div class="el-upload__tip">支持上传 docx、pdf 等格式文件</div>
+          </template> -->
         </el-upload>
       </el-form-item>
       <el-form-item v-if="form.createMethod == 'text'" label="发表时间">
-        <el-date-picker v-model="form.publishDate" type="date" placeholder="请选择发表时间"></el-date-picker>
+        <el-date-picker
+          v-model="form.publishDate"
+          type="date"
+          placeholder="请选择发表时间"
+        ></el-date-picker>
       </el-form-item>
       <el-form-item v-if="form.createMethod === 'database'" label="数据库选择">
         <el-select
@@ -62,7 +73,12 @@
     <template #footer>
       <span class="dialog-footer">
         <el-button class="cancel-btn" @click="handleCancel">取消</el-button>
-        <el-button class="confirm-btn" @click="handleConfirm" :disabled="isConfirmButtonDisabled">确定</el-button>
+        <el-button
+          class="confirm-btn"
+          @click="handleConfirm"
+          :disabled="isConfirmButtonDisabled"
+          >确定</el-button
+        >
       </span>
     </template>
   </el-dialog>
@@ -70,8 +86,9 @@
 
 <script setup>
 import { ref, watch } from "vue";
+import { Upload } from "@icon-park/vue-next";
 
-const dialogClassName = 'add-graph-dialog';
+const dialogClassName = "add-graph-dialog";
 const props = defineProps({
   visible: {
     type: Boolean,
@@ -141,11 +158,20 @@ const handleClose = () => {
   emit("cancel");
 };
 </script>
+<style lang="scss">
+.graph-editor-dialog {
+  .el-dialog__body {
+    border-top: none !important;
+    padding: 20px 20px 10px 20px !important;
+    height: 100% !important;
+  }
+}
+</style>
 <style scoped>
 /* 弹框内容区域样式 */
 :global(.el-dialog__body) {
   padding: 20px 10px 0 8px;
-  border-top: 1px solid rgba(238,238,238,1);
+  border-top: 1px solid rgba(238, 238, 238, 1);
 }
 /* .dialog-header {
   border-bottom: 1px solid #e4e7ed;
@@ -157,6 +183,8 @@ const handleClose = () => {
 }
 
 .confirm-btn {
+  padding-left: 30px;
+  padding-right: 30px;
   background-color: rgba(61, 210, 176, 1) !important;
   border-color: rgba(61, 210, 176, 1) !important;
   color: white !important;
@@ -168,61 +196,113 @@ const handleClose = () => {
 }
 
 .cancel-btn {
-  background-color: white !important;
-  border-color: #dcdfe6 !important;
-  color: #606266 !important;
+  padding-left: 30px;
+  padding-right: 30px;
+  background: #f0f0f0;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #666666;
+  border: none;
 }
-
-.cancel-btn:hover {
+.upload-demo {
+  width: 90%;
+}
+/* .cancel-btn:hover {
   background-color: #f5f7fa !important;
   border-color: #c0c4cc !important;
   color: #606266 !important;
-}
+} */
 
 /* 弹框关闭按钮样式 */
 :global(.el-dialog__headerbtn:hover .el-dialog__close) {
   color: rgba(61, 210, 176, 1) !important;
 }
 :deep(.el-input__wrapper) {
-   background: #FFFFFF;
-   border: 0.5px solid rgba(224,226,235,1);
-   border-radius: 4px;
-    height: 40px;
-    box-sizing: border-box;
-    box-shadow: none;
-  }
-  
-  :deep(.el-input__inner) {
-    font-size: 14px;
-    color: #333333;
-  }
-  
-  :deep(.el-input__inner::placeholder) {
-    font-size: 14px;
-    color: #d1d0d0ff;
-  }
-  :deep(.el-select__wrapper) {
-   background: #FFFFFF;
-   border: 0.5px solid rgba(224,226,235,1);
-   border-radius: 4px;
-    height: 40px;
-    box-sizing: border-box;
-    box-shadow: none;
-  }
-  :deep(.el-select__input) {
-    font-size: 14px;
-    color: #333;
-  }
-  :deep(.el-select__input::placeholder) {
-    font-size: 13px;
-    color: #c6c5c5ff;
-    font-weight: 500;
-  }
-  :deep(.el-select__wrapper.is-hovering:not(.is-focused)) {
-    box-shadow:none;
-  }
-  :deep(.el-form-item--label-right .el-form-item__label){
-    text-align: left !important;
-    justify-content: flex-start !important;
-  }
+  background: #ffffff;
+  border: 0.5px solid rgba(224, 226, 235, 1);
+  border-radius: 4px;
+  height: 40px;
+  box-sizing: border-box;
+  box-shadow: none;
+}
+
+:deep(.el-input__inner) {
+  font-size: 14px;
+  color: #333333;
+}
+
+:deep(.el-input__inner::placeholder) {
+  font-size: 14px;
+  color: #a8abb2;
+}
+:deep(.el-select__wrapper) {
+  background: #ffffff;
+  border: 0.5px solid rgba(224, 226, 235, 1);
+  border-radius: 4px;
+  height: 40px;
+  box-sizing: border-box;
+  box-shadow: none;
+}
+:deep(.el-select__input) {
+  font-size: 14px;
+  color: #333;
+}
+:deep(.el-select__input::placeholder) {
+  font-size: 13px;
+  color: #c6c5c5ff;
+  font-weight: 500;
+}
+:deep(.el-select__wrapper.is-hovering:not(.is-focused)) {
+  box-shadow: none;
+}
+:deep(.el-form-item--label-right .el-form-item__label) {
+  text-align: left !important;
+  justify-content: flex-start !important;
+}
+.upload-btn {
+  background: #ffffff !important;
+  border: 1px solid rgba(221, 221, 221, 1) !important;
+  border-radius: 4px !important;
+  font-size: 14px !important;
+  color: #666666 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.upload-btn:hover {
+  background: #ffffff !important;
+  border: 1px solid rgba(61, 210, 176, 1) !important;
+  border-radius: 4px !important;
+  font-size: 14px !important;
+  color: #3dd2b0 !important;
+}
+
+.upload-icon {
+  font-size: 14px !important;
+  margin-right: 8px;
+}
+
+.upload-btn:hover .upload-icon {
+  color: #3dd2b0 !important;
+}
+</style>
+<style lang="scss">
+/* 全局样式 */
+.el-select-dropdown__item {
+  font-size: 13px;
+  color: #333333;
+}
+
+.el-select-dropdown__item:hover {
+  background-color: rgba(61, 210, 176, 0.1) !important;
+}
+
+.el-select-dropdown__item.selected,
+.el-select-dropdown__item.is-selected {
+  color: #3dd2b0 !important;
+  background-color: rgba(61, 210, 176, 0.1) !important;
+}
 </style>

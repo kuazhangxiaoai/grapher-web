@@ -25,6 +25,7 @@ export interface Mark{
     type: MarkType,
     articleId: string,
     color: MarkColor,
+    sequenceId?: string,
 }
 
 export interface Article {

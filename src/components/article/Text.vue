@@ -17,7 +17,9 @@
           :topic-id="props.topicId"
           :domain-id="props.domainId"
           @selection-change="$emit('selection-change', $event)"
+          @rectangle-click="$emit('rectangle-click', $event)"
         />
+        <div v-if="isLoaded" @load="$emit('pdf-loaded', true)"></div>
       </DocumentContent>
     </EmbedPDF>
   </div>
@@ -50,7 +52,6 @@ const props = defineProps<{
   domainId?: string | null;
 }>();
 
-defineEmits(["selection-change"]);
 const currentPage = ref(0);
 const textSelectionRef = ref<InstanceType<typeof TextSelection> | null>(null);
 
@@ -83,6 +84,21 @@ const pluginRef = computed(() => [
 watch([() => props.src, () => props.page], () => {
   currentPage.value = props.page ?? 1;
 });
+
+// 监听PDF加载状态
+const emit = defineEmits(["selection-change", "rectangle-click", "pdf-loaded"]);
+let pdfLoadedEmitted = ref(false);
+
+// 当文档内容加载完成时触发pdf-loaded事件
+watch(() => engine.value, (newEngine) => {
+  if (newEngine && !pdfLoadedEmitted.value) {
+    // 延迟触发，确保PDF完全加载
+    setTimeout(() => {
+      emit('pdf-loaded', true);
+      pdfLoadedEmitted.value = true;
+    }, 1000);
+  }
+}, { deep: true });
 
 </script>
 

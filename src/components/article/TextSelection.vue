@@ -17,7 +17,7 @@
               <SelectionLayer :document-id="documentId" :page-index="page.pageIndex">
               </SelectionLayer>
               <!-- 下划线叠加层：根据 marksToDraw 在当前页绘制 -->
-              <HighlightLayer ref="highlightRef" :document-id="documentId" :page-index="page.pageIndex"/>
+              <HighlightLayer ref="highlightRef" :document-id="documentId" :page-index="page.pageIndex" @rectangle-click="handleRectangleClick"/>
             </PagePointerProvider>
           </div>
         </template>
@@ -59,7 +59,7 @@ const textStore = useTextStore();
 const selectedMark = ref<Mark | null>(null);
 const selectedRects = ref<Rect[] | null>([]);
 /** 需要绘制下划线的 mark 列表（用于 drawMark 后持久显示） */
-const marksToDraw = ref<Mark[]>([]);
+const marksToDraw = computed(() => textStore.markList);
 // 根据 embedpdf 的 scroll 状态计算并同步总页数到 store
 watch(
   () => scrollState.value?.totalPages,
@@ -89,7 +89,7 @@ const selectedText = ref('');
 const copied = ref(false);
 const menuCopied = ref(false);
 
-const emit = defineEmits<{ (e: 'selection-change', payload: Mark): void }>();
+const emit = defineEmits<{ (e: 'selection-change', payload: Mark): void; (e: 'rectangle-click', payload: any): void }>();
 
 let unsubscribeSelectionChange: (() => void) | undefined;
 let unsubscribeEndSelection: (() => void) | undefined;
@@ -136,10 +136,15 @@ const getSelectionContentAndCoordinates = () => {
 
 /** 在当前 PDF 上绘制 mark 的下划线（加入绘制列表并在叠加层显示） */
 const drawMark = (mark: Mark) => {
+  // 将mark添加到全局store中，以便页面刷新时重新绘制
+  if (!marksToDraw.value.some(m => m.id === mark.id)) {
+    textStore.addMark(mark);
+  }
+  
   const rects = mark.rects;
   rects.forEach((r) => {
     //highlightRef.value?.drawLine(x0, y0, length, lineness, mark.color);
-    highlightRef.value?.drawRectangle(r.x0, r.y0, r.width, r.height, 2, mark.color, mark.type);
+    highlightRef.value?.drawRectangle(r.x0, r.y0, r.width, r.height, 2, mark.color, mark.type, mark.sequenceId);
   })
 };
 
@@ -153,6 +158,13 @@ const clearEditing = () => {
 
 onMounted(() => {
   if (!selection.value) return;
+
+  // 组件挂载时，重新绘制保存的标记
+  setTimeout(() => {
+    marksToDraw.value.forEach(mark => {
+      drawMark(mark);
+    });
+  }, 1000); // 延迟1秒，确保PDF已经加载完成
 
   unsubscribeSelectionChange = selection.value.onSelectionChange(
       (selectionRange: SelectionRangeX | null) => {
@@ -221,9 +233,25 @@ const handleCopyFromMenu = () => {
   }, 1500);
 };
 
+const handleRectangleClick = (payload) => {
+  emit('rectangle-click', payload);
+};
+
 watch([() => props.documentId, () => props.currentPage], () => {
 
 });
+
+// 监听marksToDraw的变化，当它变化时重新绘制标记
+watch(() => marksToDraw.value, (newMarks) => {
+  if (newMarks && newMarks.length > 0) {
+    // 清除之前的标记
+    highlightRef.value?.clear?.();
+    // 重新绘制所有标记
+    newMarks.forEach(mark => {
+      drawMark(mark);
+    });
+  }
+}, { deep: true });
 
 </script>
 

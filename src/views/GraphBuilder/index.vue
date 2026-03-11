@@ -2,62 +2,71 @@
   <div class="project-builder-container">
     <!-- 左侧侧边栏 -->
     <Sidebar
-        :all-option="allOption"
-        :active-graph-item="currentGraphId"
-        :current-domain="currentDomain"
-        :current-sub-domain="currentSubDomain"
-        :domains="domains"
-        :sub-domains="subDomains"
-        :sub-sub-domains="subSubDomains"
-        :topics="topics"
-        :graphs="graphs"
-        :search-options="searchOptions"
-        :topic-search-options="topicSearchOptions"
-        :is-loading-topics="isLoadingTopics"
-        :has-data="hasData"
-        :entity-types="entityTypes"
-        :relationship-types="relationshipTypes"
-        :current-mode="currentMode"
-        @delete-domain="handleDeleteDomain"
-        @open-add-dialog="openAddDialog"
-        @open-add-topic-dialog="openAddTopicDialog"
-        @open-add-graph-dialog="openAddGraphDialog"
-        @domain-click="handleDomainClick"
-        @sub-domain-click="handleSubDomainClick"
-        @back-to-domains="handleBackToDomains"
-        @back-to-sub-domains="handleBackToSubDomains"
-        @search="handleSearch"
-        @select-search-item="selectSearchItem"
-        @drag-start="handleDragStart"
-        @drag-end="handleDragEnd"
-        @create-graph-click="handleCreateGraphClick"
-        @graph-click="handleGraphClick"
-        @edit-graph="handleEditGraph"
-        @delete-graph="handleDeleteGraph"
-        @delete-topic="handleDeleteTopic"
-        @topic-search="handleTopicSearch"
-        @search-icon-click="handleSearchIconClick"
-        @topic-search-icon-click="handleTopicSearchIconClick"
-        @clear-domain-history="clearDomainSearchHistory"
-        @clear-topic-history="clearTopicSearchHistory"
-        @topic-click="handleTopicClick"
+      :all-option="allOption"
+      :active-graph-item="currentGraphId"
+      :current-domain="currentDomain"
+      :current-sub-domain="currentSubDomain"
+      :domains="domains"
+      :sub-domains="subDomains"
+      :sub-sub-domains="subSubDomains"
+      :topics="topics"
+      :graphs="graphs"
+      :search-options="searchOptions"
+      :topic-search-options="topicSearchOptions"
+      :graph-search-options="graphSearchOptions"
+      :is-loading-topics="isLoadingTopics"
+      :is-loading-graphs="isLoadingGraphs"
+      :has-data="hasData"
+      :entity-types="entityTypes"
+      :relationship-types="relationshipTypes"
+      :relation-templates="relationTemplates"
+      :current-mode="currentMode"
+      @delete-domain="handleDeleteDomain"
+      @open-add-dialog="openAddDialog"
+      @open-add-topic-dialog="openAddTopicDialog"
+      @open-add-graph-dialog="openAddGraphDialog"
+      @domain-click="handleDomainClick"
+      @sub-domain-click="handleSubDomainClick"
+      @back-to-domains="handleBackToDomains"
+      @back-to-sub-domains="handleBackToSubDomains"
+      @back-to-sub-GraphList="backToSubGraphList"
+      @search="handleSearch"
+      @select-search-item="selectSearchItem"
+      @drag-start="handleDragStart"
+      @drag-end="handleDragEnd"
+      @create-graph-click="handleCreateGraphClick"
+      @graph-click="handleGraphClick"
+      @edit-graph="handleEditGraph"
+      @delete-graph="handleDeleteGraph"
+      @delete-topic="handleDeleteTopic"
+      @topic-search="handleTopicSearch"
+      @search-icon-click="handleSearchIconClick"
+      @topic-search-icon-click="handleTopicSearchIconClick"
+      @graph-search="handleGraphSearch"
+      @graph-search-icon-click="handleGraphSearchIconClick"
+      @clear-domain-history="clearDomainSearchHistory"
+      @clear-topic-history="clearTopicSearchHistory"
+      @clear-graph-history="clearGraphSearchHistory"
+      @topic-click="handleTopicClick"
     />
-    <!-- 新增/编辑弹窗 -->
+    <!-- 新增/编辑弹窗textUrl -->
     <AddGraphDialog
-        v-model:visible="showGraphDialog"
-        :is-confirm-button-disabled="isConfirmButtonDisabled"
-        @create-graph="handleCreateGraph"
-        @cancel="handleCancelCreateGraph"
+      v-model:visible="showGraphDialog"
+      :is-confirm-button-disabled="isConfirmButtonDisabled"
+      @create-graph="handleCreateGraph"
+      @cancel="handleCancelCreateGraph"
     />
-    <div class="text-container">
+    <div v-if="currentGraphId&&textUrl" class="text-container">
       <Text
         ref="textRef"
         :src="textUrl"
         :page="currentPage"
         @selection-change="handlePdfSelectionChange"
+        @rectangle-click="handleRectangleClick"
+        @pdf-loaded="handlePdfLoaded"
       />
     </div>
-    <div class="graph-container">
+    <div v-if="currentGraphId" class="graph-container">
       <GraphViewer
         ref="graphViewer"
         :nodes="graphNodes"
@@ -66,30 +75,64 @@
         :topic-id="currentSubDomainId"
         :domain-id="currentDomainId"
         :level="currentLevel"
+        :pdf-loaded="pdfLoaded"
       />
+      <!-- 除了文章外其他两种情况 -->
+      <!-- <Content
+       v-if="！textUrl"
+          ref="contentRef"
+          :current-sub-domain="currentSubDomain"
+          :current-mode="currentMode"
+          :has-data="hasData"
+          :graph-nodes="graphNodes"
+          :graph-edges="graphEdges"
+          :entity-properties="entityProperties"
+          @add-entity="handleAddEntity"
+          :is-connecting="isConnecting"
+          @create-relationship="handleCreateRelationship"
+          @connection-complete="handleConnectionComplete"
+          @drop="handleDrop"
+          @node-mouse-down="handleNodeMouseDown"
+          @mouse-move="handleMouseMove"
+          @mouse-up="handleMouseUp"
+          @node-drag-end="handleNodeDragEnd"
+          @node-click="handleNodeClick"
+          @edge-click="handleEdgeClick"
+          @quit="handleQuit"
+          @clear="handleClear"
+          @save-graph="handleSaveGraph"
+        /> -->
       <TextTool
-          class="tool"
-          @previous-page="hanlePreviousPage"
-          @next-page="hanleNextPage"
-          @jump-page="handleJumpPage"
-          @refresh="hanleRefresh"
-          @edit-graph="openGraphEditor"
+       v-if="currentGraphId&&textUrl"
+        class="tool"
+        @previous-page="hanlePreviousPage"
+        @next-page="hanleNextPage"
+        @jump-page="handleJumpPage"
+        @refresh="hanleRefresh"
+        @edit-graph="openGraphEditor"
       />
     </div>
     <GraphEditor
-        ref="graphEditorRef"
-        v-if="showEditor"
-        style="z-index: 9"
-        :marks="markList"
-        :nodes="editorNodes"
-        :edges="editorEdges"
-        :topic-id="currentSubDomainId"
-        @node-drag-end="handleEditorNodeDragEnd"
-        @add-entity-from-template="handleEditorAddEntity"
-        @update:node="handleEditorUpdateNode"
-        @update:edge="handleEditorUpdateEdge"
-        @quit="handleEditorQuit"
-        @close-right="handleClosePropertyPanel"
+      ref="graphEditorRef"
+      v-model:visible="showEditor"
+      :marks="markList"
+      :nodes="editorNodes"
+      :edges="editorEdges"
+      :topic-id="currentSubDomainId"
+      :article-id="currentGraphId"
+      :sequence-id="currentSequenceId"
+      :selected-sequence="currentSelectedSequence"
+      :entity-types="entityTypes"
+      :relationship-types="relationshipTypes"
+      :relation-templates="relationTemplates"
+      :node-templates="nodeTemplates"
+      @node-drag-end="handleEditorNodeDragEnd"
+      @add-entity-from-template="handleEditorAddEntity"
+      @update:node="handleEditorUpdateNode"
+      @update:edge="handleEditorUpdateEdge"
+      @quit="handleEditorQuit"
+      @close-right="handleClosePropertyPanel"
+      @submit="handleEditorSubmit"
     />
   </div>
 </template>
@@ -100,28 +143,28 @@ import { ElMessageBox } from "element-plus";
 import { ElMessage as Message } from "element-plus";
 import Sidebar from "@/components/common/Sidebar.vue";
 import AddGraphDialog from "@/components/common/AddGraphDialog.vue";
-import projectService from "@/services/graph.ts"
+import projectService from "@/services/graph.ts";
 import Text from "@/components/article/Text.vue";
-import {useConverter} from "@/mock/modules/converter.ts";
-import {GraphConfig, type NodeProperty} from "@/configs/graph.js";
+import { useConverter } from "@/mock/modules/converter.ts";
+import { GraphConfig, type NodeProperty } from "@/configs/graph.js";
 import TextTool from "@/components/article/TextTool.vue";
-import {storeToRefs} from "pinia";
-import {useTextStore} from "@/store/useTextStore";
+import { storeToRefs } from "pinia";
+import { useTextStore } from "@/store/useTextStore";
 import GraphViewer from "@/views/GraphBuilder/GraphViewer.vue";
 import GraphEditor from "@/views/GraphBuilder/GraphEditor.vue";
-import type { Mark, Rect } from "@/configs/text"
-import type {NodeTemplate} from "@/configs/graph.js";
-import {template} from "lodash";
+import type { Mark, Rect } from "@/configs/text";
+import type { NodeTemplate } from "@/configs/graph.js";
+import { template } from "lodash";
 
 const textStore = useTextStore();
 const contentRef = ref(null);
 const textRef = ref<InstanceType<typeof Text> | null>(null);
 const graphEditorRef = ref<InstanceType<typeof GraphEditor> | null>(null);
-const {currentPage, markList} = storeToRefs(textStore)
+const { currentPage, markList } = storeToRefs(textStore);
 const textUrl = ref("");
-const nodeTemplates = ref([])
-const nodeTemplateProperties = ref([])
-const {graphTypeString2Integer} = useConverter()
+const nodeTemplates = ref([]);
+const nodeTemplateProperties = ref([]);
+const { graphTypeString2Integer } = useConverter();
 // 从localStorage读取状态，或使用默认值
 const loadState = () => {
   const savedState = localStorage.getItem("GrapherPageState");
@@ -175,6 +218,7 @@ const savedEntitiesCount = ref(0);
 
 const entityTypes = ref([]);
 const relationshipTypes = ref([]);
+const relationTemplates = ref([]);
 // 当前操作类型：'entity' 或 'relationship'
 const currentOperation = ref("");
 // 关系名称
@@ -197,6 +241,7 @@ const showGraphDialog = ref(false);
 const rightClickPosition = ref({ x: 0, y: 0 });
 // 专题列表加载状态
 const isLoadingTopics = ref(false);
+const isLoadingGraphs = ref(false);
 // 连线模式状态
 const isConnecting = ref(false);
 // 源节点ID
@@ -210,8 +255,19 @@ const showEditor = ref(false);
 // 编辑器内使用的节点/边（与 GraphViewer 的 graphNodes/graphEdges 分离，不传回给 GraphViewer）
 const editorNodes = ref([]);
 const editorEdges = ref([]);
-//当前目录层级
-const currentLevel= ref(0);
+// 当前目录层级
+const currentLevel = ref(0);
+// 段落列表数据
+const sequenceListData = ref([]);
+// 当前点击的段落 sequenceId
+const currentSequenceId = ref("");
+// 当前选中的段落数据
+const currentSelectedSequence = ref(null);
+// PDF加载状态
+const pdfLoaded = ref(false);
+
+// 防止重复调用 fetchGraph 的标志
+const isFetchingGraph = ref(false);
 
 /** 当前在配置属性的节点（AddNodeDialog 确定后创建，用于属性弹窗回写） */
 const nodeForPropertyDialog = ref(null);
@@ -246,16 +302,16 @@ const loadSearchHistory = () => {
 // 保存历史搜索记录到localStorage
 const saveSearchHistory = () => {
   localStorage.setItem(
-      "domainSearchHistory",
-      JSON.stringify(domainSearchHistory.value),
+    "domainSearchHistory",
+    JSON.stringify(domainSearchHistory.value),
   );
   localStorage.setItem(
-      "topicSearchHistory",
-      JSON.stringify(topicSearchHistory.value),
+    "topicSearchHistory",
+    JSON.stringify(topicSearchHistory.value),
   );
   localStorage.setItem(
-      "graphSearchHistory",
-      JSON.stringify(graphSearchHistory.value),
+    "graphSearchHistory",
+    JSON.stringify(graphSearchHistory.value),
   );
 };
 
@@ -266,7 +322,7 @@ const addDomainSearchHistory = (query) => {
   const trimmedQuery = query.trim();
   // 移除已存在的相同记录
   domainSearchHistory.value = domainSearchHistory.value.filter(
-      (item) => item !== trimmedQuery,
+    (item) => item !== trimmedQuery,
   );
   // 添加到开头
   domainSearchHistory.value.unshift(trimmedQuery);
@@ -284,7 +340,7 @@ const addTopicSearchHistory = (query) => {
   const trimmedQuery = query.trim();
   // 移除已存在的相同记录
   topicSearchHistory.value = topicSearchHistory.value.filter(
-      (item) => item !== trimmedQuery,
+    (item) => item !== trimmedQuery,
   );
   // 添加到开头
   topicSearchHistory.value.unshift(trimmedQuery);
@@ -302,7 +358,7 @@ const addGraphSearchHistory = (query) => {
   const trimmedQuery = query.trim();
   // 移除已存在的相同记录
   graphSearchHistory.value = graphSearchHistory.value.filter(
-      (item) => item !== trimmedQuery,
+    (item) => item !== trimmedQuery,
   );
   // 添加到开头
   graphSearchHistory.value.unshift(trimmedQuery);
@@ -394,25 +450,44 @@ const saveState = () => {
 };
 
 const openAddGraphDialog = () => {
-  showAddGraphDialog.value = true
-}
+  showAddGraphDialog.value = true;
+};
 
 // 监听状态变化，自动保存
 watch(
-    [
-      currentDomain,
-      currentSubDomain,
-      domains,
-      subDomains,
-      subSubDomains,
-      hasData,
-      graphs,
-      graphNodes,
-    ],
-    () => {
-      saveState();
-    },
-    { deep: true },
+  [
+    currentDomain,
+    currentDomainId,
+    currentSubDomain,
+    currentSubDomainId,
+    currentGraphId,
+    currentGraphName,
+    currentLevel,
+    domains,
+    subDomains,
+    subSubDomains,
+    hasData,
+    graphs,
+    graphNodes,
+  ],
+  () => {
+    saveState();
+  },
+  { deep: true },
+);
+
+// 监听模式变化，当从本体设计切回图谱构建时重新加载图谱列表
+watch(
+  currentMode,
+  async (newMode, oldMode) => {
+    if (newMode === 'graph' && oldMode === 'ontology' && currentSubDomainId.value) {
+      // 先设置加载状态，清空图谱列表，确保显示加载中
+      isLoadingGraphs.value = true;
+      graphs.value = [];
+      // 重新加载图谱列表
+      await fetchGraph(currentSubDomainId.value);
+    }
+  }
 );
 
 // 存储所有领域列表
@@ -430,9 +505,15 @@ onMounted(async () => {
   subDomains.value = savedState.subDomains;
   subSubDomains.value = savedState.subSubDomains;
   hasData.value = savedState.hasData;
-  graphs.value = savedState.graphs;
+  // 不直接从localStorage加载graphs，避免显示旧数据
+  graphs.value = [];
   graphNodes.value = savedState.graphNodes || [];
   currentLevel.value = savedState.currentLevel;
+
+  // 如果当前有选中的专题，立即设置加载状态，确保一进来就显示加载中
+  if (currentSubDomain.value) {
+    isLoadingGraphs.value = true;
+  }
 
   // 加载历史搜索记录
   loadSearchHistory();
@@ -448,10 +529,34 @@ onMounted(async () => {
   // 如果当前有选中的领域，获取对应的专题列表
   if (currentDomain.value) {
     const currentDomainObj = domains.value.find(
-        (domain) => domain.name === currentDomain.value,
+      (domain) => domain.name === currentDomain.value,
     );
     if (currentDomainObj) {
       await fetchTopics(currentDomainObj.id);
+
+      // 如果当前有选中的专题，获取对应的图谱列表
+      if (currentSubDomain.value) {
+        const currentSubDomainObj = topics.value.find(
+          (topic) => topic.name === currentSubDomain.value,
+        );
+        if (currentSubDomainObj) {
+          await fetchGraph(currentSubDomainObj.id);
+          await fetchEntityAndRelationTypes(currentSubDomainObj.id);
+
+          // 如果当前有选中的图谱，获取对应的文章URL
+          if (currentGraphId.value) {
+            const response = await projectService.getArticleUrl(
+              currentGraphId.value,
+            );
+            textUrl.value = response.data;
+            currentPage.value = 0;
+            hasData.value = true;
+            
+            // 调用段落列表查询接口
+            await getSequenceList(currentGraphId.value);
+          }
+        }
+      }
     }
   }
 });
@@ -555,7 +660,7 @@ const handleSearch = (query) => {
     if (query) {
       // 如果有输入内容，过滤历史记录
       const filteredHistory = topicSearchHistory.value.filter((item) =>
-          item.toLowerCase().includes(query.toLowerCase()),
+        item.toLowerCase().includes(query.toLowerCase()),
       );
       if (filteredHistory.length > 0) {
         topicSearchOptions.value = filteredHistory.map((item) => ({
@@ -574,7 +679,7 @@ const handleSearch = (query) => {
     if (query) {
       // 如果有输入内容，过滤历史记录
       const filteredHistory = domainSearchHistory.value.filter((item) =>
-          item.toLowerCase().includes(query.toLowerCase()),
+        item.toLowerCase().includes(query.toLowerCase()),
       );
       if (filteredHistory.length > 0) {
         searchOptions.value = filteredHistory.map((item) => ({
@@ -600,7 +705,7 @@ const selectSearchItem = async (value) => {
     addTopicSearchHistory(value);
     // 调用专题搜索接口
     const currentDomainObj = domains.value.find(
-        (domain) => domain.name === currentDomain.value,
+      (domain) => domain.name === currentDomain.value,
     );
     if (currentDomainObj) {
       await fetchTopics(currentDomainObj.id, value);
@@ -644,7 +749,6 @@ const handleSearchIconClick = async (query) => {
   updateDomainSearchOptions();
 };
 
-
 const handleAddEntity = (position) => {
   currentOperation.value = "entity";
   if (position && (position.x !== undefined || position.y !== undefined)) {
@@ -664,7 +768,7 @@ const handleAddEntity = (position) => {
 // 专题搜索图标点击事件处理 - 调用接口查询
 const handleTopicSearchIconClick = async (query) => {
   const currentDomainObj = domains.value.find(
-      (domain) => domain.name === currentDomain.value,
+    (domain) => domain.name === currentDomain.value,
   );
   if (currentDomainObj) {
     if (query) {
@@ -672,8 +776,8 @@ const handleTopicSearchIconClick = async (query) => {
       addTopicSearchHistory(query);
       // 调用接口获取专题列表
       const response = await projectService.getTopicProjectList(
-          query,
-          currentDomainObj.id,
+        query,
+        currentDomainObj.id,
       );
       // 更新专题列表
       if (response && response.data && response.data.length > 0) {
@@ -688,8 +792,8 @@ const handleTopicSearchIconClick = async (query) => {
     } else {
       // 搜索框为空，获取所有专题并显示
       const response = await projectService.getTopicProjectList(
-          "",
-          currentDomainObj.id,
+        "",
+        currentDomainObj.id,
       );
       if (response && response.data) {
         topics.value = response.data.map((item) => ({
@@ -707,15 +811,9 @@ const handleTopicSearchIconClick = async (query) => {
 };
 
 // 图谱搜索处理
-const handleGraphSearch = (query) => {
-  // 这里可以添加实时搜索逻辑
-  // 例如过滤图谱列表
-  if (query) {
-    // 过滤图谱列表
-    const filteredGraphs = graphs.value.filter((graph) =>
-        graph.name.toLowerCase().includes(query.toLowerCase()),
-    );
-    // 这里可以更新显示的图谱列表
+const handleGraphSearch = async (query) => {
+  if (currentSubDomainId.value) {
+    await fetchGraph(currentSubDomainId.value, query);
   }
 };
 
@@ -724,11 +822,9 @@ const handleGraphSearchIconClick = async (query) => {
   if (query) {
     // 添加图谱搜索历史
     addGraphSearchHistory(query);
-    // 过滤图谱列表
-    const filteredGraphs = graphs.value.filter((graph) =>
-        graph.name.toLowerCase().includes(query.toLowerCase()),
-    );
-    // 这里可以更新显示的图谱列表
+  }
+  if (currentSubDomainId.value) {
+    await fetchGraph(currentSubDomainId.value, query);
   }
   // 更新图谱搜索下拉框选项
   updateGraphSearchOptions();
@@ -737,21 +833,36 @@ const handleGraphSearchIconClick = async (query) => {
 const handleBackToDomains = () => {
   currentDomain.value = "";
   currentSubDomain.value = "";
+  currentGraphId.value = "";
+  currentGraphName.value = "";
   subDomains.value = [];
   subSubDomains.value = [];
   // 切换回领域页面，更新下拉框显示领域搜索历史
   updateDomainSearchOptions();
+  saveState();
 };
 
 const handleBackToSubDomains = () => {
   // 保存当前子领域名称，用于显示数量
   const previousSubDomain = currentSubDomain.value;
   currentSubDomain.value = "";
+  currentGraphId.value = "";
+  currentGraphName.value = "";
   subSubDomains.value = [];
   // 可以在这里更新子领域的数量
   // 例如：subDomains中找到对应的子领域并更新其数量
+  saveState();
 };
-
+const backToSubGraphList = () => {
+  // 从图谱详情页面返回时，保持子领域名称不变，只清空图谱相关信息
+  // 这样就会回到图谱列表页面，而不是专题列表页面
+  currentGraphId.value = "";
+  currentGraphName.value = "";
+  subSubDomains.value = [];
+  // 可以在这里更新子领域的数量
+  // 例如：subDomains中找到对应的子领域并更新其数量
+  saveState();
+};
 // 存储专题列表
 const topics = ref([]);
 // 专题搜索条件
@@ -779,21 +890,20 @@ const handleDomainClick = async (domain) => {
 
   // 切换到专题页面，更新下拉框显示专题搜索历史
   updateTopicSearchOptions();
-  saveState()
-
+  saveState();
 };
 
 // 获取专题列表
 const fetchTopics = async (fieldId, condition = "") => {
   try {
     const currentDomainObj = domains.value.find(
-        (domain) => domain.id === currentDomainId.value,
+      (domain) => domain.id === currentDomainId.value,
     );
     if (!currentDomainObj) return;
 
     const response = await projectService.getTopicProjectList(
-        condition,
-        currentDomainObj.id,
+      condition,
+      currentDomainObj.id,
     );
     if (response && response.data) {
       topics.value = response.data.map((item) => ({
@@ -812,19 +922,24 @@ const fetchTopics = async (fieldId, condition = "") => {
 
 //获取图谱列表
 const fetchGraph = async (topicId, condition = "") => {
+  
+  // 防止重复调用
+  if (isFetchingGraph.value) return;
+
   try {
-    const currentTopicObj = topics.value.find(
-        (domain) => domain.id === currentSubDomainId.value,
-    );
+    
+    const currentTopicObj = topics.value.find((topic) => topic.id === topicId);
+    console.log(111111111,topicId,currentTopicObj)
     if (!currentTopicObj) return;
 
-    const response = await projectService.getGraphList(
-        currentTopicObj.id,
-    );
+    isFetchingGraph.value = true;
+    isLoadingGraphs.value = true;
 
+    const response = await projectService.getGraphList(currentTopicObj.id, condition);
+      
     if (response && response.data) {
-      graphs.value = []
-      for(const graph of response.data) {
+      graphs.value = [];
+      for (const graph of response.data) {
         const articleUrl = await projectService.getArticleUrl(graph.articleId);
         const newGraph: GraphConfig = {
           id: graph.articleId,
@@ -837,21 +952,24 @@ const fetchGraph = async (topicId, condition = "") => {
           domainName: currentDomain.value,
           createMethod: graph.createMethod,
           createdAt: graph.createTime,
-        }
+        };
         graphs.value.push(newGraph);
       }
+    } else {
+      graphs.value = [];
+    }
 
       //graphs.value = response.data.map((item) => ({
       //  id: item.articleId,
       //  name: item.articleName,
       //  topicId: item.topicId,
       //}));
-    } else {
-      graphs.value = [];
-    }
   } catch (error) {
-    console.error("获取专题列表失败:", error);
+    console.error("获取图谱列表失败:", error);
     graphs.value = [];
+  } finally {
+    isLoadingGraphs.value = false;
+    isFetchingGraph.value = false;
   }
 };
 
@@ -873,7 +991,7 @@ const handleDeleteTopic = async (id) => {
 
     // 删除成功后，重新获取专题列表
     const currentDomainObj = domains.value.find(
-        (domain) => domain.name === currentDomain.value,
+      (domain) => domain.name === currentDomain.value,
     );
     if (currentDomainObj) {
       await fetchTopics(currentDomainObj.id);
@@ -894,7 +1012,7 @@ const handleTopicSearch = (query) => {
   if (query) {
     // 如果有输入内容，过滤历史记录
     const filteredHistory = topicSearchHistory.value.filter((item) =>
-        item.toLowerCase().includes(query.toLowerCase()),
+      item.toLowerCase().includes(query.toLowerCase()),
     );
     if (filteredHistory.length > 0) {
       topicSearchOptions.value = filteredHistory.map((item) => ({
@@ -918,10 +1036,43 @@ const handleTopicClick = async (subDomain) => {
   currentGraphId.value = "";
   currentGraphName.value = "";
   await fetchGraph(subDomain.id);
+  await fetchEntityAndRelationTypes(subDomain.id);
   textUrl.value = "";
   saveState();
 };
 
+// 获取实体和关系类型列表
+const fetchEntityAndRelationTypes = async (topicId) => {
+  try {
+    const response = await projectService.queryTemplate(topicId);
+    if (response && response.data) {
+      // 处理实体类型
+      if (response.data.nodeTemplates && Array.isArray(response.data.nodeTemplates)) {
+        entityTypes.value = response.data.nodeTemplates.map((item) => item.nodeTemplateName);
+        nodeTemplates.value = response.data.nodeTemplates;
+      } else {
+        entityTypes.value = [];
+        nodeTemplates.value = [];
+      }
+      
+      // 处理关系类型
+      if (response.data.relationTemplates && Array.isArray(response.data.relationTemplates)) {
+        relationTemplates.value = response.data.relationTemplates;
+      } else {
+        relationTemplates.value = [];
+      }
+    } else {
+      entityTypes.value = [];
+      nodeTemplates.value = [];
+      relationTemplates.value = [];
+    }
+  } catch (error) {
+    console.error("获取实体和关系类型列表失败:", error);
+    entityTypes.value = [];
+    nodeTemplates.value = [];
+    relationTemplates.value = [];
+  }
+};
 
 const handleCreateRelationship = (sourceId) => {
   console.log("开始创建关系，源节点ID:", sourceId);
@@ -944,7 +1095,9 @@ const handleCreateRelationship = (sourceId) => {
 
 const handleClosePropertyPanel = () => {
   // 关闭时清除编辑器中的临时节点（拖入未确认的 virtualNode）
-  editorNodes.value = editorNodes.value.filter((n) => String(n.id) !== "virtualNode");
+  editorNodes.value = editorNodes.value.filter(
+    (n) => String(n.id) !== "virtualNode",
+  );
 
   // 关闭属性面板后，清除虚线
   //if (currentOperation.value === "relationship" && contentRef.value) {
@@ -982,7 +1135,6 @@ const handleConnectionComplete = (targetId) => {
   showPropertyPanel.value = true;
   console.log("打开关系属性面板");
 };
-
 
 // 处理拖拽开始
 const handleDragStart = (event, type, item) => {
@@ -1023,7 +1175,6 @@ const handleDrop = (event) => {
   graphNodes.value.push(newNode);
   hasData.value = true;
 };
-
 
 // 处理节点鼠标按下
 const handleNodeMouseDown = (event, nodeId) => {
@@ -1083,7 +1234,7 @@ const handleCreateGraph = async (graphData) => {
     Message.warning("请输入图谱名称");
     return;
   }
-  const state = loadState()
+  const state = loadState();
   if (!graphData.createMethod) {
     Message.warning("请选择创建方式");
     return;
@@ -1096,8 +1247,10 @@ const handleCreateGraph = async (graphData) => {
     articleName: graphData.graphName,
     createMethod: graphTypeString2Integer(graphData.createMethod).toString(),
     topicId: state.currentSubDomainId,
-    uploadedFile: graphData.createMethod === "text" ? graphData.uploadedFile : null,
-    databaseName: graphData.createMethod === "database" ? graphData.databaseName : "",
+    uploadedFile:
+      graphData.createMethod === "text" ? graphData.uploadedFile : null,
+    databaseName:
+      graphData.createMethod === "database" ? graphData.databaseName : "",
     anyContent: graphData.createMethod === "any" ? graphData.anyContent : "",
   };
 
@@ -1105,28 +1258,20 @@ const handleCreateGraph = async (graphData) => {
   console.log("创建图谱:", graphDataToSend);
 
   // 模拟创建成功
-  const addGraphResponse = await projectService.addArticle(graphDataToSend)
-  if(addGraphResponse.code === 200) {
-
+  console.log("state.currentSubDomainId:", state.currentSubDomainId);
+  const addGraphResponse = await projectService.addArticle(graphDataToSend);
+  console.log("添加图谱响应:", addGraphResponse);
+  if (addGraphResponse.resultCode === "0000") {
     hasData.value = true; // 设置 hasData 为 true，显示关系图
 
     //跳转至新的url
-    const textUrlResponse = await projectService.getArticleUrl(addGraphResponse.data);
+    const textUrlResponse = await projectService.getArticleUrl(
+      addGraphResponse.data,
+    );
     textUrl.value = textUrlResponse.data;
 
-    const newGraph: GraphConfig = {
-      id: addGraphResponse.data,
-      name: graphData.graphName,
-      articleUrl: textUrl.value,
-      articleName: graphData.uploadedFile.name,
-      topicId: state.currentSubDomainId,
-      topicName: state.currentSubDomain,
-      domainId: state.currentDomainId,
-      domainName: state.currentDomain,
-      createMethod: graphData.createMethod,
-      createdAt: new Date().toISOString(),
-    };
-    graphs.value.push(newGraph);
+    // 重新获取图谱列表，确保数据同步
+    await fetchGraph(state.currentSubDomainId);
   }
   isConfirmButtonDisabled.value = false;
 };
@@ -1151,6 +1296,50 @@ const handleGraphClick = async (graph) => {
   currentPage.value = 0;
   // 设置 hasData 为 true，显示关系图
   hasData.value = true;
+  
+  // 调用段落列表查询接口
+  await getSequenceList(graph.id);
+};
+
+// 获取段落列表并保存图谱
+const getSequenceList = async (articleId) => {
+  try {
+    // 调用段落列表查询接口
+    const sequenceResponse = await projectService.getSequenceList(articleId);
+    if (sequenceResponse.resultCode === "0000" && sequenceResponse.data) {
+      // 存储段落列表数据
+      sequenceListData.value = sequenceResponse.data;
+      console.log("获取段落列表成功:", sequenceListData.value);
+      
+      // 绘制黄色下划线
+      if (textRef.value && sequenceListData.value.length > 0) {
+        sequenceListData.value.forEach(sequence => {
+          if (sequence.sequencePositionList && sequence.sequencePositionList.length > 0) {
+            const mark = {
+              id: `sequence-${sequence.sequenceId}`,
+              content: sequence.sequenceContent || "",
+              rects: sequence.sequencePositionList.map(pos => ({
+                x0: pos.sequenceX0,
+                y0: pos.sequenceY0,
+                x1: pos.sequenceX1,
+                y1: pos.sequenceY1,
+                width: pos.sequenceX1 - pos.sequenceX0,
+                height: pos.sequenceY1 - pos.sequenceY0,
+                page: pos.sequencePage
+              })),
+              type: 0, // MarkType.submitted
+              articleId: articleId,
+              color: "#ffff00", // 黄色
+              sequenceId: sequence.sequenceId
+            };
+            textRef.value.drawMark(mark);
+          }
+        });
+      }
+    }
+  } catch (error) {
+    console.error("获取段落列表或保存图谱失败:", error);
+  }
 };
 
 // 处理编辑图谱
@@ -1164,23 +1353,21 @@ const handleDeleteGraph = (id) => {
   console.log("删除图谱:", id);
   // 从图谱列表中移除
 
-  ElMessageBox.confirm(
-      "确定是否删除图谱吗",
-      "提示",
-      {
-        confirmButtonText: "确定",
-        cancelButtonText: "取消",
-        type: "warning",
-      }
-  ).then((result) => {
-    projectService.deleteArticle(id).then((response) => {
-      graphs.value = graphs.value.filter((graph) => graph.id !== id);
-      console.log(response);
-    })
-  }).catch((e)=>{
-    console.log("删除失败")
-    console.log(e)
+  ElMessageBox.confirm("确定是否删除图谱吗", "提示", {
+    confirmButtonText: "确定",
+    cancelButtonText: "取消",
+    type: "warning",
   })
+    .then((result) => {
+      projectService.deleteArticle(id).then((response) => {
+        graphs.value = graphs.value.filter((graph) => graph.id !== id);
+        console.log(response);
+      });
+    })
+    .catch((e) => {
+      console.log("删除失败");
+      console.log(e);
+    });
 };
 
 // 处理添加组件到实体类型
@@ -1196,10 +1383,10 @@ const handleAddEntityType = (componentName) => {
 const handleNodeDragEnd = (data) => {
   console.log("Home组件接收到节点拖拽结束事件:", data);
   console.log(
-      "接收到的nodeId类型:",
-      typeof data.nodeId,
-      "nodeId值:",
-      data.nodeId,
+    "接收到的nodeId类型:",
+    typeof data.nodeId,
+    "nodeId值:",
+    data.nodeId,
   );
   console.log("当前graphNodes:", graphNodes.value);
 
@@ -1242,7 +1429,10 @@ const handleModeChange = (mode) => {
 };
 
 // 编辑器中拖放实体类型添加节点：只写入 editorNodes，按模板颜色渲染
-const handleEditorAddEntity = (payload:{position: { x: number; y: number }, template: NodeTemplate }) => {
+const handleEditorAddEntity = (payload: {
+  position: { x: number; y: number };
+  template: NodeTemplate;
+}) => {
   const position = payload.position;
   addNodePosition.value = position;
   const templateColor = payload.template?.color ?? "#43D7B5";
@@ -1265,11 +1455,21 @@ const handleEditorAddEntity = (payload:{position: { x: number; y: number }, temp
 };
 
 // AddNodeDialog 点击确定：用正式节点替换临时节点，并弹出属性弹窗（保留模板颜色）
-const handleAddNodeConfirm = (payload: { id: string; name: string , type: string, position?: { x: number; y: number } }) => {
+const handleAddNodeConfirm = (payload: {
+  id: string;
+  name: string;
+  type: string;
+  position?: { x: number; y: number };
+}) => {
   const pos = payload.position ?? addNodePosition.value;
   const newNodeId = Date.now();
-  const virtualNode = editorNodes.value.find((n) => String(n.id) === "virtualNode");
-  const backgroundColor = (virtualNode && "backgroundColor" in virtualNode ? virtualNode.backgroundColor : undefined) ?? "#43D7B5";
+  const virtualNode = editorNodes.value.find(
+    (n) => String(n.id) === "virtualNode",
+  );
+  const backgroundColor =
+    (virtualNode && "backgroundColor" in virtualNode
+      ? virtualNode.backgroundColor
+      : undefined) ?? "#43D7B5";
   const newNode = {
     id: newNodeId,
     name: payload.name?.trim(),
@@ -1281,7 +1481,7 @@ const handleAddNodeConfirm = (payload: { id: string; name: string , type: string
     properties: [] as NodeProperty[],
   };
   editorNodes.value = editorNodes.value.map((n) =>
-    String(n.id) === "virtualNode" ? newNode : n
+    String(n.id) === "virtualNode" ? newNode : n,
   );
   nodeForPropertyDialog.value = { ...newNode };
 
@@ -1291,13 +1491,16 @@ const handleAddNodeConfirm = (payload: { id: string; name: string , type: string
   });
 };
 
-
 const handleNodePropertyCancel = () => {
   nodeForPropertyDialog.value = null;
 };
 
 // 编辑器中节点拖拽结束：只更新 editorNodes 中的位置
-const handleEditorNodeDragEnd = (data: { nodeId: string | number; position: { x: number; y: number }; data?: unknown }) => {
+const handleEditorNodeDragEnd = (data: {
+  nodeId: string | number;
+  position: { x: number; y: number };
+  data?: unknown;
+}) => {
   const nodeId = data.nodeId;
   const position = data.position;
   for (let i = 0; i < editorNodes.value.length; i++) {
@@ -1310,7 +1513,11 @@ const handleEditorNodeDragEnd = (data: { nodeId: string | number; position: { x:
 };
 
 // 右侧属性面板更新节点：同步到 editorNodes
-const handleEditorUpdateNode = (payload: { id: string | number; name?: string; properties?: unknown }) => {
+const handleEditorUpdateNode = (payload: {
+  id: string | number;
+  name?: string;
+  properties?: unknown;
+}) => {
   const id = payload.id;
   for (let i = 0; i < editorNodes.value.length; i++) {
     if (String(editorNodes.value[i].id) === String(id)) {
@@ -1321,10 +1528,20 @@ const handleEditorUpdateNode = (payload: { id: string | number; name?: string; p
 };
 
 // 右侧属性面板更新边：同步到 editorEdges
-const handleEditorUpdateEdge = (payload: { source: string | number; target: string | number; data?: unknown; id?: string | number }) => {
+const handleEditorUpdateEdge = (payload: {
+  source: string | number;
+  target: string | number;
+  data?: unknown;
+  id?: string | number;
+}) => {
   const edges = editorEdges.value;
-  const match = (e: { source: string | number; target: string | number; id?: string | number }) =>
-    String(e.source) === String(payload.source) && String(e.target) === String(payload.target) ||
+  const match = (e: {
+    source: string | number;
+    target: string | number;
+    id?: string | number;
+  }) =>
+    (String(e.source) === String(payload.source) &&
+      String(e.target) === String(payload.target)) ||
     (payload.id != null && String(e.id) === String(payload.id));
   for (let i = 0; i < edges.length; i++) {
     if (match(edges[i])) {
@@ -1349,16 +1566,117 @@ const openGraphEditor = () => {
   if (showEditor.value) {
     editorNodes.value = JSON.parse(JSON.stringify(graphNodes.value));
     editorEdges.value = JSON.parse(JSON.stringify(graphEdges.value));
+    // 重置 currentSequenceId，因为这是通过编辑按钮打开的，不是通过点击段落打开的
+    currentSequenceId.value = "";
+    // 如果有用户手动选择的内容，将其设置为 currentSelectedSequence
+    if (pdfSelectionMark.value) {
+      currentSelectedSequence.value = {
+        sequenceId: `manual-${Date.now()}`,
+        sequenceContent: pdfSelectionMark.value.content,
+        sequencePositionList: pdfSelectionMark.value.rects.map(rect => ({
+          sequenceX0: rect.x0,
+          sequenceY0: rect.y0,
+          sequenceX1: rect.x1,
+          sequenceY1: rect.y1,
+          sequencePage: rect.page
+        }))
+      };
+    } else {
+      // 否则清空 currentSelectedSequence
+      currentSelectedSequence.value = null;
+    }
   }
-}
+};
+
+const handleRectangleClick = (payload) => {
+  // 检查是否是黄色下划线（#ffff00）
+  if (payload.color === "#ffff00") {
+    // 打开 GraphEditor 弹窗
+    showEditor.value = true;
+    if (showEditor.value) {
+      editorNodes.value = JSON.parse(JSON.stringify(graphNodes.value));
+      editorEdges.value = JSON.parse(JSON.stringify(graphEdges.value));
+      // 保存当前点击的 sequenceId
+      currentSequenceId.value = payload.sequenceId;
+      // 查找并保存当前选中的段落数据
+      const sequence = sequenceListData.value.find(s => s.sequenceId === payload.sequenceId);
+      currentSelectedSequence.value = sequence;
+    }
+  }
+};
+
+// 处理PDF加载完成事件
+const handlePdfLoaded = (loaded) => {
+  console.log('PDF加载完成:', loaded);
+  pdfLoaded.value = loaded;
+};
 
 const hanleRefresh = () => {
-  textRef.value?.clearEditing()
-  textStore.clearMarkList()
+  textRef.value?.clearEditing();
+  textStore.clearMarkList();
   showEditor.value = false;
-}
+};
 
-
+// 处理编辑器提交
+const handleEditorSubmit = async () => {
+  console.log('编辑器提交，重新获取图谱数据和段落列表');
+  // 重新获取图谱数据和段落列表
+  if (currentGraphId.value) {
+    try {
+      // 并行调用接口
+      const [graphResponse, sequenceResponse] = await Promise.all([
+        projectService.getGraphByArticleId(currentGraphId.value),
+        projectService.getSequenceList(currentGraphId.value)
+      ]);
+      
+      // 更新图谱数据
+      if (graphResponse && graphResponse.data) {
+        graphNodes.value = graphResponse.data.nodes || [];
+        graphEdges.value = graphResponse.data.relations || [];
+        console.log('图谱数据更新成功');
+      }
+      
+      // 更新段落列表数据
+      if (sequenceResponse && sequenceResponse.resultCode === "0000" && sequenceResponse.data) {
+        sequenceListData.value = sequenceResponse.data;
+        console.log('段落列表数据更新成功');
+        
+        // 重新绘制黄色下划线
+        if (textRef.value && sequenceListData.value.length > 0) {
+          // 先清除之前的标记
+          textRef.value.clearMark();
+          // 重新绘制黄色下划线
+          sequenceListData.value.forEach(sequence => {
+            if (sequence.sequencePositionList && sequence.sequencePositionList.length > 0) {
+              const mark = {
+                id: `sequence-${sequence.sequenceId}`,
+                content: sequence.sequenceContent || "",
+                rects: sequence.sequencePositionList.map(pos => ({
+                  x0: pos.sequenceX0,
+                  y0: pos.sequenceY0,
+                  x1: pos.sequenceX1,
+                  y1: pos.sequenceY1,
+                  width: pos.sequenceX1 - pos.sequenceX0,
+                  height: pos.sequenceY1 - pos.sequenceY0,
+                  page: pos.sequencePage
+                })),
+                type: 0, // MarkType.submitted
+                articleId: currentGraphId.value,
+                color: "#ffff00", // 黄色
+                sequenceId: sequence.sequenceId
+              };
+              textRef.value.drawMark(mark);
+            }
+          });
+        }
+      }
+    } catch (error) {
+      console.error('获取数据失败:', error);
+    }
+  }
+  // 关闭编辑器
+  showEditor.value = false;
+};
 </script>
 
 <style scoped lang="scss">
@@ -1368,16 +1686,16 @@ const hanleRefresh = () => {
   top: 0;
   left: 0;
   width: 100%;
-  height: 90vh;
+  height: calc(100vh - 72px);
 }
-.project-card-list-container{
+.project-card-list-container {
   position: absolute;
   top: 0;
   left: 280px;
   width: 165vh;
   height: 85vh;
 }
-.text-container{
+.text-container {
   position: relative;
   width: 35%;
   height: 100%;
@@ -1385,19 +1703,20 @@ const hanleRefresh = () => {
   left: 0;
 }
 
-.graph-container{
+.graph-container {
   position: relative;
   display: flex;
-  width: 40%;
+  // width: 40%;
+  flex: 1;
   height: 100%;
   top: 0;
   left: 0;
 }
-.tool{
+.tool {
   position: absolute;
-  left: 25%;
-  bottom: 5%;
-  height: 45px;
+  left: 4%;
+  bottom: 3%;
+  height: 70px;
 }
 </style>
 

@@ -1474,17 +1474,36 @@ const handleDrop = (event) => {
   const y = event.clientY - rect.top;
 
   // 创建新的图谱节点
+  let nodeName = typeof item === "string" ? item : (item.name || item.nodeTemplateName);
+  let nodeTemplateId = typeof item === "object" && item.nodeTemplateId ? item.nodeTemplateId : 0;
+  let backgroundColor = "#43D7B5"; // 默认颜色
+  let description = "";
+
+  // 尝试从组件库中找到对应的实体模板，获取颜色和描述
+  if (type === "entity") {
+    const component = components.value.find(comp => 
+      comp.nodeTemplateName === nodeName || 
+      (comp.nodeTemplateId && comp.nodeTemplateId === nodeTemplateId)
+    );
+    if (component) {
+      backgroundColor = component.nodeTemplateColor || backgroundColor;
+      description = component.nodeTemplateDescription || description;
+    }
+  }
+
   const newNode = {
     id: Date.now(),
     type: type,
-    name: typeof item === "string" ? item : item.nodeTemplateName,
+    name: nodeName,
+    description: description,
     x: x,
     y: y,
     // 添加属性信息
     properties: type === "entity" ? [...entityProperties.value] : [],
     // 添加节点模板ID
-    nodeTemplateId:
-      typeof item === "object" && item.nodeTemplateId ? item.nodeTemplateId : 0,
+    nodeTemplateId: nodeTemplateId,
+    // 添加背景颜色
+    backgroundColor: backgroundColor,
   };
 
   graphNodes.value.push(newNode);

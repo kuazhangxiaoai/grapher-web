@@ -54,7 +54,13 @@ const drawLine = (x0:number, y0:number, length: number, lineness: number, color:
   layerElem.appendChild(lineElem);
 }
 
-const drawRectangle = (x0:number, y0:number, width: number, height: number, lineness: number, color: MarkColor, type: MarkType) => {
+const emit = defineEmits<{ (e: 'rectangle-click', payload: { x0: number; y0: number; width: number; height: number; color: MarkColor; type: MarkType; sequenceId?: string }): void }>();
+
+const handleRectangleClick = (x0: number, y0: number, width: number, height: number, color: MarkColor, type: MarkType, sequenceId?: string) => {
+  emit('rectangle-click', { x0, y0, width, height, color, type, sequenceId });
+};
+
+const drawRectangle = (x0:number, y0:number, width: number, height: number, lineness: number, color: MarkColor, type: MarkType, sequenceId?: string) => {
   const layerElem = document.getElementById("highlight");
   const rectangleElem = document.createElement("div");
   rectangleElem.id = `${type}-${x0}-${y0}-${width}-${height}`;
@@ -72,6 +78,12 @@ const drawRectangle = (x0:number, y0:number, width: number, height: number, line
   const handler = (e: MouseEvent) => handleRectangleMouseMove(e, rectangleElem);
   rectangleElem.addEventListener("mousemove", handler);
   rectangleListeners.push({ element: rectangleElem, handler });
+  
+  // 添加点击事件
+  const clickHandler = () => handleRectangleClick(x0, y0, width, height, color, type, sequenceId);
+  rectangleElem.addEventListener("click", clickHandler);
+  rectangleListeners.push({ element: rectangleElem, handler: clickHandler as any });
+  
   layerElem.appendChild(rectangleElem);
   rectangle.value = {
     x0: x0,

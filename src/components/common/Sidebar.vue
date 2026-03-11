@@ -267,7 +267,7 @@
       <!-- 图谱构建模式 -->
       <div v-if="currentMode === 'graph'" class="graph-container">
         <!-- 搜索框 -->
-        <div class="search-container">
+        <div class="search-container" v-if="!props.activeGraphItem">
           <el-input
             v-model="localSearchQuery"
             placeholder="搜索图谱"
@@ -331,57 +331,167 @@
         </div>
 
         <!-- 图谱项目 -->
-        <div v-if="graphs && graphs.length > 0" class="graph-items">
-          <div
-            v-for="graph in graphs"
-            :key="graph.id"
-            class="graph-item"
-            :class="{
-              'graph-item-active':
-                String(props.activeGraphItem) === String(graph.id),
-            }"
-            @click="handleGraphClick(graph)"
-          >
-            <div class="graph-info">
-              <span>{{ graph.name }}</span>
+        <div v-if="!props.activeGraphItem" class="graph-items">
+          <div v-if="isLoadingGraphs" class="loading-container">
+            <div class="loading-icon"></div>
+            <span class="loadings">加载中...</span>
+          </div>
+          <div v-else-if="graphs && graphs.length > 0">
+            <div
+              v-for="graph in graphs"
+              :key="graph.id"
+              class="graph-item"
+              :class="{
+                'graph-item-active':
+                  String(props.activeGraphItem) === String(graph.id),
+              }"
+              @click="handleGraphClick(graph)"
+            >
+              <div class="graph-info">
+                <span>{{ graph.name }}</span>
+              </div>
+              <div class="graph-actions">
+                <img
+                  src="@/assets/images/编辑.png"
+                  alt="arrow"
+                  class="arrow-icon"
+                  @click.stop="handleEditGraph(graph)"
+                  title="编辑"
+                />
+                <button
+                  class="delete-btn"
+                  @click.stop="handleDeleteGraph(graph.id)"
+                  title="删除"
+                >
+                  <img src="@/assets/images/矩形.png" alt="delete" />
+                </button>
+              </div>
             </div>
-            <div class="graph-actions">
+          </div>
+          <div v-else class="empty-list">
+            <div class="list-placeholder">
               <img
-                src="@/assets/images/编辑.png"
-                alt="arrow"
-                class="arrow-icon"
-                @click.stop="handleEditGraph(graph)"
-                title="编辑"
+                src="@/assets/images/Frame.png"
+                alt="empty"
+                class="empty-icon"
               />
-              <button
-                class="delete-btn"
-                @click.stop="handleDeleteGraph(graph.id)"
-                title="删除"
-              >
-                <img src="@/assets/images/矩形.png" alt="delete" />
-              </button>
+              <span>暂无图谱</span>
             </div>
           </div>
-        </div>
-        <div v-else class="empty-list">
-          <div class="list-placeholder">
-            <img
-              src="@/assets/images/Frame.png"
-              alt="empty"
-              class="empty-icon"
-            />
-            <span>暂无图谱</span>
+          <!-- 新建图谱按钮 -->
+          <div class="add-btn">
+            <el-button
+              type="success"
+              size="small"
+              @click="handleCreateGraphClick"
+            >
+              <el-icon class="plusIcon"><Plus /></el-icon>新建图谱</el-button
+            >
           </div>
         </div>
-        <!-- 新建图谱按钮 -->
-        <div class="add-btn">
-          <el-button
-            type="success"
-            size="small"
-            @click="handleCreateGraphClick"
-          >
-            <el-icon class="plusIcon"><Plus /></el-icon>新建图谱</el-button
-          >
+        <!-- 图谱详情页面 -->
+        <div v-else class="sub-sub-domain-container">
+          <!-- 图谱名称 -->
+          <div class="graph-name-container">
+            <div class="graph-name-left">
+              <img src="@/assets/images/内容.png" alt="" />
+              <h2 class="graph-name">
+                {{
+                  graphs.find(
+                    (g) => String(g.id) === String(props.activeGraphItem),
+                  )?.name
+                }}
+              </h2>
+            </div>
+            <button class="back-btn" @click="handleBackToGraphList">
+              <img src="@/assets/images/返回.png" alt="返回" />
+            </button>
+          </div>
+          <!-- 数据列表 -->
+          <div class="data-list-container">
+            <!-- 实体类型 -->
+            <div class="data-section">
+              <h3>实体类型</h3>
+              <div
+                class="entity-types"
+                :class="{ 'empty-data': entityTypes.length === 0 }"
+              >
+                <span class="empty-data-msg" v-if="entityTypes.length === 0"
+                  >暂无实体类型</span
+                >
+                <div
+                  v-for="(type, index) in entityTypes"
+                  :key="index"
+                  class="entity-type-item"
+                  :class="{
+                    'entity-type-item-selected': selectedEntityType === type,
+                  }"
+                  draggable="true"
+                  @dragstart="
+                    handleDragStart($event, 'entity', {
+                      name: type,
+                      nodeTemplateId: 0,
+                    })
+                  "
+                  @dragend="handleDragEnd"
+                  @click="handleEntityTypeClick(type)"
+                >
+                  {{ type }}
+                </div>
+              </div>
+            </div>
+
+            <!-- 关系类型 -->
+            <div class="data-section">
+              <h3>关系类型</h3>
+              <div class="relationship-types">
+                <span
+                  class="empty-data-msg"
+                  v-if="relationTemplates.length === 0"
+                  >暂无关系类型</span
+                >
+                <div
+                  v-for="template in relationTemplates"
+                  :key="template.relationTemplateId"
+                  class="relationship-type-item"
+                  :class="{
+                    'relationship-type-item-selected':
+                      selectedRelationshipType ===
+                      template.relationTemplateName,
+                  }"
+                  draggable="true"
+                  @dragstart="
+                    handleDragStart(
+                      $event,
+                      'relationship',
+                      template.relationTemplateName,
+                    )
+                  "
+                  @dragend="handleDragEnd"
+                  @click="
+                    handleRelationshipTypeClick(template.relationTemplateName)
+                  "
+                >
+                  <div
+                    class="relationship-icon"
+                    :class="{
+                      'relationship-icon-directed':
+                        template.relationTemplateType === '1',
+                      'relationship-icon-bidirectional':
+                        template.relationTemplateType === '2',
+                      'relationship-icon-loop':
+                        template.relationTemplateType === '3',
+                    }"
+                  ></div>
+                  {{ template.relationTemplateName }}
+                </div>
+              </div>
+            </div>
+            <!-- <div class="graphMessage">
+              <div>提示：</div>
+              <div>可通过拖拽形式创建节点</div>
+            </div> -->
+          </div>
         </div>
       </div>
 
@@ -696,6 +806,10 @@ const props = defineProps({
     default: false,
   },
   isLoadingTopics: {
+    type: Boolean,
+    default: false,
+  },
+  isLoadingGraphs: {
     type: Boolean,
     default: false,
   },
@@ -1026,6 +1140,10 @@ const handleEditGraph = (graph) => {
 // 处理删除图谱
 const handleDeleteGraph = (id) => {
   emit("delete-graph", id);
+};
+
+const handleBackToGraphList = () => {
+  emit("back-to-sub-GraphList");
 };
 
 // 搜索框清空事件处理
@@ -1764,12 +1882,14 @@ defineExpose({
 }
 
 .graph-items {
-  margin-bottom: 25px;
-  // flex: 1;
-  height: 73vh;
+  // margin-bottom: 25px;
+  flex: 1;
+  // height: 73vh;
   overflow-y: auto;
   padding-right: 8px;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 }
 
 .graph-item {
@@ -1859,6 +1979,68 @@ defineExpose({
   height: 100%;
   display: flex;
   flex-direction: column;
+}
+
+.graph-name-container {
+  // margin-bottom: 20px;
+  padding-bottom: 15px;
+  // border-bottom: 1px dashed rgba(238, 238, 238, 1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  gap: 8px;
+  img {
+    width: 20px;
+    height: 20px;
+  }
+  .graph-name-left {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 8px;
+    width: 85%;
+  }
+}
+
+.back-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s;
+
+  &:hover {
+    // transform: translateX(-2px);
+  }
+
+  img {
+    width: 16px;
+    height: 16px;
+  }
+}
+.graphMessage {
+  background: #f6fdfd;
+  border: 0.8px solid rgba(193, 230, 221, 1);
+  border-radius: 8px;
+  padding: 16px;
+  font-size: 14px;
+  color: #3dd2b0;
+  margin-top: 60px;
+  line-height: 26px;
+}
+.graph-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  // max-width: 70px;
 }
 .data-list-container {
   flex: 1;
