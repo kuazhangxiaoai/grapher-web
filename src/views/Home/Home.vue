@@ -1574,6 +1574,7 @@ const handleAddTopic = async (name) => {
 
 // 图谱创建相关状态
 const isConfirmButtonDisabled = ref(false);
+const isLoading = ref(false);
 
 // 处理创建图谱
 const handleCreateGraph = async (graphData) => {
@@ -1588,6 +1589,7 @@ const handleCreateGraph = async (graphData) => {
   }
 
   isConfirmButtonDisabled.value = true;
+  isLoading.value = true;
 
   try {
     // 构造图谱数据
@@ -1618,6 +1620,9 @@ const handleCreateGraph = async (graphData) => {
     graphs.value.push(newGraph);
     // 设置 hasData 为 true，显示关系图
     hasData.value = true;
+    
+    // 关闭弹窗
+    showGraphDialog.value = false;
     // } else {
     //   Message.error(response.message || "图谱创建失败");
     // }
@@ -1625,6 +1630,7 @@ const handleCreateGraph = async (graphData) => {
     Message.error("图谱创建失败，请稍后重试");
   } finally {
     isConfirmButtonDisabled.value = false;
+    isLoading.value = false;
   }
 };
 
@@ -2520,6 +2526,7 @@ const handleClearSelections = () => {
     <AddGraphDialog
       v-model:visible="showGraphDialog"
       :is-confirm-button-disabled="isConfirmButtonDisabled"
+      :loading="isLoading"
       @create-graph="handleCreateGraph"
       @cancel="handleCancelCreateGraph"
     />

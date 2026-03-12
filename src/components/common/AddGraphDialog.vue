@@ -73,10 +73,11 @@
     <template #footer>
       <span class="dialog-footer">
         <el-button class="cancel-btn" @click="handleCancel">取消</el-button>
+          <!-- :disabled="isConfirmButtonDisabled || loading" -->
         <el-button
           class="confirm-btn"
           @click="handleConfirm"
-          :disabled="isConfirmButtonDisabled"
+          :loading="loading"
           >确定</el-button
         >
       </span>
@@ -99,6 +100,10 @@ const props = defineProps({
     default: "新建图谱",
   },
   isConfirmButtonDisabled: {
+    type: Boolean,
+    default: false,
+  },
+  loading: {
     type: Boolean,
     default: false,
   },
@@ -129,6 +134,7 @@ watch(
         uploadedFile: null,
         databaseName: "",
         anyContent: "",
+        publishDate: "",
       };
     }
   },
@@ -147,8 +153,7 @@ const handleCancel = () => {
 const handleConfirm = () => {
   if (form.value.graphName.trim() && form.value.createMethod) {
     emit("create-graph", form.value);
-    dialogVisible.value = false;
-    emit("update:visible", false);
+    // 不再自动关闭弹窗，由父组件在 API 调用成功后关闭
   }
 };
 
@@ -198,7 +203,7 @@ const handleClose = () => {
 .cancel-btn {
   padding-left: 30px;
   padding-right: 30px;
-  background: #f0f0f0;
+  background: #f0f0f0 !important;
   border-radius: 4px;
   font-size: 14px;
   color: #666666;

@@ -23,7 +23,7 @@
                 alt="empty"
                 class="empty-icon"
               />
-              <span>白板中暂无容器{{ entityTypes.length }}{{ relationshipTypes.length }}</span>
+              <span>白板中暂无容器</span>
             </div>
           </div>
         </div>
@@ -32,7 +32,7 @@
         <div v-else class="data-list-container">
           <!-- 实体类型 -->
           <div class="data-section">
-            <h3>实体类型</h3>
+            <h3>实体模板</h3>
             <div
               class="entity-types"
               :class="{ 'empty-data': entityTypes.length === 0 }"
@@ -70,7 +70,7 @@
 
           <!-- 关系类型 -->
           <div class="data-section">
-            <h3>关系类型</h3>
+            <h3>关系模板</h3>
             <div class="relationship-types">
               <span class="empty-data-msg" v-if="relationTemplates.length === 0"
                 >暂无关系模板</span
@@ -245,7 +245,7 @@ defineExpose({
 });
 </script>
 
-<style sco4ed lang="scss">
+<style scoped lang="scss">
 .sidebar {
   width: 260px;
   background-color: white;
@@ -378,7 +378,7 @@ defineExpose({
   gap: 12px;
   margin-bottom: 16px;
   overflow-y: auto;
-  max-height: 200px;
+  max-height: 260px;
   padding-right: 8px;
 }
 .empty-data {
@@ -413,7 +413,7 @@ defineExpose({
   flex-direction: column;
   gap: 12px;
   overflow-y: auto;
-  max-height: 200px;
+  max-height: 260px;
   padding-right: 8px;
 }
 

@@ -53,6 +53,7 @@
     <AddGraphDialog
       v-model:visible="showGraphDialog"
       :is-confirm-button-disabled="isConfirmButtonDisabled"
+      :loading="isLoading"
       @create-graph="handleCreateGraph"
       @cancel="handleCancelCreateGraph"
     />
@@ -126,6 +127,7 @@
       :relationship-types="relationshipTypes"
       :relation-templates="relationTemplates"
       :node-templates="nodeTemplates"
+      :show-reference-text="!!currentSequenceId || !!pdfSelectionMark"
       @node-drag-end="handleEditorNodeDragEnd"
       @add-entity-from-template="handleEditorAddEntity"
       @update:node="handleEditorUpdateNode"
@@ -1170,6 +1172,8 @@ const handleDrop = (event) => {
     y: y,
     // 添加属性信息
     properties: type === "entity" ? [...entityProperties.value] : [],
+    nodeTemplateName: item,
+    nodeName: item,
   };
 
   graphNodes.value.push(newNode);
@@ -1227,6 +1231,7 @@ const handleJumpPage = (page: number) => {
 
 // 图谱创建相关状态
 const isConfirmButtonDisabled = ref(false);
+const isLoading = ref(false);
 
 // 处理创建图谱
 const handleCreateGraph = async (graphData) => {
@@ -1241,6 +1246,7 @@ const handleCreateGraph = async (graphData) => {
   }
 
   isConfirmButtonDisabled.value = true;
+  isLoading.value = true;
 
   // 构造图谱数据
   const graphDataToSend = {
@@ -1259,21 +1265,31 @@ const handleCreateGraph = async (graphData) => {
 
   // 模拟创建成功
   console.log("state.currentSubDomainId:", state.currentSubDomainId);
-  const addGraphResponse = await projectService.addArticle(graphDataToSend);
-  console.log("添加图谱响应:", addGraphResponse);
-  if (addGraphResponse.resultCode === "0000") {
-    hasData.value = true; // 设置 hasData 为 true，显示关系图
+  try {
+    const addGraphResponse = await projectService.addArticle(graphDataToSend);
+    console.log("添加图谱响应:", addGraphResponse);
+    if (addGraphResponse.resultCode === "0000") {
+      hasData.value = true; // 设置 hasData 为 true，显示关系图
 
-    //跳转至新的url
-    const textUrlResponse = await projectService.getArticleUrl(
-      addGraphResponse.data,
-    );
-    textUrl.value = textUrlResponse.data;
+      //跳转至新的url
+      const textUrlResponse = await projectService.getArticleUrl(
+        addGraphResponse.data,
+      );
+      textUrl.value = textUrlResponse.data;
 
-    // 重新获取图谱列表，确保数据同步
-    await fetchGraph(state.currentSubDomainId);
+      // 重新获取图谱列表，确保数据同步
+      await fetchGraph(state.currentSubDomainId);
+      
+      // 关闭弹窗
+      showGraphDialog.value = false;
+    }
+  } catch (error) {
+    console.error("创建图谱失败:", error);
+    Message.error("创建图谱失败，请稍后重试");
+  } finally {
+    isConfirmButtonDisabled.value = false;
+    isLoading.value = false;
   }
-  isConfirmButtonDisabled.value = false;
 };
 
 // 处理创建图谱点击
@@ -1296,6 +1312,12 @@ const handleGraphClick = async (graph) => {
   currentPage.value = 0;
   // 设置 hasData 为 true，显示关系图
   hasData.value = true;
+  
+  // 清除之前的标记，避免切换图谱时残留上一个图谱的黄色下划线
+  textStore.setMarkList([]);
+  if (textRef.value) {
+    textRef.value.clearMark();
+  }
   
   // 调用段落列表查询接口
   await getSequenceList(graph.id);
@@ -1332,6 +1354,10 @@ const getSequenceList = async (articleId) => {
               color: "#ffff00", // 黄色
               sequenceId: sequence.sequenceId
             };
+            // 将标记添加到 textStore 中，确保手动选中文本时不会消失
+            if (!textStore.markList.some(m => m.id === mark.id)) {
+              textStore.addMark(mark);
+            }
             textRef.value.drawMark(mark);
           }
         });
@@ -1479,6 +1505,8 @@ const handleAddNodeConfirm = (payload: {
     y: pos.y,
     backgroundColor,
     properties: [] as NodeProperty[],
+    nodeTemplateName: payload.name?.trim(),
+    nodeName: payload.name?.trim(),
   };
   editorNodes.value = editorNodes.value.map((n) =>
     String(n.id) === "virtualNode" ? newNode : n,
@@ -1558,6 +1586,9 @@ const handleEditorQuit = () => {
   // 可选：清空编辑器内部数据，避免下次残留
   editorNodes.value = [];
   editorEdges.value = [];
+  // 清空选中的序列和PDF选择标记，避免下次打开编辑器时显示旧的参考文本
+  currentSelectedSequence.value = null;
+  pdfSelectionMark.value = null;
   hanleRefresh();
 };
 
@@ -1613,7 +1644,8 @@ const handlePdfLoaded = (loaded) => {
 
 const hanleRefresh = () => {
   textRef.value?.clearEditing();
-  textStore.clearMarkList();
+  // 只清除手动选择的蓝线（MarkType.editing），保留从接口返回的黄色下划线标记
+  textStore.setMarkList(textStore.markList.filter(mark => mark.type !== 1));
   showEditor.value = false;
 };
 
@@ -1676,6 +1708,9 @@ const handleEditorSubmit = async () => {
   }
   // 关闭编辑器
   showEditor.value = false;
+  // 清空选中的序列和PDF选择标记，避免下次打开编辑器时显示旧的参考文本
+  currentSelectedSequence.value = null;
+  pdfSelectionMark.value = null;
 };
 </script>
 

@@ -168,7 +168,7 @@ const createCustomNode = (model) => {
           width: "100px",
           minHeight: "100px",
           maxWidth: "100px",
-          background: "#ffffff",
+          background: color,
           borderRadius: "10px",
           padding: "10px",
           border: `2px solid ${color}`,
@@ -204,7 +204,7 @@ const createCustomNode = (model) => {
               fontWeight: "500",
               color: "#000",
               // borderBottom: "1px dashed rgba(67,215,181,0.5)",
-              background: "#ffffff",
+              background: color,
               // marginBottom: "3px",
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -1285,6 +1285,7 @@ const bindEvents = () => {
     if (isConnectingMode.value || pendingConnection.value) {
       cancelConnect();
     }
+    showContextMenu.value = false;
     emit("graph-click");
   });
 
@@ -1522,7 +1523,7 @@ const bindEvents = () => {
       x: evt.client.x,
       y: evt.client.y,
     };
-    showContextMenu.value = true;
+    showContextMenu.value = false;
   });
 
   // 使用原生 mousemove 事件

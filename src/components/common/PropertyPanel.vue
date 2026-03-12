@@ -141,15 +141,25 @@
           </div>
           <div class="property-item">
             <label>开始实体</label>
-            <div class="entity-name-display">
+            <!-- <div class="entity-name-display">
               {{ localStartNodeName || "无" }}
-            </div>
+            </div> -->
+            <el-input
+              v-model="localStartNodeName"
+              placeholder="请输入~"
+              disabled
+            ></el-input>
           </div>
           <div class="property-item">
             <label>结束实体</label>
-            <div class="entity-name-display">
+            <!-- <div class="entity-name-display">
               {{ localEndNodeName || "无" }}
-            </div>
+            </div> -->
+            <el-input
+              v-model="localEndNodeName"
+              placeholder="请输入~"
+              disabled
+            ></el-input>
           </div>
           <div class="property-item">
             <div class="property-label">
@@ -931,8 +941,8 @@ const handleDeleteProperty = (index) => {
 
   :deep(.el-textarea__inner) {
     font-size: 14px;
-    color: #000000;
-    background: #ffffff;
+    color: #333333;
+    background: #f6fcff;
     border: 0.8px solid rgba(224, 226, 235, 1);
     border-radius: 4px;
     box-shadow: none;
@@ -1015,21 +1025,33 @@ const handleDeleteProperty = (index) => {
   width: 100%;
 
   :deep(.el-select__wrapper) {
-    background: #ffffff;
+    background: #f6fcff;
     border: 0.5px solid rgba(224, 226, 235, 1);
     border-radius: 4px;
-    height: 32px;
+    height: 40px;
     box-sizing: border-box;
     box-shadow: none;
-    font-size: 12px;
-    color: #999999;
+    font-size: 13px;
+    color: #333333;
   }
 
   :deep(.el-select__caret) {
     font-size: 12px;
   }
 }
-
+:deep(.el-select__wrapper) {
+    background: #f6fcff !important;
+    color: #333333 !important;
+     border: 0.5px solid rgba(224, 226, 235, 1);
+    border-radius: 4px;
+    height: 40px;
+    box-sizing: border-box;
+    box-shadow: none;
+    font-size: 13px;
+  }
+:deep(.el-select__input){
+  color: #333333 !important;
+}
 .property-name-container {
   display: flex;
   justify-content: space-between;

@@ -409,15 +409,15 @@
           </div>
           <!-- 数据列表 -->
           <div class="data-list-container">
-            <!-- 实体类型 -->
+            <!-- 实体模板 -->
             <div class="data-section">
-              <h3>实体类型</h3>
+              <h3>实体模板</h3>
               <div
-                class="entity-types"
+                class="entity-types2"
                 :class="{ 'empty-data': entityTypes.length === 0 }"
               >
                 <span class="empty-data-msg" v-if="entityTypes.length === 0"
-                  >暂无实体类型</span
+                  >暂无实体模板</span
                 >
                 <div
                   v-for="(type, index) in entityTypes"
@@ -441,14 +441,14 @@
               </div>
             </div>
 
-            <!-- 关系类型 -->
+            <!-- 关系模板 -->
             <div class="data-section">
-              <h3>关系类型</h3>
-              <div class="relationship-types">
+              <h3>关系模板</h3>
+              <div class="relationship-types2">
                 <span
                   class="empty-data-msg"
                   v-if="relationTemplates.length === 0"
-                  >暂无关系类型</span
+                  >暂无关系模板</span
                 >
                 <div
                   v-for="template in relationTemplates"
@@ -525,7 +525,7 @@
 
         <!-- 数据列表 当用于本体设计时，这个当作是工具面板。当用于图谱构建模块时，这个当作项目（文章）的三级列表-->
         <div v-else class="data-list-container">
-          <!-- 实体类型 -->
+          <!-- 实体模板 -->
           <div class="data-section">
             <h3>实体模板</h3>
             <div
@@ -557,7 +557,7 @@
             </div>
           </div>
 
-          <!-- 关系类型 -->
+          <!-- 关系模板 -->
           <div class="data-section">
             <h3>关系模板</h3>
             <div class="relationship-types">
@@ -1180,7 +1180,7 @@ const handleTopicSearchClear = () => {
   }, 0);
 };
 
-// 处理实体类型点击
+// 处理实体模板点击
 const handleEntityTypeClick = (entityType) => {
   selectedEntityType.value = entityType;
   selectedRelationshipType.value = "";
@@ -1188,7 +1188,7 @@ const handleEntityTypeClick = (entityType) => {
   emit("entity-type-click", entityType);
 };
 
-// 处理关系类型点击
+// 处理关系模板点击
 const handleRelationshipTypeClick = (relationshipType) => {
   selectedRelationshipType.value = relationshipType;
   selectedEntityType.value = "";
@@ -1249,13 +1249,13 @@ defineExpose({
     selectedEntityType.value = entityType;
     selectedRelationshipType.value = "";
     selectedComponent.value = null;
-    console.log("设置实体类型选中状态:", entityType);
+    console.log("设置实体模板选中状态:", entityType);
   },
   setSelectedRelationshipType: (relationshipType) => {
     selectedRelationshipType.value = relationshipType;
     selectedEntityType.value = "";
     selectedComponent.value = null;
-    console.log("设置关系类型选中状态:", relationshipType);
+    console.log("设置关系模板选中状态:", relationshipType);
   },
   setSelectedComponent: (componentName) => {
     selectedComponent.value = componentName;
@@ -1635,6 +1635,15 @@ defineExpose({
   max-height: 200px;
   padding-right: 8px;
 }
+.entity-types2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+  overflow-y: auto;
+  max-height: 290px;
+  padding-right: 8px;
+}
 .empty-data {
   grid-template-columns: none;
 }
@@ -1668,6 +1677,14 @@ defineExpose({
   gap: 12px;
   overflow-y: auto;
   max-height: 200px;
+  padding-right: 8px;
+}
+.relationship-types2 {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  max-height: 290px;
   padding-right: 8px;
 }
 

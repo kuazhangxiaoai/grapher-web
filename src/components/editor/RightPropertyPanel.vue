@@ -11,9 +11,17 @@
         <!-- 实体属性 -->
         <div v-if="currentOperation === 'entity'">
           <div class="property-item">
-            <label>实体名称</label>
+            <label>实体模板名称</label>
             <el-input
               v-model="localEntityName"
+              placeholder="请输入~"
+              disabled
+            ></el-input>
+          </div>
+          <div class="property-item" v-if="operationSource === 'canvas'">
+            <label>节点名称</label>
+            <el-input
+              v-model="localNodeName"
               placeholder="请输入~"
             ></el-input>
           </div>
@@ -26,6 +34,7 @@
               :maxlength="60"
               resize="none"
               :rows="3"
+              :disabled="operationSource !== 'canvas'"
             ></el-input>
           </div>
           <div class="property-item">
@@ -51,16 +60,16 @@
                   <div class="property-name">
                     {{ property.name || "未命名属性" }}
                   </div>
-                  <el-button
+                  <!-- <el-button
                     v-if="nodeTemplateId==0"
                     type="text"
                     class="delete-property-btn"
                     @click="handleDeleteProperty(index)"
                   >
                     ×
-                  </el-button>
+                  </el-button> -->
                 </div>
-                <template v-if="!isFromCanvas && !isCreatingRelationship">
+                <template v-if="operationSource === 'library'">
                   <el-select
                     v-model="property.type"
                     style="width: 100%"
@@ -85,7 +94,7 @@
                 </template>
               </div>
             </div>
-            <el-button
+            <!-- <el-button
               v-if="nodeTemplateId==0"
               type="primary"
               size="small"
@@ -93,7 +102,7 @@
               @click="handleAddProperty"
             >
               <el-icon class="plusIcon"><Plus /></el-icon> 新增属性
-            </el-button>
+            </el-button> -->
           </div>
           <div class="property-item">
             <label>背景颜色</label>
@@ -101,6 +110,7 @@
               v-model="localBackgroundColor"
               show-alpha
               size="large"
+              :disabled="operationSource !== 'canvas'"
             ></el-color-picker>
           </div>
           <!-- <div class="property-item lines">
@@ -115,9 +125,17 @@
         <!-- 关系属性 -->
         <div v-else-if="currentOperation === 'relationship'">
           <div class="property-item">
-            <label>关系名称</label>
+            <label>关系模板名称</label>
             <el-input
               v-model="localRelationshipName"
+              placeholder="请输入~"
+              disabled
+            ></el-input>
+          </div>
+          <div class="property-item" v-if="operationSource === 'canvas'">
+            <label>关系名称</label>
+            <el-input
+              v-model="localRelationName"
               placeholder="请输入~"
             ></el-input>
           </div>
@@ -138,6 +156,7 @@
               v-model="localRelationshipType"
               style="width: 100%"
               :popper-append-to-body="false"
+              :disabled="operationSource !== 'canvas'"
             >
               <el-option label="定向" value="定向"></el-option>
               <el-option label="双向" value="双向"></el-option>
@@ -146,17 +165,27 @@
           </div>
           <div class="property-item">
             <label>开始实体</label>
-            <div class="entity-name-display">
+            <!-- <div class="entity-name-display">
               {{ localStartNodeName || "无" }}
-            </div>
+            </div> -->
+            <el-input
+              v-model="localStartNodeName"
+              placeholder="请输入~"
+              disabled
+            ></el-input>
           </div>
           <div class="property-item">
             <label>结束实体</label>
-            <div class="entity-name-display">
+            <!-- <div class="entity-name-display">
               {{ localEndNodeName || "无" }}
-            </div>
+            </div> -->
+             <el-input
+              v-model="localEndNodeName"
+              placeholder="请输入~"
+              disabled
+            ></el-input>
           </div>
-          <div class="property-item">
+          <div class="property-item"  v-if="operationSource === 'canvas'">
             <label>触发词</label>
             <el-select
               v-model="selectedTriggerWord"
@@ -198,16 +227,16 @@
                   <div class="property-name">
                     {{ property.name || "未命名属性" }}
                   </div>
-                  <el-button
+                  <!-- <el-button
                     v-if="relationTemplateId==0"
                     type="text"
                     class="delete-property-btn"
                     @click="handleDeleteProperty(index)"
                   >
                     ×
-                  </el-button>
+                  </el-button> -->
                 </div>
-                <template v-if="!isFromCanvas && !isCreatingRelationship">
+                <template v-if="operationSource != 'canvas'">
                   <el-select
                     v-model="property.type"
                     style="width: 100%"
@@ -232,7 +261,7 @@
                 </template>
               </div>
             </div>
-            <el-button
+            <!-- <el-button
              v-if="relationTemplateId==0&&isCreatingRelationship"
               type="primary"
               size="small"
@@ -240,7 +269,7 @@
               @click="handleAddProperty"
             >
               <el-icon class="plusIcon"><Plus /></el-icon> 新增属性
-            </el-button>
+            </el-button> -->
           </div>
           <!-- <div class="property-item lines">
             <label>加入组件库</label>
@@ -259,46 +288,35 @@
           :disabled="isLoading"
           >关闭</el-button
         >
+        <el-button
+          type="danger"
+          size="small"
+          class="delete-btn"
+          @click="handleDeletePropertyPanel"
+       
+          v-if="operationSource === 'canvas'"
+          >删除</el-button
+        >
+        <el-button
+          type="success"
+          size="small"
+          class="save-btn"
+          @click="handleSavePropertyPanel"
+          :loading="isLoading"
+          :disabled="isLoading"
+          v-if="operationSource === 'canvas'"
+          >保存</el-button
+        >
         <!-- <el-button
-          type="danger"
+          type="success"
           size="small"
-          class="delete-btn"
-          @click="handleDeletePropertyPanel"
-          :loading="isLoading"
-          :disabled="isLoading"
-          v-if="currentOperation === 'entity'&&(isFromCanvas||nodeTemplateId == 0)"
-          >删除</el-button
-        >
-        <el-button
-          type="danger"
-          size="small"
-          class="delete-btn"
-          @click="handleDeletePropertyPanel"
+          class="save-btn"
+          @click="handleSavePropertyPanel"
           :loading="isLoading"
           :disabled="isLoading"
           v-if="currentOperation === 'relationship'&&(isCreatingRelationship||relationTemplateId ==0)"
-          >删除</el-button
+          >保存</el-button
         > -->
-        <el-button
-          type="success"
-          size="small"
-          class="save-btn"
-          @click="handleSavePropertyPanel"
-          :loading="isLoading"
-          :disabled="isLoading"
-          v-if="currentOperation === 'entity'&&(isFromCanvas||nodeTemplateId == 0)"
-          >保存</el-button
-        >
-        <el-button
-          type="success"
-          size="small"
-          class="save-btn"
-          @click="handleSavePropertyPanel"
-          :loading="isLoading"
-          :disabled="isLoading"
-          v-if="currentOperation === 'relationship'&&(isCreatingRelationship||relationTemplateId ==0)"
-          >保存</el-button
-        >
       </div>
     </div>
   </aside>
@@ -365,6 +383,10 @@ const props = defineProps({
     type: String,
     default: "",
   },
+  nodeName: {
+    type: String,
+    default: "",
+  },
   entityDescription: {
     type: String,
     default: "",
@@ -374,6 +396,10 @@ const props = defineProps({
     default: () => [],
   },
   relationshipName: {
+    type: String,
+    default: "",
+  },
+  relationName: {
     type: String,
     default: "",
   },
@@ -437,15 +463,25 @@ const props = defineProps({
     type: String,
     default: "",
   },
+  operationSource: {
+    type: String,
+    default: "",
+  },
+  relationTrigger: {
+    type: String,
+    default: "",
+  },
 });
 
-const emit = defineEmits(["close", "cancel", "save", "add-property"]);
+const emit = defineEmits(["close", "cancel", "save", "add-property", "delete-item"]);
 
 // 本地状态
 const localEntityName = ref(props.entityName);
+const localNodeName = ref(props.nodeName || props.entityName);
 const localEntityDescription = ref(props.entityDescription);
 const localEntityProperties = ref([]);
 const localRelationshipName = ref(props.relationshipName);
+const localRelationName = ref(props.relationName || props.relationshipName);
 const localRelationshipDescription = ref(props.relationshipDescription);
 const localRelationshipType = ref(props.relationshipType);
 const localStartNodeName = ref(props.startNodeName);
@@ -455,7 +491,7 @@ const localBackgroundColor = ref("#43D7B5");
 
 // 触发词相关
 const triggerWordList = ref([]);
-const selectedTriggerWord = ref("");
+const selectedTriggerWord = ref(props.relationTrigger);
 
 // 加载状态
 const isLoading = ref(false);
@@ -495,16 +531,18 @@ watch(
 // 监听showPropertyPanel变化，当它变为true时，重新从props中获取最新的值
 watch(
   () => props.showPropertyPanel,
-  (newValue) => {
+  async (newValue) => {
     if (newValue) {
       isAddingProperty.value = false; // 重置添加状态
       localEntityName.value = props.entityName;
+      localNodeName.value = props.nodeName || props.entityName;
       localEntityDescription.value = props.entityDescription;
       localEntityProperties.value = props.entityProperties.map((prop) => ({
         ...prop,
         isNew: false, // 标记为现有属性
       }));
       localRelationshipName.value = props.relationshipName;
+      localRelationName.value = props.relationName || props.relationshipName;
       localRelationshipDescription.value = props.relationshipDescription;
       localRelationshipType.value = props.relationshipType;
       localStartNodeName.value = props.startNodeName;
@@ -513,9 +551,16 @@ watch(
       localBackgroundColor.value = props.backgroundColor || "#43D7B5";
       // 重置触发词相关状态
       triggerWordList.value = [];
-      selectedTriggerWord.value = "";
       console.log("Panel opened with properties:", localEntityProperties.value);
-      fetchTriggerWords("");
+      // 先获取触发词列表，然后再设置selectedTriggerWord
+      await fetchTriggerWords("");
+      // 将props.relationTrigger转换为数字类型，以匹配triggerWordList中offset的类型
+      selectedTriggerWord.value = props.relationTrigger ? Number(props.relationTrigger) : "";
+      // 检查selectedTriggerWord是否存在于triggerWordList中
+      const triggerWordExists = triggerWordList.value.some(item => item.offset === selectedTriggerWord.value);
+      if (!triggerWordExists) {
+        selectedTriggerWord.value = "";
+      }
     }
   },
 );
@@ -525,6 +570,13 @@ watch(
   () => props.entityName,
   (newValue) => {
     localEntityName.value = newValue;
+  },
+);
+
+watch(
+  () => props.nodeName,
+  (newValue) => {
+    localNodeName.value = newValue || props.entityName;
   },
 );
 
@@ -539,6 +591,13 @@ watch(
   () => props.relationshipName,
   (newValue) => {
     localRelationshipName.value = newValue;
+  },
+);
+
+watch(
+  () => props.relationName,
+  (newValue) => {
+    localRelationName.value = newValue || props.relationshipName;
   },
 );
 
@@ -584,6 +643,57 @@ watch(
   },
 );
 
+// 监听relationTrigger变化
+watch(
+  () => props.relationTrigger,
+  (newValue) => {
+    // 将newValue转换为数字类型，以匹配triggerWordList中offset的类型
+    selectedTriggerWord.value = newValue ? Number(newValue) : "";
+    // 检查selectedTriggerWord是否存在于triggerWordList中
+    const triggerWordExists = triggerWordList.value.some(item => item.offset === selectedTriggerWord.value);
+    if (!triggerWordExists) {
+      selectedTriggerWord.value = "";
+    }
+  },
+);
+
+// 监听关系名称变化
+watch(
+  () => props.relationshipName,
+  (newValue) => {
+    localRelationshipName.value = newValue;
+  },
+);
+
+// 监听关系类型变化
+watch(
+  () => props.relationshipType,
+  (newValue) => {
+    localRelationshipType.value = newValue;
+  },
+);
+
+// 监听关系属性变化
+watch(
+  () => props.entityProperties,
+  (newValue) => {
+    localEntityProperties.value = newValue.map((prop) => ({
+      ...prop,
+      isNew: false,
+    }));
+  },
+  { deep: true },
+);
+
+// 监听操作来源变化
+watch(
+  () => props.operationSource,
+  (newValue) => {
+    // 操作来源变化时，重新获取触发词列表
+    fetchTriggerWords("");
+  },
+);
+
 const handleClosePropertyPanel = () => {
   emit("close");
 };
@@ -607,11 +717,13 @@ const handleSavePropertyPanel = async () => {
   const saveData = {
     currentOperation: props.currentOperation,
     entityName: localEntityName.value,
+    nodeName: localNodeName.value,
     entityDescription: localEntityDescription.value,
     entityProperties: localEntityProperties.value.map((prop) => ({
       ...prop,
     })),
     relationshipName: localRelationshipName.value,
+    relationName: localRelationName.value,
     relationshipDescription: localRelationshipDescription.value,
     relationshipType: localRelationshipType.value,
     addToComponentLibrary: localAddToComponentLibrary.value,
@@ -641,69 +753,20 @@ const handleDeletePropertyPanel = async () => {
       type: "warning",
     });
 
-    // 设置加载状态
-    isLoading.value = true;
+    // 直接触发删除事件，让父组件处理删除逻辑
+    emit("delete-item");
 
-    if (props.currentOperation === "entity") {
-      // 检查 nodeTemplateId 是否为空
-      if (!props.nodeTemplateId) {
-        ElMessage.warning("实体模板ID不能为空");
-        isLoading.value = false;
-        return;
-      }
-      // 调用删除接口
-      await graph.deleteNodeTemplate({ nodeTemplateId: props.nodeTemplateId });
-    } else if (props.currentOperation === "relationship") {
-      // 检查 relationTemplateId 是否为空
-      if (!props.relationTemplateId) {
-        ElMessage.warning("关系模板ID不能为空");
-        isLoading.value = false;
-        return;
-      }
-      // 调用删除接口
-      await graph.deleteRelationTemplate({
-        relationTemplateId: props.relationTemplateId,
-      });
-    }
-
-    // 删除成功提示
-    ElMessage.success("删除成功");
-
-    // 异步更新数据，不阻塞面板关闭
-    setTimeout(async () => {
-      try {
-        // 并行调用查询接口获取最新数据
-        const [templateResponse, libraryResponse] = await Promise.all([
-          graph.queryTemplate(props.topicId),
-          graph.queryLibraryTemplate(""),
-        ]);
-
-        if (templateResponse && templateResponse.data) {
-          // 触发更新事件，通知父组件更新节点数据
-          emit("update-nodes", templateResponse.data);
-        }
-
-        if (libraryResponse && libraryResponse.data) {
-          // 触发更新事件，通知父组件更新组件库数据
-          emit("update-library", libraryResponse.data);
-        }
-      } catch (error) {
-        console.error("更新数据失败:", error);
-      }
-    }, 0);
-
-    // 延迟关闭面板，让用户看到加载状态和成功提示
+    // 延迟关闭面板，让用户看到成功提示
     setTimeout(() => {
-      isLoading.value = false;
+      // ElMessage.success("删除成功");
       emit("close");
-    }, 1000);
+    }, 500);
   } catch (error) {
     // 如果是用户取消操作，不显示错误信息
     if (error !== "cancel") {
       console.error("删除失败:", error);
       // ElMessage.error("删除失败，请重试");
     }
-    isLoading.value = false;
   }
 };
 
@@ -786,6 +849,11 @@ const fetchTriggerWords = async (sequenceContent = "") => {
       });
       if (response && response.data) {
         triggerWordList.value = response.data;
+        // 检查selectedTriggerWord是否存在于triggerWordList中
+        const triggerWordExists = triggerWordList.value.some(item => item.offset === Number(selectedTriggerWord.value));
+        if (!triggerWordExists) {
+          selectedTriggerWord.value = "";
+        }
       }
     } catch (error) {
       console.error("获取触发词列表失败:", error);
@@ -923,14 +991,48 @@ onMounted(() => {
 
   :deep(.el-textarea__inner) {
     font-size: 14px;
-    color: #000000;
-    background: #ffffff;
+    color: #333333;
+    background: #f6fcff;
     border: 0.8px solid rgba(224, 226, 235, 1);
     border-radius: 4px;
     box-shadow: none;
     resize: none;
   }
 
+  :deep(.el-input__wrapper.is-disabled) {
+    background: #f6fcff;
+  }
+
+  :deep(.el-input__inner:disabled) {
+    background: #f6fcff;
+    color: #999999;
+  }
+
+  :deep(.el-textarea__inner:disabled) {
+    background: #f6fcff;
+    color: #b4b3b3;
+  }
+ :deep(.el-select__wrapper.is-disabled) {
+    background: #f6fcff !important;
+    color: #b4b3b3 !important;
+  }
+  :deep(.el-select__wrapper) {
+    background: #f6fcff !important;
+    color: #333333 !important;
+  }
+  :deep(.el-select__wrapper) {
+    background: #f6fcff !important;
+    color: #333333 !important;
+     border: 0.5px solid rgba(224, 226, 235, 1);
+    border-radius: 4px;
+    height: 40px;
+    box-sizing: border-box;
+    box-shadow: none;
+    font-size: 13px;
+  }
+:deep(.el-select__input){
+  color: #333333 !important;
+}
   :deep(.el-input__inner::placeholder) {
     font-size: 14px;
     color: #999;
@@ -1007,7 +1109,7 @@ onMounted(() => {
   width: 100%;
 
   :deep(.el-select__wrapper) {
-    background: #ffffff;
+    background: #f6fcff;
     border: 0.5px solid rgba(224, 226, 235, 1);
     border-radius: 4px;
     height: 32px;
