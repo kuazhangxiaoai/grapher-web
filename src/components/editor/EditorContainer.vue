@@ -148,6 +148,15 @@ const createCustomNode = (model) => {
     const backGround = hexToRgba(nodeData.backgroundColor || "#43D7B5", 0.4);
     const isSelected = model.states && model.states.includes("selected");
 
+    // 直接计算节点大小，不依赖model.style.size
+    const data = graph.value.getData();
+    const nodeCount = (data.nodes || []).length;
+    const edgeCount = (data.edges || []).filter(edge => edge.source === model.id || edge.target === model.id).length;
+    // 根据节点数量动态调整最小节点大小
+    const minSize = nodeCount > 30 ? 30 : 60;
+    const maxSize = 120;
+    const size = Math.min(maxSize, minSize + edgeCount * 10);
+
     const typeMap = {
       string: "文本",
       number: "数字",
@@ -165,12 +174,11 @@ const createCustomNode = (model) => {
       {
         "data-node-id": model.id,
         style: {
-          width: "100px",
-          minHeight: "100px",
-          maxWidth: "100px",
+          width: `${size}px`,
+          height: `${size}px`,
           background: color,
-          borderRadius: "10px",
-          padding: "10px",
+          borderRadius: "50%",
+          padding: "2px",
           border: `2px solid ${color}`,
           boxShadow: isSelected
             ? `0 6px 30px ${backGround}`
@@ -185,8 +193,7 @@ const createCustomNode = (model) => {
           cursor: "pointer",
           userSelect: "none",
           pointerEvents: "auto",
-           borderRadius: "50%",
-           boxSizing: "border-box",
+          boxSizing: "border-box",
           // 关键：添加抗锯齿样式
           WebkitFontSmoothing: "antialiased",
           MozOsxFontSmoothing: "grayscale",
@@ -589,7 +596,6 @@ const initGraph = () => {
           stroke: node.backgroundColor || "#43D7B5",
           lineWidth: 2,
           radius: 8,
-          size: [nodeSize.width, nodeSize.height],
           shadowColor: "rgba(78,89,105,0.25)",
           shadowBlur: 10,
           shadowOffsetX: 0,
@@ -612,9 +618,19 @@ const initGraph = () => {
         type: "vue-node",
         style: {
           component: (model) => createCustomNode(model),
-          size: (data) => {
-            const nodeSize = calculateNodeSize(data);
-            return [nodeSize.width, nodeSize.height];
+          size: (d) => {
+            // 不使用style.size，强制重新计算
+            // 获取当前节点的关联边数量
+            const data = graph.value.getData();
+            const nodeCount = (data.nodes || []).length;
+            const edgeCount = (data.edges || []).filter(edge => edge.source === d.id || edge.target === d.id).length;
+            // 根据节点数量动态调整最小节点大小
+            const minSize = nodeCount > 30 ? 30 : 60;
+            const maxSize = 120;
+            // 计算size，假设每多一条边+10像素
+            let size = minSize + edgeCount * 10;
+            if (size > maxSize) size = maxSize;
+            return [size, size];
           },
           keyShape: {
             type: "circle",
@@ -1664,7 +1680,6 @@ const renderGraph = () => {
           stroke: node.backgroundColor || "#43D7B5",
           lineWidth: 2,
           radius: 8,
-          size: [nodeSize.width, nodeSize.height],
           shadowColor: "rgba(78,89,105,0.18)",
           shadowBlur: 10,
           shadowOffsetX: 0,
