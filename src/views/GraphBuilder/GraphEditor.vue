@@ -1061,16 +1061,7 @@ const handleTopicClick = async (topic, skipComponentLibrarySearch = false) => {
             response.data.nodeTemplates &&
             Array.isArray(response.data.nodeTemplates)
           ) {
-            // 为节点模板分配位置（均匀分散分布）
-            const nodeCount = response.data.nodeTemplates.length;
-            const nodePositions = [];
-
-            // 计算画布大小，使用容器大小
-            const { width: canvasWidth, height: canvasHeight } =
-              getCanvasSize();
-            const padding = 20; // 减小边距，让节点更靠近画布边缘
-
-            // 生成均匀分散的位置
+            // 为节点模板分配位置（由EditorContainer的布局算法处理）
             response.data.nodeTemplates.forEach((template, index) => {
               if (
                 template.nodeTemplateName &&
@@ -1078,41 +1069,6 @@ const handleTopicClick = async (topic, skipComponentLibrarySearch = false) => {
               ) {
                 entityTypes.value.push(template.nodeTemplateName);
               }
-
-              // 计算节点位置：如果只有一个节点，放在中心；否则使用圆形布局均匀分布
-              let x, y;
-              if (nodeCount === 1) {
-                // 只有一个节点时放在画布中心
-                x = canvasWidth / 2;
-                y = canvasHeight / 2;
-              } else {
-                // 多个节点时使用混合布局，结合椭圆分布和随机分布，避免中间空白
-                const centerX = canvasWidth / 2;
-                const centerY = canvasHeight / 2;
-                // 计算椭圆的长轴和短轴，考虑边距
-                const semiMajorAxis = (canvasWidth - 2 * padding * 4) / 2; // 长轴半径
-                const semiMinorAxis = (canvasHeight - 2 * padding) / 2; // 短轴半径
-                // 计算每个节点的角度
-                const angle = (2 * Math.PI * index) / nodeCount;
-
-                // 为了避免中间空白，使用随机半径，让节点分布在不同距离的位置
-                const randomRadiusFactor = 0.5 + Math.random() * 0.5; // 0.5 到 1 之间的随机因子
-                // 计算节点位置（椭圆公式，使用随机半径）
-                x =
-                  centerX +
-                  semiMajorAxis * randomRadiusFactor * Math.cos(angle);
-                y =
-                  centerY +
-                  semiMinorAxis * randomRadiusFactor * Math.sin(angle);
-
-                // 添加一些随机偏移，增加分散度
-                const randomOffset = 60; // 偏移量
-                x += (Math.random() - 0.5) * randomOffset;
-                y += (Math.random() - 0.5) * randomOffset;
-              }
-
-              // 保存位置
-              nodePositions.push({ x, y });
 
               // 将节点模板转换为画布节点
               const nodeProperties = template.properties
@@ -1128,8 +1084,7 @@ const handleTopicClick = async (topic, skipComponentLibrarySearch = false) => {
                 type: "entity",
                 name: template.nodeTemplateName,
                 description: template.nodeTemplateDescription || "",
-                x: x,
-                y: y,
+                // 不设置固定位置，由布局算法处理
                 properties: nodeProperties,
                 backgroundColor: template.nodeTemplateColor || "#43D7B5",
                 nodeTemplateId: template.nodeTemplateId,

@@ -332,40 +332,48 @@ function hexToRgba(hex, opacity) {
   return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 }
 
+// 计算节点大小
+const calculateNodeSizeByEdges = (nodeId, nodes, edges) => {
+  const edgeCount = edges.filter(edge => edge.source === nodeId || edge.target === nodeId).length;
+  const nodeCount = nodes.length;
+  const minSize = nodeCount > 30 ? 30 : 60;
+  const maxSize = 120;
+  return Math.min(maxSize, minSize + edgeCount * 10);
+};
+
 // 限制节点位置在画布边界内
 const clampNodePosition = (x, y, nodeHalfWidth, nodeHalfHeight) => {
-  if (!graph.value || !graphRef.value) return { x, y };
+  if (!graphRef.value) return { x, y };
 
   const canvasWidth = graphRef.value.clientWidth;
   const canvasHeight = graphRef.value.clientHeight;
 
   try {
-    const topLeft = graph.value.getCanvasByViewport([0, 0]);
-    const bottomRight = graph.value.getCanvasByViewport([
-      canvasWidth,
-      canvasHeight,
-    ]);
+    // 计算边界
+    const minX = nodeHalfWidth + 10;
+    const maxX = canvasWidth - nodeHalfWidth - 10;
+    const minY = nodeHalfHeight + 60;
+    const maxY = canvasHeight - nodeHalfHeight - 60;
 
-    const minX = topLeft[0] + nodeHalfWidth;
-    const maxX = bottomRight[0] - nodeHalfWidth;
-    const minY = topLeft[1] + nodeHalfHeight;
-    const maxY = bottomRight[1] - nodeHalfHeight;
-
+    // 确保边界有效
     const validMinX = Math.min(minX, maxX);
     const validMaxX = Math.max(minX, maxX);
     const validMinY = Math.min(minY, maxY);
     const validMaxY = Math.max(minY, maxY);
 
-    const centerX = (topLeft[0] + bottomRight[0]) / 2;
-    const centerY = (topLeft[1] + bottomRight[1]) / 2;
+    // 计算中心位置
+    const centerX = canvasWidth / 2;
+    const centerY = canvasHeight / 2;
 
-    if (nodeHalfWidth * 2 > canvasWidth / graph.value.getZoom()) {
+    // 处理节点过大的情况
+    if (nodeHalfWidth * 2 > canvasWidth) {
       return { x: centerX, y: Math.max(validMinY, Math.min(validMaxY, y)) };
     }
-    if (nodeHalfHeight * 2 > canvasHeight / graph.value.getZoom()) {
+    if (nodeHalfHeight * 2 > canvasHeight) {
       return { x: Math.max(validMinX, Math.min(validMaxX, x)), y: centerY };
     }
 
+    // 限制节点位置在边界内
     return {
       x: Math.max(validMinX, Math.min(validMaxX, x)),
       y: Math.max(validMinY, Math.min(validMaxY, y)),
@@ -374,6 +382,194 @@ const clampNodePosition = (x, y, nodeHalfWidth, nodeHalfHeight) => {
     console.warn("边界计算失败:", error);
     return { x, y };
   }
+};
+
+// 检测节点是否重叠
+const checkNodeOverlap = (x1, y1, size1, x2, y2, size2, margin = 20) => {
+  const distance = Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2));
+  const minDistance = (size1 + size2) / 2 + margin;
+  return distance < minDistance;
+};
+
+// 基于节点关系的布局算法
+const calculateNodePositions = (nodes, edges, width, height) => {
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const positions = new Map();
+  const nodeSizes = new Map();
+  const nodeEdgeCounts = new Map();
+  const nodeConnections = new Map(); // 存储每个节点的连接关系
+  
+  // 计算每个节点的大小、边数和连接关系
+  nodes.forEach(node => {
+    const nodeId = typeof node.id === "string" ? node.id : node.id.toString();
+    const edgeCount = edges.filter(edge => edge.source === nodeId || edge.target === nodeId).length;
+    const size = calculateNodeSizeByEdges(nodeId, nodes, edges);
+    nodeSizes.set(nodeId, size);
+    nodeEdgeCounts.set(nodeId, edgeCount);
+    
+    // 存储连接的节点
+    const connected = new Set();
+    edges.forEach(edge => {
+      if (edge.source === nodeId) {
+        connected.add(edge.target);
+      } else if (edge.target === nodeId) {
+        connected.add(edge.source);
+      }
+    });
+    nodeConnections.set(nodeId, connected);
+  });
+  
+  // 识别中心节点组
+  const centerNodes = [];
+  const processedNodes = new Set();
+  
+  // 找出所有中心节点（边数大于等于3的节点）
+  nodes.forEach(node => {
+    const nodeId = typeof node.id === "string" ? node.id : node.id.toString();
+    const edgeCount = nodeEdgeCounts.get(nodeId) || 0;
+    if (edgeCount >= 3 && !processedNodes.has(nodeId)) {
+      centerNodes.push(nodeId);
+      processedNodes.add(nodeId);
+    }
+  });
+  
+  // 按边数排序中心节点
+  centerNodes.sort((a, b) => nodeEdgeCounts.get(b) - nodeEdgeCounts.get(a));
+  
+  // 布局中心节点
+  centerNodes.forEach((centerNodeId, index) => {
+    const size = nodeSizes.get(centerNodeId) || 60;
+    let nodeX, nodeY;
+    
+    if (index === 0) {
+      // 第一个中心节点放在画布中心
+      nodeX = centerX;
+      nodeY = centerY;
+    } else {
+      // 其他中心节点放在画布的不同区域
+      const sectorAngle = (2 * Math.PI * index) / Math.min(6, centerNodes.length);
+      const distance = 250; // 增加中心节点之间的距离
+      nodeX = centerX + distance * Math.cos(sectorAngle);
+      nodeY = centerY + distance * Math.sin(sectorAngle);
+      
+      // 调整位置以避免与已有节点重叠
+      let attempts = 0;
+      const maxAttempts = 15;
+      while (attempts < maxAttempts) {
+        let overlap = false;
+        for (const [existingNodeId, pos] of positions) {
+          const existingSize = nodeSizes.get(existingNodeId) || 60;
+          if (checkNodeOverlap(nodeX, nodeY, size, pos.x, pos.y, existingSize)) {
+            overlap = true;
+            // 增加距离
+            const currentDistance = Math.sqrt(Math.pow(nodeX - centerX, 2) + Math.pow(nodeY - centerY, 2));
+            const newDistance = currentDistance + 60;
+            nodeX = centerX + newDistance * Math.cos(sectorAngle);
+            nodeY = centerY + newDistance * Math.sin(sectorAngle);
+            break;
+          }
+        }
+        if (!overlap) break;
+        attempts++;
+      }
+    }
+    
+    // 限制在画布边界内
+    const clampedCenter = clampNodePosition(nodeX, nodeY, size / 2, size / 2);
+    positions.set(centerNodeId, clampedCenter);
+  });
+  
+  // 布局与中心节点直接连接的节点
+  centerNodes.forEach(centerNodeId => {
+    const centerPos = positions.get(centerNodeId);
+    if (!centerPos) return;
+    
+    const centerSize = nodeSizes.get(centerNodeId) || 60;
+    const connected = nodeConnections.get(centerNodeId) || new Set();
+    const connectedNodeList = Array.from(connected).filter(id => !positions.has(id));
+    
+    if (connectedNodeList.length > 0) {
+      const radius = 150; // 增加环绕半径
+      
+      connectedNodeList.forEach((connectedNodeId, connIndex) => {
+        if (!positions.has(connectedNodeId)) {
+          const angle = (2 * Math.PI * connIndex) / connectedNodeList.length;
+          const connectedSize = nodeSizes.get(connectedNodeId) || 60;
+          const distance = radius + (centerSize + connectedSize) / 2;
+          
+          let x = centerPos.x + distance * Math.cos(angle);
+          let y = centerPos.y + distance * Math.sin(angle);
+          
+          // 调整位置以避免重叠
+          let overlap = false;
+          let attempts = 0;
+          const maxAttempts = 15;
+          
+          while (attempts < maxAttempts) {
+            overlap = false;
+            for (const [existingNodeId, pos] of positions) {
+              const existingSize = nodeSizes.get(existingNodeId) || 60;
+              if (checkNodeOverlap(x, y, connectedSize, pos.x, pos.y, existingSize)) {
+                overlap = true;
+                // 增加距离
+                const currentDistance = Math.sqrt(Math.pow(x - centerPos.x, 2) + Math.pow(y - centerPos.y, 2));
+                const newDistance = currentDistance + 40;
+                x = centerPos.x + newDistance * Math.cos(angle);
+                y = centerPos.y + newDistance * Math.sin(angle);
+                break;
+              }
+            }
+            if (!overlap) break;
+            attempts++;
+          }
+          
+          // 限制在画布边界内
+          const clamped = clampNodePosition(x, y, connectedSize / 2, connectedSize / 2);
+          positions.set(connectedNodeId, clamped);
+        }
+      });
+    }
+  });
+  
+  // 布局剩余的节点（没有连接或只连接一个节点的节点）
+  const remainingNodes = nodes.filter(node => {
+    const nodeId = typeof node.id === "string" ? node.id : node.id.toString();
+    return !positions.has(nodeId);
+  });
+  
+  remainingNodes.forEach(node => {
+    const nodeId = typeof node.id === "string" ? node.id : node.id.toString();
+    const size = nodeSizes.get(nodeId) || 60;
+    
+    // 均匀分布在画布中
+    let attempts = 0;
+    let x, y;
+    let overlap;
+    
+    do {
+      overlap = false;
+      // 在画布范围内随机生成位置
+      x = Math.random() * (width - size - 120) + size / 2 + 60;
+      y = Math.random() * (height - size - 120) + size / 2 + 60;
+      
+      // 检查是否与已有节点重叠
+      for (const [existingNodeId, pos] of positions) {
+        const existingSize = nodeSizes.get(existingNodeId) || 60;
+        if (checkNodeOverlap(x, y, size, pos.x, pos.y, existingSize)) {
+          overlap = true;
+          break;
+        }
+      }
+      attempts++;
+    } while (overlap && attempts < 30);
+    
+    // 限制在画布边界内
+    const clamped = clampNodePosition(x, y, size / 2, size / 2);
+    positions.set(nodeId, clamped);
+  });
+  
+  return positions;
 };
 
 // 检查和修正所有节点位置
@@ -497,26 +693,47 @@ const initGraph = () => {
   }
 
   try {
+    // 预处理edges数据，确保格式正确
+    const processedEdges = props.edges
+      .map((edge, index) => {
+        const source = edge.source;
+        const target = edge.target;
+        const sourceStr = source ? (typeof source === "string" ? source : source.toString()) : null;
+        const targetStr = target ? (typeof target === "string" ? target : target.toString()) : null;
+        return {
+          ...edge,
+          id: edge.id || `edge-${index}`,
+          source: sourceStr,
+          target: targetStr,
+        };
+      })
+      .filter(edge => edge.source && edge.target);
+    
+    // 计算节点位置
+    const nodePositions = calculateNodePositions(props.nodes, processedEdges, width, height);
+    
     const formattedNodes = props.nodes.map((node) => {
-      let nodeX = node.x || width / 2;
-      let nodeY = node.y || height / 2;
+      const nodeId = typeof node.id === "string" ? node.id : node.id.toString();
+      let nodeX, nodeY;
+      
+      if (nodePositions.has(nodeId)) {
+        // 优先使用布局算法计算的位置
+        const pos = nodePositions.get(nodeId);
+        nodeX = pos.x;
+        nodeY = pos.y;
+      } else if (node.x && node.y) {
+        // 如果布局算法没有计算位置，使用节点指定的位置
+        nodeX = node.x;
+        nodeY = node.y;
+      } else {
+        // fallback到中心位置
+        nodeX = width / 2;
+        nodeY = height / 2;
+      }
 
       // 强制位置为整数
       nodeX = Math.round(nodeX);
       nodeY = Math.round(nodeY);
-
-      const nodeSize = calculateNodeSize({
-        data: {
-          name: node.name || "节点",
-          type: node.type || "人物",
-          properties: node.properties || [
-            { name: "名字", type: "string" },
-            { name: "日期", type: "date" },
-          ],
-        },
-      });
-
-      const nodeId = typeof node.id === "string" ? node.id : node.id.toString();
 
       const formattedNode = {
         id: nodeId,
@@ -601,6 +818,16 @@ const initGraph = () => {
           const hasReverseEdge = props.edges.some(
             (edge) => edge.source === target && edge.target === source,
           );
+          // 对于连接不同中心节点的边，使用二次贝塞尔曲线
+          const sourceNode = props.nodes.find(n => String(n.id) === String(source));
+          const targetNode = props.nodes.find(n => String(n.id) === String(target));
+          if (sourceNode && targetNode) {
+            const sourceEdgeCount = props.edges.filter(e => e.source === source || e.target === source).length;
+            const targetEdgeCount = props.edges.filter(e => e.source === target || e.target === target).length;
+            if (sourceEdgeCount >= 3 && targetEdgeCount >= 3) {
+              return "quadratic";
+            }
+          }
           return hasReverseEdge ? "quadratic" : "line";
         },
         style: (data) => {
@@ -626,8 +853,8 @@ const initGraph = () => {
                 const nodeX = sourceNode.x;
                 const nodeY = sourceNode.y;
                 style.controlPoints = [
-                  { x: nodeX + 80, y: nodeY - 160 },
-                  { x: nodeX - 80, y: nodeY - 160 },
+                  { x: nodeX + 120, y: nodeY - 240 },
+                  { x: nodeX - 120, y: nodeY - 240 },
                 ];
               }
             }
@@ -650,6 +877,9 @@ const initGraph = () => {
             labelBackground: false,
             labelFontSize: 14,
             cursor: "pointer",
+            // 优化连线平滑度
+            lineCap: "round",
+            lineJoin: "round",
           };
 
           if (relationshipType === "定向") {
@@ -663,26 +893,66 @@ const initGraph = () => {
             style.endArrow = true;
           }
 
-          if (hasReverseEdge) {
-            let centerX = 0;
-            let centerY = 0;
-            const sourceNode = props.nodes.find(
-              (node) => String(node.id) === String(source),
-            );
-            const targetNode = props.nodes.find(
-              (node) => String(node.id) === String(target),
-            );
-            if (sourceNode && targetNode) {
-              centerX = (sourceNode.x + targetNode.x) / 2;
-              centerY = (sourceNode.y + targetNode.y) / 2;
-            } else if (data.sourcePoint && data.targetPoint) {
-              centerX = (data.sourcePoint.x + data.targetPoint.x) / 2;
-              centerY = (data.sourcePoint.y + data.targetPoint.y) / 2;
-            }
-            if (source < target) {
-              style.controlPoints = [{ x: centerX, y: centerY - 30 }];
-            } else {
-              style.controlPoints = [{ x: centerX, y: centerY + 30 }];
+          // 计算节点位置
+          const sourceNode = props.nodes.find(n => String(n.id) === String(source));
+          const targetNode = props.nodes.find(n => String(n.id) === String(target));
+          
+          if (sourceNode && targetNode) {
+            const sourceX = sourceNode.x || 0;
+            const sourceY = sourceNode.y || 0;
+            const targetX = targetNode.x || 0;
+            const targetY = targetNode.y || 0;
+            const centerX = (sourceX + targetX) / 2;
+            const centerY = (sourceY + targetY) / 2;
+            
+            // 检查是否是连接不同中心节点的边
+            const sourceEdgeCount = props.edges.filter(e => e.source === source || e.target === source).length;
+            const targetEdgeCount = props.edges.filter(e => e.source === target || e.target === target).length;
+            
+            if (hasReverseEdge) {
+              // 双向边的处理
+              if (source < target) {
+                style.controlPoints = [{ x: centerX, y: centerY - 80 }];
+              } else {
+                style.controlPoints = [{ x: centerX, y: centerY + 80 }];
+              }
+            } else if (sourceEdgeCount >= 3 && targetEdgeCount >= 3) {
+              // 连接两个中心节点的边，使用更明显的曲线
+              const dx = targetX - sourceX;
+              const dy = targetY - sourceY;
+              const distance = Math.sqrt(dx * dx + dy * dy);
+              const offset = Math.min(100, distance / 3);
+              
+              // 计算垂直于连线的方向
+              const normalX = -dy / distance;
+              const normalY = dx / distance;
+              
+              style.controlPoints = [{
+                x: centerX + normalX * offset,
+                y: centerY + normalY * offset
+              }];
+            } else if (sourceEdgeCount >= 3 || targetEdgeCount >= 3) {
+              // 连接中心节点和普通节点的边
+              const isSourceCenter = sourceEdgeCount >= 3;
+              const centerNode = isSourceCenter ? sourceNode : targetNode;
+              const otherNode = isSourceCenter ? targetNode : sourceNode;
+              
+              const centerPosX = centerNode.x || 0;
+              const centerPosY = centerNode.y || 0;
+              const otherPosX = otherNode.x || 0;
+              const otherPosY = otherNode.y || 0;
+              
+              // 计算从中心节点到其他节点的向量
+              const cx = otherPosX - centerPosX;
+              const cy = otherPosY - centerPosY;
+              const dist = Math.sqrt(cx * cx + cy * cy);
+              
+              // 在中心节点和其他节点之间添加一个控制点，使连线更加平滑
+              const controlDist = dist / 3;
+              const controlX = centerPosX + (cx / dist) * controlDist;
+              const controlY = centerPosY + (cy / dist) * controlDist;
+              
+              style.controlPoints = [{ x: controlX, y: controlY }];
             }
           }
 
@@ -694,8 +964,8 @@ const initGraph = () => {
               const nodeX = sourceNode.x;
               const nodeY = sourceNode.y;
               style.controlPoints = [
-                { x: nodeX + 80, y: nodeY - 160 },
-                { x: nodeX - 80, y: nodeY - 160 },
+                { x: nodeX + 120, y: nodeY - 240 },
+                { x: nodeX - 120, y: nodeY - 240 },
               ];
             }
           }
@@ -1576,31 +1846,70 @@ const renderGraph = () => {
     const width = graphRef.value.clientWidth;
     const height = graphRef.value.clientHeight;
 
+    // 预处理edges数据，确保格式正确
+    const processedEdges = props.edges
+      .map((edge, index) => {
+        const source = edge.source;
+        const target = edge.target;
+        const sourceStr = source ? (typeof source === "string" ? source : source.toString()) : null;
+        const targetStr = target ? (typeof target === "string" ? target : target.toString()) : null;
+        return {
+          ...edge,
+          id: edge.id || `edge-${index}`,
+          source: sourceStr,
+          target: targetStr,
+        };
+      })
+      .filter(edge => edge.source && edge.target);
+    
+    // 计算节点位置
+    const calculatedPositions = calculateNodePositions(props.nodes, processedEdges, width, height);
+
     const formattedNodes = props.nodes.map((node) => {
       const nodeId = typeof node.id === "string" ? node.id : node.id.toString();
-      let nodeX = node.x || width / 2;
-      let nodeY = node.y || height / 2;
-
-      if (!isApplyingSavedPositions.value && nodePositions.value.has(nodeId)) {
+      let nodeX, nodeY;
+      
+      // 优先使用布局算法计算的位置
+      if (calculatedPositions.has(nodeId)) {
+        const pos = calculatedPositions.get(nodeId);
+        nodeX = pos.x;
+        nodeY = pos.y;
+      } else if (!isApplyingSavedPositions.value && nodePositions.value.has(nodeId)) {
+        // 其次使用保存的位置
         const savedPosition = nodePositions.value.get(nodeId);
-        nodeX = savedPosition.x;
-        nodeY = savedPosition.y;
+        // 检查保存的位置是否有效
+        const size = calculateNodeSizeByEdges(nodeId, props.nodes, processedEdges);
+        const nodeHalfWidth = size / 2;
+        const nodeHalfHeight = size / 2;
+        
+        if (savedPosition.x >= nodeHalfWidth + 10 && 
+            savedPosition.x <= width - nodeHalfWidth - 10 && 
+            savedPosition.y >= nodeHalfHeight + 60 && 
+            savedPosition.y <= height - nodeHalfHeight - 60) {
+          nodeX = savedPosition.x;
+          nodeY = savedPosition.y;
+        } else if (node.x && node.y) {
+          // 如果保存的位置无效，使用节点指定的位置
+          nodeX = node.x;
+          nodeY = node.y;
+        } else {
+          // fallback到中心位置
+          nodeX = width / 2;
+          nodeY = height / 2;
+        }
+      } else if (node.x && node.y) {
+        // 如果节点有指定位置，使用指定位置
+        nodeX = node.x;
+        nodeY = node.y;
+      } else {
+        // fallback到中心位置
+        nodeX = width / 2;
+        nodeY = height / 2;
       }
 
       // 强制节点位置为整数
       nodeX = Math.round(nodeX);
       nodeY = Math.round(nodeY);
-
-      const nodeSize = calculateNodeSize({
-        data: {
-          name: node.name || "节点",
-          type: node.type || "人物",
-          properties: node.properties || [
-            { name: "名字", type: "string" },
-            { name: "日期", type: "date" },
-          ],
-        },
-      });
 
       const formattedNode = {
         id: nodeId,

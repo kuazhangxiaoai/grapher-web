@@ -154,4 +154,10 @@ export default {
       `/serve_api/template/queryRelationTemplateProperties?relationTemplateId=${relationTemplateId}`,
     );
   },
+  /** 专题下所有图谱对应图谱查询接口 */
+  getGraphByTopicId(topicId: String): Promise<any> {
+    return axios.get(
+      `/serve_api/sequence/getGraphByTopicId?topicId=${topicId}`,
+    );
+  },
 };
