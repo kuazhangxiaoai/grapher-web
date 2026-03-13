@@ -353,7 +353,8 @@ const clampNodePosition = (x, y, nodeHalfWidth, nodeHalfHeight) => {
     const minX = nodeHalfWidth + 10;
     const maxX = canvasWidth - nodeHalfWidth - 10;
     const minY = nodeHalfHeight + 60;
-    const maxY = canvasHeight - nodeHalfHeight - 60;
+    // 增加底部边距，为参考文本留出空间
+    const maxY = canvasHeight - nodeHalfHeight - 120;
 
     // 确保边界有效
     const validMinX = Math.min(minX, maxX);
@@ -549,9 +550,9 @@ const calculateNodePositions = (nodes, edges, width, height) => {
     
     do {
       overlap = false;
-      // 在画布范围内随机生成位置
+      // 在画布范围内随机生成位置，增加底部边距
       x = Math.random() * (width - size - 120) + size / 2 + 60;
-      y = Math.random() * (height - size - 120) + size / 2 + 60;
+      y = Math.random() * (height - size - 180) + size / 2 + 60;
       
       // 检查是否与已有节点重叠
       for (const [existingNodeId, pos] of positions) {
