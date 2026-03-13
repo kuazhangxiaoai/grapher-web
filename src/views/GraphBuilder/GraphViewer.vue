@@ -795,7 +795,7 @@ const initGraph = () => {
             const sourceEdgeCount = edges.value.filter(e => e.source === source || e.target === source).length;
             const targetEdgeCount = edges.value.filter(e => e.source === target || e.target === target).length;
             if (sourceEdgeCount >= 3 && targetEdgeCount >= 3) {
-              return "quadratic";
+              return "line";
             }
           }
           return hasReverseEdge ? "quadratic" : "line";
