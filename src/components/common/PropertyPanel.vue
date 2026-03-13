@@ -1005,8 +1005,8 @@ const handleDeleteProperty = (index) => {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
+  // justify-content: center;
+  // align-items: center;
 }
 
 .empty-properties {
@@ -1015,6 +1015,10 @@ const handleDeleteProperty = (index) => {
   padding: 20px 0;
   text-align: center;
   width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 40px;
 }
 
 .property-row {

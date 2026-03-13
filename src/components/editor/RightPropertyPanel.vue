@@ -95,7 +95,6 @@
               </div>
             </div>
             <!-- <el-button
-              v-if="nodeTemplateId==0"
               type="primary"
               size="small"
               class="add-property-btn"
@@ -110,7 +109,7 @@
               v-model="localBackgroundColor"
               show-alpha
               size="large"
-              :disabled="operationSource !== 'canvas'"
+              disabled
             ></el-color-picker>
           </div>
           <!-- <div class="property-item lines">
@@ -477,11 +476,13 @@ const emit = defineEmits(["close", "cancel", "save", "add-property", "delete-ite
 
 // 本地状态
 const localEntityName = ref(props.entityName);
-const localNodeName = ref(props.nodeName || props.entityName);
+// 当操作来源是画布且nodeName未定义时，设置为空字符串
+const localNodeName = ref(props.operationSource === 'canvas' && props.nodeName === undefined ? '' : (props.nodeName !== undefined ? props.nodeName : props.entityName));
 const localEntityDescription = ref(props.entityDescription);
 const localEntityProperties = ref([]);
 const localRelationshipName = ref(props.relationshipName);
-const localRelationName = ref(props.relationName || props.relationshipName);
+// 当正在创建关系时，关系名称置空
+const localRelationName = ref(props.isCreatingRelationship ? '' : (props.relationName || props.relationshipName));
 const localRelationshipDescription = ref(props.relationshipDescription);
 const localRelationshipType = ref(props.relationshipType);
 const localStartNodeName = ref(props.startNodeName);
@@ -535,14 +536,16 @@ watch(
     if (newValue) {
       isAddingProperty.value = false; // 重置添加状态
       localEntityName.value = props.entityName;
-      localNodeName.value = props.nodeName || props.entityName;
+      // 当操作来源是画布且nodeName未定义时，设置为空字符串
+      localNodeName.value = props.operationSource === 'canvas' && props.nodeName === undefined ? '' : (props.nodeName !== undefined ? props.nodeName : props.entityName);
       localEntityDescription.value = props.entityDescription;
       localEntityProperties.value = props.entityProperties.map((prop) => ({
         ...prop,
         isNew: false, // 标记为现有属性
       }));
       localRelationshipName.value = props.relationshipName;
-      localRelationName.value = props.relationName || props.relationshipName;
+      // 当正在创建关系时，关系名称置空
+      localRelationName.value = props.isCreatingRelationship ? '' : (props.relationName || props.relationshipName);
       localRelationshipDescription.value = props.relationshipDescription;
       localRelationshipType.value = props.relationshipType;
       localStartNodeName.value = props.startNodeName;
@@ -576,7 +579,7 @@ watch(
 watch(
   () => props.nodeName,
   (newValue) => {
-    localNodeName.value = newValue || props.entityName;
+    localNodeName.value = props.operationSource === 'canvas' && newValue === undefined ? '' : (newValue !== undefined ? newValue : props.entityName);
   },
 );
 
@@ -595,10 +598,11 @@ watch(
 );
 
 watch(
-  () => props.relationName,
-  (newValue) => {
-    localRelationName.value = newValue || props.relationshipName;
+  () => [props.relationName, props.isCreatingRelationship],
+  ([newValue, isCreating]) => {
+    localRelationName.value = isCreating ? '' : (newValue || props.relationshipName);
   },
+  { deep: true }
 );
 
 watch(
@@ -1089,8 +1093,6 @@ onMounted(() => {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
 }
 
 .empty-properties {
@@ -1099,6 +1101,10 @@ onMounted(() => {
   padding: 20px 0;
   text-align: center;
   width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 40px;
 }
 
 .property-row {
