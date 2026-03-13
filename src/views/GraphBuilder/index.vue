@@ -67,6 +67,18 @@
         @pdf-loaded="handlePdfLoaded"
       />
     </div>
+    <div class="graph-container" v-if="currentMode === 'graph' && !currentGraphId && currentSubDomain">
+      <GraphViewer2
+        ref="graphViewer"
+        :nodes="graphNodes"
+        :edges="graphEdges"
+        :article-id="currentGraphId"
+        :topic-id="currentSubDomainId"
+        :domain-id="currentDomainId"
+        :level="currentLevel"
+        :pdf-loaded="pdfLoaded"
+      />
+    </div>
     <div v-if="currentGraphId" class="graph-container">
       <GraphViewer
         ref="graphViewer"
@@ -153,6 +165,7 @@ import TextTool from "@/components/article/TextTool.vue";
 import { storeToRefs } from "pinia";
 import { useTextStore } from "@/store/useTextStore";
 import GraphViewer from "@/views/GraphBuilder/GraphViewer.vue";
+import GraphViewer2 from "@/views/GraphBuilder/GraphViewer2.vue";
 import GraphEditor from "@/views/GraphBuilder/GraphEditor.vue";
 import type { Mark, Rect } from "@/configs/text";
 import type { NodeTemplate } from "@/configs/graph.js";
