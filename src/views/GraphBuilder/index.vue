@@ -487,6 +487,7 @@ watch(
       isLoadingGraphs.value = true;
       graphs.value = [];
       // 重新加载图谱列表
+      console.log("监听模式变化，当从本体设计切回图谱构建时重新加载图谱列表",currentSubDomainId.value)
       await fetchGraph(currentSubDomainId.value);
     }
   }
@@ -542,6 +543,7 @@ onMounted(async () => {
           (topic) => topic.name === currentSubDomain.value,
         );
         if (currentSubDomainObj) {
+          console.log("onmounted",currentSubDomainObj.id)
           await fetchGraph(currentSubDomainObj.id);
           await fetchEntityAndRelationTypes(currentSubDomainObj.id);
 
@@ -657,7 +659,26 @@ const handleAddDomain = async (name) => {
 const handleSearch = (query) => {
   searchQuery.value = query;
 
-  if (currentDomain.value) {
+  if (currentSubDomainId.value && currentMode.value === 'graph') {
+    // 在图谱页面，只更新下拉框显示历史记录，不调用接口
+    if (query) {
+      // 如果有输入内容，过滤历史记录
+      const filteredHistory = graphSearchHistory.value.filter((item) =>
+        item.toLowerCase().includes(query.toLowerCase()),
+      );
+      if (filteredHistory.length > 0) {
+        graphSearchOptions.value = filteredHistory.map((item) => ({
+          value: item,
+          isHistory: true,
+        }));
+      } else {
+        graphSearchOptions.value = [{ value: "暂无匹配历史", disabled: true }];
+      }
+    } else {
+      // 输入框为空，显示全部历史记录
+      updateGraphSearchOptions();
+    }
+  } else if (currentDomain.value) {
     // 在专题页面，只更新下拉框显示历史记录，不调用接口
     if (query) {
       // 如果有输入内容，过滤历史记录
@@ -702,7 +723,14 @@ const handleSearch = (query) => {
 const selectSearchItem = async (value) => {
   searchQuery.value = value;
 
-  if (currentDomain.value) {
+  if (currentSubDomainId.value && currentMode.value === 'graph') {
+    // 在图谱页面，添加图谱搜索历史
+    addGraphSearchHistory(value);
+    // 调用图谱搜索接口
+    await fetchGraph(currentSubDomainId.value, value);
+    // 更新下拉框显示历史记录
+    updateGraphSearchOptions();
+  } else if (currentDomain.value) {
     // 在专题页面，添加专题搜索历史
     addTopicSearchHistory(value);
     // 调用专题搜索接口
@@ -812,24 +840,43 @@ const handleTopicSearchIconClick = async (query) => {
   }
 };
 
-// 图谱搜索处理
-const handleGraphSearch = async (query) => {
-  if (currentSubDomainId.value) {
-    await fetchGraph(currentSubDomainId.value, query);
+// 图谱搜索处理 - 只更新下拉框显示历史记录，不调用接口
+const handleGraphSearch = (query) => {
+  // 只更新下拉框显示历史记录，不调用接口
+  if (query) {
+    // 如果有输入内容，过滤历史记录
+    const filteredHistory = graphSearchHistory.value.filter((item) =>
+      item.toLowerCase().includes(query.toLowerCase()),
+    );
+    if (filteredHistory.length > 0) {
+      graphSearchOptions.value = filteredHistory.map((item) => ({
+        value: item,
+        isHistory: true,
+      }));
+    } else {
+      graphSearchOptions.value = [{ value: "暂无匹配历史", disabled: true }];
+    }
+  } else {
+    // 输入框为空，显示全部历史记录
+    updateGraphSearchOptions();
   }
 };
 
-// 图谱搜索图标点击事件
+// 图谱搜索图标点击事件处理 - 调用接口查询
 const handleGraphSearchIconClick = async (query) => {
-  if (query) {
-    // 添加图谱搜索历史
-    addGraphSearchHistory(query);
-  }
   if (currentSubDomainId.value) {
-    await fetchGraph(currentSubDomainId.value, query);
+    if (query) {
+      // 添加图谱搜索历史
+      addGraphSearchHistory(query);
+      // 调用接口获取图谱列表
+      await fetchGraph(currentSubDomainId.value, query);
+    } else {
+      // 搜索框为空，获取所有图谱并显示
+      await fetchGraph(currentSubDomainId.value, "");
+    }
+    // 更新图谱搜索下拉框选项
+    updateGraphSearchOptions();
   }
-  // 更新图谱搜索下拉框选项
-  updateGraphSearchOptions();
 };
 
 const handleBackToDomains = () => {
@@ -924,14 +971,13 @@ const fetchTopics = async (fieldId, condition = "") => {
 
 //获取图谱列表
 const fetchGraph = async (topicId, condition = "") => {
-  
+  console.log("搜索接口公共处",condition)
   // 防止重复调用
   if (isFetchingGraph.value) return;
 
   try {
     
     const currentTopicObj = topics.value.find((topic) => topic.id === topicId);
-    console.log(111111111,topicId,currentTopicObj)
     if (!currentTopicObj) return;
 
     isFetchingGraph.value = true;
@@ -1037,6 +1083,7 @@ const handleTopicClick = async (subDomain) => {
   currentLevel.value = 2;
   currentGraphId.value = "";
   currentGraphName.value = "";
+  console.log("处理专题点击handleTopicClick",subDomain.id)
   await fetchGraph(subDomain.id);
   await fetchEntityAndRelationTypes(subDomain.id);
   textUrl.value = "";
@@ -1276,7 +1323,7 @@ const handleCreateGraph = async (graphData) => {
         addGraphResponse.data,
       );
       textUrl.value = textUrlResponse.data;
-
+console.log("重新获取图谱列表，确保数据同步:", state.currentSubDomainId);
       // 重新获取图谱列表，确保数据同步
       await fetchGraph(state.currentSubDomainId);
       

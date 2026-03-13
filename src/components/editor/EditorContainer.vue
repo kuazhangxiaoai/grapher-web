@@ -174,125 +174,66 @@ const createCustomNode = (model) => {
       {
         "data-node-id": model.id,
         style: {
-          width: `${size}px`,
-          height: `${size}px`,
-          background: color,
-          borderRadius: "50%",
-          padding: "2px",
-          border: `2px solid ${color}`,
-          boxShadow: isSelected
-            ? `0 6px 30px ${backGround}`
-            : "0px 8px 10px 0px rgba(78,89,105,0.18)",
-          overflow: "hidden",
           display: "flex",
           flexDirection: "column",
-          justifyContent: "center",
           alignItems: "center",
           fontFamily: "PingFang SC, Microsoft YaHei, sans-serif",
-          transition: "all 0.2s ease",
-          cursor: "pointer",
           userSelect: "none",
           pointerEvents: "auto",
-          boxSizing: "border-box",
-          // 关键：添加抗锯齿样式
-          WebkitFontSmoothing: "antialiased",
-          MozOsxFontSmoothing: "grayscale",
-          textRendering: "optimizeLegibility",
-          fontSmooth: "always",
         },
       },
       [
+        // 节点本身
         h(
           "div",
           {
             style: {
-              // paddingBottom: "8px",
+              width: `${size}px`,
+              height: `${size}px`,
+              background: color,
+              borderRadius: "50%",
+              padding: "2px",
+              border: `2px solid ${color}`,
+              boxShadow: isSelected
+                ? `0 6px 30px ${backGround}`
+                : "0px 8px 10px 0px rgba(78,89,105,0.18)",
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+              alignItems: "center",
+              transition: "all 0.2s ease",
+              cursor: "pointer",
+              boxSizing: "border-box",
+              // 关键：添加抗锯齿样式
+              WebkitFontSmoothing: "antialiased",
+              MozOsxFontSmoothing: "grayscale",
+              textRendering: "optimizeLegibility",
+              fontSmooth: "always",
+            },
+          },
+          // 节点内部不再显示文本
+        ),
+        // 节点下方显示文本
+        h(
+          "div",
+          {
+            style: {
               fontSize: "13px",
               fontWeight: "500",
               color: "#000",
-              // borderBottom: "1px dashed rgba(67,215,181,0.5)",
-              background: color,
-              // marginBottom: "3px",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
+              marginTop: "8px",
               textAlign: "center",
-              display: "-webkit-box",
-              WebkitLineClamp: 3,
-              WebkitBoxOrient: "vertical",
               lineHeight: "1.3",
-             
+              whiteSpace: "nowrap",
+              // 关键：添加抗锯齿样式
+              WebkitFontSmoothing: "antialiased",
+              MozOsxFontSmoothing: "grayscale",
+              textRendering: "optimizeLegibility",
             },
           },
           label,
         ),
-        // h(
-        //   "div",
-        //   {
-        //     style: {
-        //       flex: 1,
-        //       padding: "6px 0px 0px 0px",
-        //       fontSize: "14px",
-        //       color: "#666666",
-        //       fontWeight: "400",
-        //       overflow: "auto",
-        //       maxHeight: "150px",
-        //     },
-        //   },
-        //   Array.isArray(attrs) && attrs.length > 0
-        //     ? attrs.slice(0, 3).map((attr) =>
-        //         h(
-        //           "div",
-        //           {
-        //             style: {
-        //               display: "flex",
-        //               justifyContent: "space-between",
-        //               marginBottom: "4px",
-        //             },
-        //           },
-        //           [
-        //             h(
-        //               "span",
-        //               {
-        //                 style: {
-        //                   color: "#666666",
-        //                   whiteSpace: "nowrap",
-        //                   overflow: "hidden",
-        //                   textOverflow: "ellipsis",
-        //                   width: "70%",
-        //                 },
-        //               },
-        //               attr.name || attr.key || "",
-        //             ),
-        //             h(
-        //               "span",
-        //               {
-        //                 style: {
-        //                   fontSize: "12px",
-        //                   color: "#666666",
-        //                   background: "#F4F8FC",
-        //                   borderRadius: "6px",
-        //                   padding: "1px 4px",
-        //                   textAlign: "center",
-        //                 },
-        //               },
-        //               typeMap[attr.type] || typeMap[attr.value] || "",
-        //             ),
-        //           ],
-        //         ),
-        //       )
-        //     : h(
-        //         "div",
-        //         {
-        //           style: {
-        //             fontSize: "13px",
-        //             textAlign: "center",
-        //             color: "#666666",
-        //             marginTop: "6px",
-        //           },
-        //         },
-        //         "暂无属性",
-        //       ),
-        // ),
       ],
     );
   };

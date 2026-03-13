@@ -121,34 +121,47 @@ const createCustomNode = (model) => {
       {
         "data-node-id": model.id,
         style: {
-          width: `${size}px`,
-          height: `${size}px`,
-          background: color,
-          borderRadius: "50%",
-          padding: "3px",
-          border: `2px solid ${color}`,
-          boxShadow: isSelected
-            ? `0 6px 30px ${backGround}`
-            : "0px 8px 10px 0px rgba(78,89,105,0.18)",
-          overflow: "hidden",
           display: "flex",
           flexDirection: "column",
-          justifyContent: "center",
           alignItems: "center",
           fontFamily: "PingFang SC, Microsoft YaHei, sans-serif",
-          transition: "all 0.2s ease",
-          cursor: "pointer",
           userSelect: "none",
           pointerEvents: "auto",
-          boxSizing: "border-box",
-          // 关键：添加抗锯齿样式
-          WebkitFontSmoothing: "antialiased",
-          MozOsxFontSmoothing: "grayscale",
-          textRendering: "optimizeLegibility",
-          fontSmooth: "always",
         },
       },
       [
+        // 节点本身
+        h(
+          "div",
+          {
+            style: {
+              width: `${size}px`,
+              height: `${size}px`,
+              background: color,
+              borderRadius: "50%",
+              padding: "3px",
+              border: `2px solid ${color}`,
+              boxShadow: isSelected
+                ? `0 6px 30px ${backGround}`
+                : "0px 8px 10px 0px rgba(78,89,105,0.18)",
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+              alignItems: "center",
+              transition: "all 0.2s ease",
+              cursor: "pointer",
+              boxSizing: "border-box",
+              // 关键：添加抗锯齿样式
+              WebkitFontSmoothing: "antialiased",
+              MozOsxFontSmoothing: "grayscale",
+              textRendering: "optimizeLegibility",
+              fontSmooth: "always",
+            },
+          },
+          // 节点内部不再显示文本
+        ),
+        // 节点下方显示文本
         h(
           "div",
           {
@@ -156,14 +169,14 @@ const createCustomNode = (model) => {
               fontSize: "13px",
               fontWeight: "500",
               color: "#000",
-              background: color,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
+              marginTop: "8px",
               textAlign: "center",
-              display: "-webkit-box",
-              WebkitLineClamp: 3,
-              WebkitBoxOrient: "vertical",
               lineHeight: "1.3",
+              whiteSpace: "nowrap",
+              // 关键：添加抗锯齿样式
+              WebkitFontSmoothing: "antialiased",
+              MozOsxFontSmoothing: "grayscale",
+              textRendering: "optimizeLegibility",
             },
           },
           label,
