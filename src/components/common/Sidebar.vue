@@ -128,7 +128,7 @@
         <div class="domain-info">
           <span>{{ domain.name }}</span>
         </div>
-        <div class="domain-icons">
+        <div class="domain-icons" v-if="currentMode === 'ontology'">
           <img
             class="arrow-icon"
             src="@/assets/images/复制.png"
@@ -240,7 +240,7 @@
           <div class="domain-info">
             <span>{{ topic.name }}</span>
           </div>
-          <div class="domain-icons">
+          <div class="domain-icons" v-if="currentMode === 'ontology'">
             <img
               class="arrow-icon"
               src="@/assets/images/复制.png"

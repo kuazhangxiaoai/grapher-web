@@ -49,105 +49,96 @@
       @clear-graph-history="clearGraphSearchHistory"
       @topic-click="handleTopicClick"
     />
-    <!-- 新增/编辑弹窗textUrl -->
-    <AddGraphDialog
-      v-model:visible="showGraphDialog"
-      :is-confirm-button-disabled="isConfirmButtonDisabled"
-      :loading="isLoading"
-      @create-graph="handleCreateGraph"
-      @cancel="handleCancelCreateGraph"
-    />
-    <div v-if="currentGraphId&&textUrl" class="text-container">
-      <Text
-        ref="textRef"
-        :src="textUrl"
-        :page="currentPage"
-        @selection-change="handlePdfSelectionChange"
-        @rectangle-click="handleRectangleClick"
-        @pdf-loaded="handlePdfLoaded"
+    <!-- 右侧内容区域 -->
+    <div class="content-container">
+      <!-- 新增/编辑弹窗textUrl -->
+      <AddGraphDialog
+        v-model:visible="showGraphDialog"
+        :is-confirm-button-disabled="isConfirmButtonDisabled"
+        :loading="isLoading"
+        @create-graph="handleCreateGraph"
+        @cancel="handleCancelCreateGraph"
       />
-    </div>
-    <div class="graph-container" v-if="currentMode === 'graph' && !currentGraphId && currentSubDomain">
-      <GraphViewer2
-        ref="graphViewer"
-        :nodes="graphNodes"
-        :edges="graphEdges"
-        :article-id="currentGraphId"
+      <div v-if="currentGraphId&&textUrl" class="text-container">
+        <Text
+          ref="textRef"
+          :src="textUrl"
+          :page="currentPage"
+          @selection-change="handlePdfSelectionChange"
+          @rectangle-click="handleRectangleClick"
+          @pdf-loaded="handlePdfLoaded"
+        />
+      </div>
+      <div class="graph-container" v-if="currentMode === 'graph'">
+        <GraphViewer
+          ref="graphViewer"
+          :nodes="graphNodes"
+          :edges="graphEdges"
+          :article-id="currentGraphId"
+          :topic-id="currentSubDomainId"
+          :domain-id="currentDomainId"
+          :level="currentLevel"
+          :pdf-loaded="pdfLoaded"
+        />
+        <!-- 除了文章外其他两种情况 -->
+        <!-- <Content
+         v-if="！textUrl"
+            ref="contentRef"
+            :current-sub-domain="currentSubDomain"
+            :current-mode="currentMode"
+            :has-data="hasData"
+            :graph-nodes="graphNodes"
+            :graph-edges="graphEdges"
+            :entity-properties="entityProperties"
+            @add-entity="handleAddEntity"
+            :is-connecting="isConnecting"
+            @create-relationship="handleCreateRelationship"
+            @connection-complete="handleConnectionComplete"
+            @drop="handleDrop"
+            @node-mouse-down="handleNodeMouseDown"
+            @mouse-move="handleMouseMove"
+            @mouse-up="handleMouseUp"
+            @node-drag-end="handleNodeDragEnd"
+            @node-click="handleNodeClick"
+            @edge-click="handleEdgeClick"
+            @quit="handleQuit"
+            @clear="handleClear"
+            @save-graph="handleSaveGraph"
+          /> -->
+        <TextTool
+         v-if="currentGraphId&&textUrl"
+          class="tool"
+          @previous-page="hanlePreviousPage"
+          @next-page="hanleNextPage"
+          @jump-page="handleJumpPage"
+          @refresh="hanleRefresh"
+          @edit-graph="openGraphEditor"
+        />
+      </div>
+      <GraphEditor
+        ref="graphEditorRef"
+        v-model:visible="showEditor"
+        :marks="markList"
+        :nodes="editorNodes"
+        :edges="editorEdges"
         :topic-id="currentSubDomainId"
-        :domain-id="currentDomainId"
-        :level="currentLevel"
-        :pdf-loaded="pdfLoaded"
-      />
-    </div>
-    <div v-if="currentGraphId" class="graph-container">
-      <GraphViewer
-        ref="graphViewer"
-        :nodes="graphNodes"
-        :edges="graphEdges"
         :article-id="currentGraphId"
-        :topic-id="currentSubDomainId"
-        :domain-id="currentDomainId"
-        :level="currentLevel"
-        :pdf-loaded="pdfLoaded"
-      />
-      <!-- 除了文章外其他两种情况 -->
-      <!-- <Content
-       v-if="！textUrl"
-          ref="contentRef"
-          :current-sub-domain="currentSubDomain"
-          :current-mode="currentMode"
-          :has-data="hasData"
-          :graph-nodes="graphNodes"
-          :graph-edges="graphEdges"
-          :entity-properties="entityProperties"
-          @add-entity="handleAddEntity"
-          :is-connecting="isConnecting"
-          @create-relationship="handleCreateRelationship"
-          @connection-complete="handleConnectionComplete"
-          @drop="handleDrop"
-          @node-mouse-down="handleNodeMouseDown"
-          @mouse-move="handleMouseMove"
-          @mouse-up="handleMouseUp"
-          @node-drag-end="handleNodeDragEnd"
-          @node-click="handleNodeClick"
-          @edge-click="handleEdgeClick"
-          @quit="handleQuit"
-          @clear="handleClear"
-          @save-graph="handleSaveGraph"
-        /> -->
-      <TextTool
-       v-if="currentGraphId&&textUrl"
-        class="tool"
-        @previous-page="hanlePreviousPage"
-        @next-page="hanleNextPage"
-        @jump-page="handleJumpPage"
-        @refresh="hanleRefresh"
-        @edit-graph="openGraphEditor"
+        :sequence-id="currentSequenceId"
+        :selected-sequence="currentSelectedSequence"
+        :entity-types="entityTypes"
+        :relationship-types="relationshipTypes"
+        :relation-templates="relationTemplates"
+        :node-templates="nodeTemplates"
+        :show-reference-text="!!currentSequenceId || !!pdfSelectionMark"
+        @node-drag-end="handleEditorNodeDragEnd"
+        @add-entity-from-template="handleEditorAddEntity"
+        @update:node="handleEditorUpdateNode"
+        @update:edge="handleEditorUpdateEdge"
+        @quit="handleEditorQuit"
+        @close-right="handleClosePropertyPanel"
+        @submit="handleEditorSubmit"
       />
     </div>
-    <GraphEditor
-      ref="graphEditorRef"
-      v-model:visible="showEditor"
-      :marks="markList"
-      :nodes="editorNodes"
-      :edges="editorEdges"
-      :topic-id="currentSubDomainId"
-      :article-id="currentGraphId"
-      :sequence-id="currentSequenceId"
-      :selected-sequence="currentSelectedSequence"
-      :entity-types="entityTypes"
-      :relationship-types="relationshipTypes"
-      :relation-templates="relationTemplates"
-      :node-templates="nodeTemplates"
-      :show-reference-text="!!currentSequenceId || !!pdfSelectionMark"
-      @node-drag-end="handleEditorNodeDragEnd"
-      @add-entity-from-template="handleEditorAddEntity"
-      @update:node="handleEditorUpdateNode"
-      @update:edge="handleEditorUpdateEdge"
-      @quit="handleEditorQuit"
-      @close-right="handleClosePropertyPanel"
-      @submit="handleEditorSubmit"
-    />
   </div>
 </template>
 
@@ -165,7 +156,6 @@ import TextTool from "@/components/article/TextTool.vue";
 import { storeToRefs } from "pinia";
 import { useTextStore } from "@/store/useTextStore";
 import GraphViewer from "@/views/GraphBuilder/GraphViewer.vue";
-import GraphViewer2 from "@/views/GraphBuilder/GraphViewer2.vue";
 import GraphEditor from "@/views/GraphBuilder/GraphEditor.vue";
 import type { Mark, Rect } from "@/configs/text";
 import type { NodeTemplate } from "@/configs/graph.js";
@@ -897,8 +887,14 @@ const handleBackToDomains = () => {
   currentSubDomain.value = "";
   currentGraphId.value = "";
   currentGraphName.value = "";
+  currentLevel.value = 0;
   subDomains.value = [];
   subSubDomains.value = [];
+  // 清空图谱数据，避免显示上一个页面的图谱
+  graphNodes.value = [];
+  graphEdges.value = [];
+  // 清空文本URL，隐藏文本区域
+  textUrl.value = "";
   // 切换回领域页面，更新下拉框显示领域搜索历史
   updateDomainSearchOptions();
   saveState();
@@ -908,9 +904,16 @@ const handleBackToSubDomains = () => {
   // 保存当前子领域名称，用于显示数量
   const previousSubDomain = currentSubDomain.value;
   currentSubDomain.value = "";
+  currentSubDomainId.value = "";
   currentGraphId.value = "";
   currentGraphName.value = "";
+  currentLevel.value = 1;
   subSubDomains.value = [];
+  // 清空图谱数据，避免显示上一个页面的图谱
+  graphNodes.value = [];
+  graphEdges.value = [];
+  // 清空文本URL，隐藏文本区域
+  textUrl.value = "";
   // 可以在这里更新子领域的数量
   // 例如：subDomains中找到对应的子领域并更新其数量
   saveState();
@@ -920,6 +923,13 @@ const backToSubGraphList = () => {
   // 这样就会回到图谱列表页面，而不是专题列表页面
   currentGraphId.value = "";
   currentGraphName.value = "";
+  // 设置层级为 2，确保显示图谱列表页面
+  currentLevel.value = 2;
+  // 清空图谱数据，避免返回列表页后显示详情页的图谱
+  graphNodes.value = [];
+  graphEdges.value = [];
+  // 清空文本URL，隐藏文本区域
+  textUrl.value = "";
   subSubDomains.value = [];
   // 可以在这里更新子领域的数量
   // 例如：subDomains中找到对应的子领域并更新其数量
@@ -939,6 +949,11 @@ const handleDomainClick = async (domain) => {
   currentGraphId.value = "";
   currentLevel.value = 1;
 
+  // 清空图谱数据，避免显示上一个页面的图谱
+  graphNodes.value = [];
+  graphEdges.value = [];
+  // 清空文本URL，隐藏文本区域
+  textUrl.value = "";
   // 立即清空topics列表，避免显示上一个领域的专题数据
   topics.value = [];
   // 设置加载状态
@@ -947,7 +962,6 @@ const handleDomainClick = async (domain) => {
   // 调用接口获取专题列表
   await fetchTopics(domain.id);
   // 取消加载状态
-  textUrl.value = "";
   isLoadingTopics.value = false;
 
   // 切换到专题页面，更新下拉框显示专题搜索历史
@@ -1001,11 +1015,10 @@ const fetchGraph = async (topicId, condition = "") => {
     if (response && response.data) {
       graphs.value = [];
       for (const graph of response.data) {
-        const articleUrl = await projectService.getArticleUrl(graph.articleId);
         const newGraph: GraphConfig = {
           id: graph.articleId,
           name: graph.articleName,
-          articleUrl: articleUrl,
+          articleUrl: null,
           articleName: graph.articleName,
           topicId: graph.topicId,
           topicName: currentSubDomain.value,
@@ -1096,10 +1109,14 @@ const handleTopicClick = async (subDomain) => {
   currentLevel.value = 2;
   currentGraphId.value = "";
   currentGraphName.value = "";
+  // 清空图谱数据，避免显示上一个页面的图谱
+  graphNodes.value = [];
+  graphEdges.value = [];
+  // 清空文本URL，隐藏文本区域
+  textUrl.value = "";
   console.log("处理专题点击handleTopicClick",subDomain.id)
   await fetchGraph(subDomain.id);
   await fetchEntityAndRelationTypes(subDomain.id);
-  textUrl.value = "";
   saveState();
 };
 
@@ -1329,14 +1346,7 @@ const handleCreateGraph = async (graphData) => {
     const addGraphResponse = await projectService.addArticle(graphDataToSend);
     console.log("添加图谱响应:", addGraphResponse);
     if (addGraphResponse.resultCode === "0000") {
-      hasData.value = true; // 设置 hasData 为 true，显示关系图
-
-      //跳转至新的url
-      const textUrlResponse = await projectService.getArticleUrl(
-        addGraphResponse.data,
-      );
-      textUrl.value = textUrlResponse.data;
-console.log("重新获取图谱列表，确保数据同步:", state.currentSubDomainId);
+      console.log("重新获取图谱列表，确保数据同步:", state.currentSubDomainId);
       // 重新获取图谱列表，确保数据同步
       await fetchGraph(state.currentSubDomainId);
       
@@ -1367,11 +1377,16 @@ const handleGraphClick = async (graph) => {
   currentLevel.value = 3;
   currentGraphId.value = graph.id;
   currentGraphName.value = graph.name;
+  // 清空当前图谱数据，避免在详情页显示列表页的图谱
+  graphNodes.value = [];
+  graphEdges.value = [];
+  // 先设置 hasData 为 false，避免在PDF加载完成前显示图谱
+  hasData.value = false;
+  // 先设置 pdfLoaded 为 false
+  pdfLoaded.value = false;
   const response = await projectService.getArticleUrl(graph.id);
   textUrl.value = response.data;
   currentPage.value = 0;
-  // 设置 hasData 为 true，显示关系图
-  hasData.value = true;
   
   // 清除之前的标记，避免切换图谱时残留上一个图谱的黄色下划线
   textStore.setMarkList([]);
@@ -1381,6 +1396,8 @@ const handleGraphClick = async (graph) => {
   
   // 调用段落列表查询接口
   await getSequenceList(graph.id);
+  
+  // 注意：hasData 将在 PDF 加载完成后由 TextTool 组件通过事件设置
 };
 
 // 获取段落列表并保存图谱
@@ -1700,6 +1717,10 @@ const handleRectangleClick = (payload) => {
 const handlePdfLoaded = (loaded) => {
   console.log('PDF加载完成:', loaded);
   pdfLoaded.value = loaded;
+  // PDF加载完成后，设置hasData为true，显示图谱
+  if (loaded) {
+    hasData.value = true;
+  }
 };
 
 const hanleRefresh = () => {
@@ -1783,6 +1804,14 @@ const handleEditorSubmit = async () => {
   width: 100%;
   height: calc(100vh - 72px);
 }
+
+.content-container {
+  flex: 1;
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+}
+
 .project-card-list-container {
   position: absolute;
   top: 0;
@@ -1790,6 +1819,7 @@ const handleEditorSubmit = async () => {
   width: 165vh;
   height: 85vh;
 }
+
 .text-container {
   position: relative;
   width: 35%;
@@ -1801,7 +1831,6 @@ const handleEditorSubmit = async () => {
 .graph-container {
   position: relative;
   display: flex;
-  // width: 40%;
   flex: 1;
   height: 100%;
   top: 0;

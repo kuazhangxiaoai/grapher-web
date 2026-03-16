@@ -35,14 +35,25 @@ export default defineConfig({
   ],
   server: {
     host: "0.0.0.0", // 本地ip地址
-    port: 5173,
+    port: 5176,
     proxy: {
       "/serve_api": {
-        target: "http://10.11.52.199:8080", //杨刚
-        //target: "http://10.11.52.173:8080" //王浩
-        //target: "http://10.11.52.10:8080", //李双
+        // target: "http://10.11.52.199:8080", //杨刚
+        // target: "http://10.11.52.173:8080", //王浩
+        target: "http://10.11.52.10:8080", //李双
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/serve_api/, "/graph_api/v1"),
+      },
+    },
+  },
+  build: {
+    outDir: "dist",
+    assetsDir: "assets",
+    minify: "terser",
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
       },
     },
   },

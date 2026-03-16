@@ -157,7 +157,7 @@ const mockLibraryTemplates = [
 export default [
   // 获取领域列表
   {
-    url: "/serve_api/field/selectFieldByCondition",
+    url: "/field/selectFieldByCondition",
     method: "get",
     response: ({ query }) => {
       const { condition } = query;
@@ -180,7 +180,7 @@ export default [
 
   // 新增领域
   {
-    url: "/serve_api/field/addField",
+    url: "/field/addField",
     method: "post",
     response: ({ body }) => {
       const { fieldName } = body;
@@ -201,7 +201,7 @@ export default [
 
   // 删除领域
   {
-    url: "/serve_api/field/remove",
+    url: "/field/remove",
     method: "get",
     response: () => {
       return {
@@ -213,7 +213,7 @@ export default [
 
   // 获取专题列表
   {
-    url: "/serve_api/topic/selectTopicByCondition",
+    url: "/topic/selectTopicByCondition",
     method: "get",
     response: ({ query }) => {
       const { condition, fieldId } = query;
@@ -241,7 +241,7 @@ export default [
 
   // 新增专题
   {
-    url: "/serve_api/topic/addTopic",
+    url: "/topic/addTopic",
     method: "post",
     response: ({ body }) => {
       const { topicName, fieldId } = body;
@@ -263,7 +263,7 @@ export default [
 
   // 删除专题
   {
-    url: "/serve_api/topic/remove",
+    url: "/topic/remove",
     method: "get",
     response: () => {
       return {
@@ -275,7 +275,7 @@ export default [
 
   // 节点/关系模版查询
   {
-    url: "/serve_api/template/queryTemplate",
+    url: "/template/queryTemplate",
     method: "get",
     response: ({ query }) => {
       const { topicId } = query;
@@ -332,7 +332,7 @@ export default [
 
   // 节点模板保存
   {
-    url: "/serve_api/template/saveNodeTemplate",
+    url: "/template/saveNodeTemplate",
     method: "post",
     response: ({ body }) => {
       const {
@@ -370,7 +370,7 @@ export default [
 
   // 关系模板保存
   {
-    url: "/serve_api/template/saveRelationTemplate",
+    url: "/template/saveRelationTemplate",
     method: "post",
     response: ({ body }) => {
       const {
@@ -411,7 +411,7 @@ export default [
 
   // 节点模版删除
   {
-    url: "/serve_api/template/deleteNodeTemplate",
+    url: "/template/deleteNodeTemplate",
     method: "post",
     response: () => {
       return {
@@ -423,7 +423,7 @@ export default [
 
   // 关系模版删除
   {
-    url: "/serve_api/template/deleteRelationTemplate",
+    url: "/template/deleteRelationTemplate",
     method: "post",
     response: () => {
       return {
@@ -435,7 +435,7 @@ export default [
 
   // 组件库查询
   {
-    url: "/serve_api/template/queryLibraryTemplate",
+    url: "/template/queryLibraryTemplate",
     method: "get",
     response: ({ query }) => {
       const { templateName } = query;
@@ -457,7 +457,7 @@ export default [
 
   // 添加到模型接口
   {
-    url: "/serve_api/template/addToModel",
+    url: "/template/addToModel",
     method: "post",
     response: () => {
       return {
@@ -469,7 +469,7 @@ export default [
 
   // 复制领域
   {
-    url: "/serve_api/field/copyField",
+    url: "/field/copyField",
     method: "get",
     response: ({ query }) => {
       const { fieldId } = query;
@@ -498,7 +498,7 @@ export default [
 
   // 复制专题
   {
-    url: "/serve_api/topic/copyTopic",
+    url: "/topic/copyTopic",
     method: "get",
     response: ({ query }) => {
       const { topicId } = query;

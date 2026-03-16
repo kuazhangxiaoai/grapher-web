@@ -385,7 +385,7 @@ const clampNodePosition = (x, y, nodeHalfWidth, nodeHalfHeight) => {
 };
 
 // 检测节点是否重叠
-const checkNodeOverlap = (x1, y1, size1, x2, y2, size2, margin = 20) => {
+const checkNodeOverlap = (x1, y1, size1, x2, y2, size2, margin = 40) => {
   const distance = Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2));
   const minDistance = (size1 + size2) / 2 + margin;
   return distance < minDistance;
@@ -490,7 +490,7 @@ const calculateNodePositions = (nodes, edges, width, height) => {
     const connectedNodeList = Array.from(connected).filter(id => !positions.has(id));
     
     if (connectedNodeList.length > 0) {
-      const radius = 150; // 增加环绕半径
+      const radius = 200; // 增加环绕半径，确保连线长度合适
       
       connectedNodeList.forEach((connectedNodeId, connIndex) => {
         if (!positions.has(connectedNodeId)) {
@@ -514,7 +514,7 @@ const calculateNodePositions = (nodes, edges, width, height) => {
                 overlap = true;
                 // 增加距离
                 const currentDistance = Math.sqrt(Math.pow(x - centerPos.x, 2) + Math.pow(y - centerPos.y, 2));
-                const newDistance = currentDistance + 40;
+                const newDistance = currentDistance + 60; // 增加每次调整的距离
                 x = centerPos.x + newDistance * Math.cos(angle);
                 y = centerPos.y + newDistance * Math.sin(angle);
                 break;
@@ -542,16 +542,21 @@ const calculateNodePositions = (nodes, edges, width, height) => {
     const nodeId = typeof node.id === "string" ? node.id : node.id.toString();
     const size = nodeSizes.get(nodeId) || 60;
     
-    // 均匀分布在画布中
+    // 在画布中心区域生成位置，避免出现在边缘
     let attempts = 0;
     let x, y;
     let overlap;
     
     do {
       overlap = false;
-      // 在画布范围内随机生成位置
-      x = Math.random() * (width - size - 120) + size / 2 + 60;
-      y = Math.random() * (height - size - 120) + size / 2 + 60;
+      // 在画布中心区域生成位置，限制在画布中心的60%范围内
+      const centerAreaWidth = width * 0.6;
+      const centerAreaHeight = height * 0.6;
+      const centerOffsetX = (width - centerAreaWidth) / 2;
+      const centerOffsetY = (height - centerAreaHeight) / 2;
+      
+      x = centerOffsetX + Math.random() * (centerAreaWidth - size - 80) + size / 2 + 40;
+      y = centerOffsetY + Math.random() * (centerAreaHeight - size - 80) + size / 2 + 40;
       
       // 检查是否与已有节点重叠
       for (const [existingNodeId, pos] of positions) {
@@ -1120,7 +1125,7 @@ const startConnect = async (nodeId) => {
       id: vNodeId,
       type: "circle",
       style: {
-        x: sourceNode.x + 100,
+        x: sourceNode.x,
         y: sourceNode.y,
         size: 1,
         opacity: 0,
@@ -1154,6 +1159,12 @@ const startConnect = async (nodeId) => {
 
     virtualNodeId.value = vNodeId;
     tempEdgeId.value = tempId;
+    
+    // 立即更新虚拟节点位置为鼠标当前位置，确保临时边从源节点指向鼠标位置
+    if (lastMousePos.value) {
+      updateVirtualNodePosition(lastMousePos.value.x, lastMousePos.value.y);
+    }
+    
     graph.value.render();
   } catch (error) {
     console.error("创建临时边失败:", error);
@@ -1328,6 +1339,7 @@ const updateVirtualNodePosition = (x, y, size = [100, 100]) => {
   try {
     const currentData = graph.value.getData();
     const nodes = currentData.nodes || [];
+    const edges = currentData.edges || [];
 
     const virtualNodeExists = nodes.some(
       (node) => node.id === virtualNodeId.value,
@@ -1353,9 +1365,21 @@ const updateVirtualNodePosition = (x, y, size = [100, 100]) => {
       return node;
     });
 
+    // 确保临时边的目标是虚拟节点，这样边会跟随虚拟节点移动
+    const updatedEdges = edges.map((edge) => {
+      if (edge.id === tempEdgeId.value) {
+        return {
+          ...edge,
+          target: virtualNodeId.value,
+        };
+      }
+      return edge;
+    });
+
     graph.value.setData({
       ...currentData,
       nodes: updatedNodes,
+      edges: updatedEdges,
     });
 
     graph.value.render();
@@ -1755,11 +1779,13 @@ const bindEvents = () => {
 
   // 使用原生 mousemove 事件
   const handleNativeMouseMove = (e) => {
-    if (!virtualNodeId.value || !graph.value || pendingConnection.value) return;
+    if (!graph.value || pendingConnection.value) return;
 
     try {
       const [x, y] = graph.value.getCanvasByClient([e.clientX, e.clientY]);
       lastMousePos.value = { x, y };
+      
+      if (!virtualNodeId.value) return;
 
       const elements = document.elementsFromPoint(e.clientX, e.clientY);
       let hoveredNodeId = null;

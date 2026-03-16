@@ -16,6 +16,7 @@
 <script setup>
 import {
   ref,
+  reactive,
   onMounted,
   onUnmounted,
   watch,
@@ -45,6 +46,18 @@ const props = defineProps({
     type: String,
     required: true,
   },
+  topicId: {
+    type: String,
+    required: true,
+  },
+  domainId: {
+    type: String,
+    default: "",
+  },
+  level: {
+    type: Number,
+    default: 0,
+  },
   nodes: {
     type: Array,
     default: () => [],
@@ -62,6 +75,7 @@ const props = defineProps({
 const graphRef = ref(null);
 const graph = shallowRef(null);
 const zoomLevel = ref(100);
+const graphInitialized = ref(false);
 // 使用父组件传递的nodes和edges props
 const nodes = ref(props.nodes || []);
 const edges = ref(props.edges || []);
@@ -69,8 +83,8 @@ const edges = ref(props.edges || []);
 // 保存缩放状态
 const savedZoom = ref(1);
 
-// 保存节点位置的本地状态
-const nodePositions = ref(new Map());
+// 保存节点位置的本地状态 - 使用 reactive 而不是 ref，确保每个组件实例都有自己的 Map
+const nodePositions = reactive(new Map());
 
 // 跟踪是否正在拖拽节点
 const isDragging = ref(false);
@@ -279,11 +293,16 @@ const calculateNodeSizeByEdges = (nodeId, nodes, edges) => {
 };
 
 // 限制节点位置在画布边界内
-const clampNodePosition = (x, y, nodeHalfWidth, nodeHalfHeight) => {
-  if (!graphRef.value) return { x, y };
+const clampNodePosition = (x, y, nodeHalfWidth, nodeHalfHeight, width, height) => {
+  // 如果没有提供宽度和高度，从 graphRef 获取
+  let canvasWidth = width || (graphRef.value ? graphRef.value.clientWidth : 800);
+  let canvasHeight = height || (graphRef.value ? graphRef.value.clientHeight : 600);
 
-  const canvasWidth = graphRef.value.clientWidth;
-  const canvasHeight = graphRef.value.clientHeight;
+  // 当PDF加载后，调整画布宽度，减去PDF组件占用的空间
+  if (props.pdfLoaded && graphRef.value) {
+    // PDF组件宽度为35%，调整画布宽度为剩余的65%
+    canvasWidth = Math.max(100, canvasWidth * 0.65);
+  }
 
   try {
     // 计算边界
@@ -322,7 +341,7 @@ const clampNodePosition = (x, y, nodeHalfWidth, nodeHalfHeight) => {
 };
 
 // 检测节点是否重叠
-const checkNodeOverlap = (x1, y1, size1, x2, y2, size2, margin = 20) => {
+const checkNodeOverlap = (x1, y1, size1, x2, y2, size2, margin = 40) => {
   const distance = Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2));
   const minDistance = (size1 + size2) / 2 + margin;
   return distance < minDistance;
@@ -417,7 +436,7 @@ const calculateNodePositions = (nodes, edges, width, height) => {
     }
     
     // 限制在画布边界内
-    const clampedCenter = clampNodePosition(nodeX, nodeY, size / 2, size / 2);
+    const clampedCenter = clampNodePosition(nodeX, nodeY, size / 2, size / 2, width, height);
     positions.set(centerNodeId, clampedCenter);
   });
   
@@ -431,7 +450,7 @@ const calculateNodePositions = (nodes, edges, width, height) => {
     const connectedNodeList = Array.from(connected).filter(id => !positions.has(id));
     
     if (connectedNodeList.length > 0) {
-      const radius = 150; // 增加环绕半径
+      const radius = 200; // 增加环绕半径，确保连线长度合适
       
       connectedNodeList.forEach((connectedNodeId, connIndex) => {
         if (!positions.has(connectedNodeId)) {
@@ -455,7 +474,7 @@ const calculateNodePositions = (nodes, edges, width, height) => {
                 overlap = true;
                 // 增加距离
                 const currentDistance = Math.sqrt(Math.pow(x - centerPos.x, 2) + Math.pow(y - centerPos.y, 2));
-                const newDistance = currentDistance + 40;
+                const newDistance = currentDistance + 60; // 增加每次调整的距离
                 x = centerPos.x + newDistance * Math.cos(angle);
                 y = centerPos.y + newDistance * Math.sin(angle);
                 break;
@@ -466,7 +485,7 @@ const calculateNodePositions = (nodes, edges, width, height) => {
           }
           
           // 限制在画布边界内
-          const clamped = clampNodePosition(x, y, connectedSize / 2, connectedSize / 2);
+          const clamped = clampNodePosition(x, y, connectedSize / 2, connectedSize / 2, width, height);
           positions.set(connectedNodeId, clamped);
         }
       });
@@ -487,16 +506,21 @@ const calculateNodePositions = (nodes, edges, width, height) => {
                   `node-${nodes.indexOf(node)}`);
     const size = nodeSizes.get(nodeId) || 60;
     
-    // 均匀分布在画布中
+    // 在画布中心区域生成位置，避免出现在边缘
     let attempts = 0;
     let x, y;
     let overlap;
     
     do {
       overlap = false;
-      // 在画布范围内随机生成位置
-      x = Math.random() * (width - size - 120) + size / 2 + 60;
-      y = Math.random() * (height - size - 120) + size / 2 + 60;
+      // 在画布中心区域生成位置，限制在画布中心的60%范围内
+      const centerAreaWidth = width * 0.6;
+      const centerAreaHeight = height * 0.6;
+      const centerOffsetX = (width - centerAreaWidth) / 2;
+      const centerOffsetY = (height - centerAreaHeight) / 2;
+      
+      x = centerOffsetX + Math.random() * (centerAreaWidth - size - 80) + size / 2 + 40;
+      y = centerOffsetY + Math.random() * (centerAreaHeight - size - 80) + size / 2 + 40;
       
       // 检查是否与已有节点重叠
       for (const [existingNodeId, pos] of positions) {
@@ -510,7 +534,7 @@ const calculateNodePositions = (nodes, edges, width, height) => {
     } while (overlap && attempts < 30);
     
     // 限制在画布边界内
-    const clamped = clampNodePosition(x, y, size / 2, size / 2);
+    const clamped = clampNodePosition(x, y, size / 2, size / 2, width, height);
     positions.set(nodeId, clamped);
   });
   
@@ -524,16 +548,29 @@ const validateAllNodePositions = () => {
   try {
     const currentData = graph.value.getData();
     const nodes = currentData.nodes || [];
+    const edges = currentData.edges || [];
     let needUpdate = false;
+
+    // 获取当前画布大小
+    let width = graphRef.value.clientWidth;
+    let height = graphRef.value.clientHeight;
+
+    // 当PDF加载后，调整画布宽度，减去PDF组件占用的空间
+    if (props.pdfLoaded) {
+      // PDF组件宽度为35%，调整画布宽度为剩余的65%
+      width = Math.max(100, width * 0.65);
+    }
 
     const updatedNodes = nodes.map((node) => {
       if (node.id && node.id.toString().startsWith("virtual-")) return node;
 
-      const nodeSize = node.style.size || [100, 100];
-      const halfWidth = nodeSize[0] / 2;
-      const halfHeight = nodeSize[1] / 2;
+      // 使用与 renderGraph 函数相同的方式计算节点大小
+      const nodeId = typeof node.id === "string" ? node.id : node.id.toString();
+      const size = calculateNodeSizeByEdges(nodeId, nodes, edges);
+      const nodeHalfWidth = size / 2;
+      const nodeHalfHeight = size / 2;
 
-      const clamped = clampNodePosition(node.style.x, node.style.y, halfWidth, halfHeight);
+      const clamped = clampNodePosition(node.style.x, node.style.y, nodeHalfWidth, nodeHalfHeight, width, height);
 
       // 强制位置为整数，避免子像素渲染导致的模糊
       const roundedX = Math.round(clamped.x);
@@ -567,7 +604,8 @@ const validateAllNodePositions = () => {
 
 // 应用保存的节点位置
 const applySavedNodePositions = () => {
-  if (!graph.value || nodePositions.value.size === 0) return false;
+  // 当PDF加载后，不应用保存的位置，因为这些位置可能已经无效
+  if (!graph.value || nodePositions.size === 0 || props.pdfLoaded) return false;
 
   isApplyingSavedPositions.value = true;
 
@@ -580,8 +618,8 @@ const applySavedNodePositions = () => {
       if (node.id && node.id.toString().startsWith("virtual-")) return node;
 
       const nodeId = typeof node.id === "string" ? node.id : node.id.toString();
-      if (nodePositions.value.has(nodeId)) {
-        const savedPos = nodePositions.value.get(nodeId);
+      if (nodePositions.has(nodeId)) {
+        const savedPos = nodePositions.get(nodeId);
         // 强制位置为整数
         const roundedX = Math.round(savedPos.x);
         const roundedY = Math.round(savedPos.y);
@@ -616,10 +654,40 @@ const applySavedNodePositions = () => {
 
 // 初始化G6图谱
 const initGraph = () => {
-  if (!graphRef.value) return;
+  // 检查PDF是否已加载
+  if (!props.pdfLoaded) {
+    console.log('PDF未加载，延迟初始化图谱');
+    return;
+  }
+  
+  if (!graphRef.value) {
+    // 延迟初始化，确保画布元素已经挂载
+    setTimeout(() => {
+      initGraph();
+    }, 100);
+    return;
+  }
 
-  const width = graphRef.value.clientWidth;
-  const height = graphRef.value.clientHeight;
+  // 确保获取最新的画布大小
+  let width = graphRef.value.clientWidth;
+  let height = graphRef.value.clientHeight;
+
+  // 当PDF加载后，调整画布宽度，减去PDF组件占用的空间
+  if (props.pdfLoaded) {
+    // PDF组件宽度为35%，调整画布宽度为剩余的65%
+    width = Math.max(100, width * 0.65);
+  }
+
+  // 检查画布大小是否有效
+  if (width === 0 || height === 0) {
+    // 画布大小无效，延迟重试
+    setTimeout(() => {
+      initGraph();
+    }, 100);
+    return;
+  }
+
+  console.log('初始化图谱，画布大小:', width, height);
 
   if (graph.value) {
     graph.value.destroy();
@@ -745,10 +813,6 @@ const initGraph = () => {
         type: "vue-node",
         style: {
           component: (model) => createCustomNode(model),
-          // size: (data) => {
-          //   const nodeSize = calculateNodeSize(data);
-          //   return [nodeSize.width, nodeSize.height];
-          // },
           size: (d) => {
           // 不使用style.size，强制重新计算
           // 获取当前节点的关联边数量
@@ -972,6 +1036,8 @@ const initGraph = () => {
 
     restoreViewState();
     bindEvents();
+    
+    graphInitialized.value = true;
   } catch (error) {
     console.error("初始化G6图谱时出错:", error);
   }
@@ -1004,7 +1070,51 @@ const clearEdgesSelection = () => {
     console.error("清除连线选中状态失败:", error);
   }
 };
-
+// 从接口获取图谱数据
+const fetchGraphData = async () => {
+  try {
+    let response;
+    // 只有当用户实际选择了内容时才调用 API
+    // level 表示用户的操作层级：0=初始状态, 1=选择了领域, 2=选择了专题, 3=选择了图谱
+    // 根据 level 优先级检查对应的 ID，确保在高 level 时优先使用更具体的 ID
+    if (props.level === 3 && props.articleId && props.articleId !== '') {
+      console.log('开始获取图谱数据，articleId:', props.articleId, 'level:', props.level);
+      response = await projectService.getGraphByArticleId(props.articleId);
+    } else if (props.level === 2 && props.topicId && props.topicId !== '') {
+      console.log('开始获取专题图谱数据，topicId:', props.topicId, 'level:', props.level);
+      response = await projectService.getGraphByTopicId(props.topicId);
+    } else if (props.level === 1 && props.domainId && props.domainId !== '') {
+      console.log('开始获取领域图谱数据，domainId:', props.domainId, 'level:', props.level);
+      response = await projectService.getGraphByFieldId(props.domainId);
+    } else if (props.level === 0) {
+      console.log('初始状态，不获取图谱数据', {
+        level: props.level,
+        domainId: props.domainId,
+        topicId: props.topicId,
+        articleId: props.articleId
+      });
+      return;
+    } else {
+      console.log('没有有效的 ID 或用户未选择内容，不获取图谱数据', {
+        level: props.level,
+        domainId: props.domainId,
+        topicId: props.topicId,
+        articleId: props.articleId
+      });
+      return;
+    }
+    console.log('获取图谱数据响应:', response);
+    if (response && response.data) {
+      nodes.value = response.data.nodes || [];
+      edges.value = response.data.relations || [];
+      renderGraph();
+    } else {
+      console.log('接口返回数据为空');
+    }
+  } catch (error) {
+    console.error('Error fetching graph data:', error);
+  }
+};
 // 保存视图状态
 const saveViewState = () => {
   if (!graph.value) return;
@@ -1035,33 +1145,6 @@ const restoreViewState = () => {
     console.warn("恢复视图状态失败:", error);
   }
 };
-
-// 从接口获取图谱数据
-const fetchGraphData = async () => {
-  try {
-    console.log('开始获取图谱数据，articleId:', props.articleId);
-    const response = await projectService.getGraphByArticleId(props.articleId);
-    console.log('获取图谱数据响应:', response);
-    if (response && response.data) {
-      console.log('图谱数据:', response.data);
-      console.log('节点数据:', response.data.nodes);
-      console.log('关系数据:', response.data.relations);
-      nodes.value = response.data.nodes || [];
-      edges.value = response.data.relations || [];
-      console.log('处理后节点数据:', nodes.value);
-      console.log('处理后关系数据:', edges.value);
-      // 只有当PDF加载完成后才渲染节点
-      if (props.pdfLoaded) {
-        renderGraph();
-      }
-    } else {
-      console.log('接口返回数据为空');
-    }
-  } catch (error) {
-    console.error('Error fetching graph data:', error);
-  }
-};
-
 // 绑定事件
 const bindEvents = () => {
   if (!graph.value) return;
@@ -1266,7 +1349,7 @@ const bindEvents = () => {
     const position = { x: model.style.x, y: model.style.y };
 
     const nodeId = typeof model.id === "string" ? model.id : model.id.toString();
-    nodePositions.value.set(nodeId, position);
+    nodePositions.set(nodeId, position);
 
     if (isDragging.value) {
       justFinishedDragging.value = true;
@@ -1318,25 +1401,48 @@ const bindEvents = () => {
 
 // 处理窗口大小变化
 const handleResize = () => {
-  if (!graph.value || !graphRef.value) return;
+  // 检查PDF是否已加载
+  if (!props.pdfLoaded) {
+    console.log('PDF未加载，延迟调整图谱大小');
+    return;
+  }
+  
+  if (!graphRef.value) return;
 
-  const width = graphRef.value.clientWidth;
-  const height = graphRef.value.clientHeight;
+  // 确保获取最新的画布大小
+  let width = graphRef.value.clientWidth;
+  let height = graphRef.value.clientHeight;
+
+  // 当PDF加载后，调整画布宽度，减去PDF组件占用的空间
+  if (props.pdfLoaded) {
+    // PDF组件宽度为35%，调整画布宽度为剩余的65%
+    width = Math.max(100, width * 0.65);
+  }
+
+  // 检查画布大小是否有效
+  if (width === 0 || height === 0) return;
+
+  console.log('调整图谱大小，新大小:', width, height);
 
   try {
-    saveViewState();
-    graph.value.resize(width, height);
+    if (graph.value) {
+      saveViewState();
+      graph.value.resize(width, height);
 
-    // 重新渲染图谱，确保节点位置重新计算
-    renderGraph();
+      // 重新渲染图谱，确保节点位置重新计算
+      renderGraph();
 
-    setTimeout(() => {
-      if (!isApplyingSavedPositions.value) {
-        validateAllNodePositions();
-      }
-    }, 50);
+      setTimeout(() => {
+        if (!isApplyingSavedPositions.value) {
+          validateAllNodePositions();
+        }
+      }, 50);
 
-    restoreViewState();
+      restoreViewState();
+    } else {
+      // 如果图谱尚未初始化，初始化它
+      initGraph();
+    }
   } catch (error) {
     console.error("调整图谱大小时出错:", error);
   }
@@ -1344,17 +1450,75 @@ const handleResize = () => {
 
 // 渲染图谱
 const renderGraph = () => {
-  if (!graph.value || !graphRef.value) {
+  console.log('renderGraph 被调用');
+  // 检查PDF是否已加载
+  if (!props.pdfLoaded) {
+    console.log('PDF未加载，延迟渲染图谱');
+    return;
+  }
+  
+  if (!graphRef.value) {
+    console.log('graphRef 不存在，延迟初始化');
+    // 延迟初始化，确保画布元素已经挂载
+    setTimeout(() => {
+      initGraph();
+    }, 100);
+    return;
+  }
+
+  // 确保获取最新的画布大小
+  let width = graphRef.value.clientWidth;
+  let height = graphRef.value.clientHeight;
+
+  // 当PDF加载后，调整画布宽度，减去PDF组件占用的空间
+  if (props.pdfLoaded) {
+    // PDF组件宽度为35%，调整画布宽度为剩余的65%
+    width = Math.max(100, width * 0.65);
+  }
+
+  console.log('获取到的画布大小:', width, height);
+
+  // 检查画布大小是否有效
+  if (width === 0 || height === 0) {
+    console.log('画布大小无效，延迟重试');
+    // 画布大小无效，延迟重试
+    setTimeout(() => {
+      renderGraph();
+    }, 200);
+    return;
+  }
+  
+  // 强制重新获取画布大小，确保是最新的
+  // 注意：这里不直接调用 renderGraph，而是通过 handleResize 来处理，避免无限递归
+  setTimeout(() => {
+    let newWidth = graphRef.value.clientWidth;
+    let newHeight = graphRef.value.clientHeight;
+    
+    // 当PDF加载后，调整画布宽度，减去PDF组件占用的空间
+    if (props.pdfLoaded) {
+      // PDF组件宽度为35%，调整画布宽度为剩余的65%
+      newWidth = Math.max(100, newWidth * 0.65);
+    }
+    
+    if (newWidth !== width || newHeight !== height) {
+      console.log('画布大小发生变化，调整大小:', newWidth, newHeight);
+      if (graph.value) {
+        graph.value.resize(newWidth, newHeight);
+        graph.value.render();
+      }
+    }
+  }, 100);
+
+  if (!graph.value) {
+    console.log('graph 实例不存在，初始化');
     initGraph();
     return;
   }
 
   try {
     console.log('开始渲染图谱，节点数量:', nodes.value.length, '连线数量:', edges.value.length);
+    console.log('当前画布大小:', width, height);
     saveViewState();
-
-    const width = graphRef.value.clientWidth;
-    const height = graphRef.value.clientHeight;
 
     // 预处理edges数据，确保格式正确
     const processedEdges = edges.value
@@ -1385,9 +1549,9 @@ const renderGraph = () => {
       // 获取位置
       let nodeX, nodeY;
       
-      // 优先使用保存的位置
-      if (!isApplyingSavedPositions.value && nodePositions.value.has(nodeId)) {
-        const savedPosition = nodePositions.value.get(nodeId);
+      // 优先使用保存的位置，但当PDF加载后，强制重新计算位置
+      if (!isApplyingSavedPositions.value && nodePositions.has(nodeId) && !props.pdfLoaded) {
+        const savedPosition = nodePositions.get(nodeId);
         // 检查保存的位置是否有效
         const size = calculateNodeSizeByEdges(nodeId, nodes.value, processedEdges);
         const nodeHalfWidth = size / 2;
@@ -1427,6 +1591,16 @@ const renderGraph = () => {
         nodeX = width / 2;
         nodeY = height / 2;
       }
+      
+      // 计算节点大小并限制位置在画布边界内
+      const size = calculateNodeSizeByEdges(nodeId, nodes.value, processedEdges);
+      const nodeHalfWidth = size / 2;
+      const nodeHalfHeight = size / 2;
+      
+      // 限制节点位置在画布边界内
+      const clamped = clampNodePosition(nodeX, nodeY, nodeHalfWidth, nodeHalfHeight, width, height);
+      nodeX = clamped.x;
+      nodeY = clamped.y;
 
       // 强制节点位置为整数
       nodeX = Math.round(nodeX);
@@ -1585,9 +1759,48 @@ watch(
   () => props.articleId,
   (newArticleId) => {
     console.log('articleId 变化:', newArticleId);
-    if (newArticleId) {
+    if (newArticleId && props.level >= 3) {
+      setTimeout(() => {
+        fetchGraphData();
+      }, 500);
+    }
+  },
+  { immediate: true }
+);
+
+// 监听topicId变化
+watch(
+  () => props.topicId,
+  (newTopicId) => {
+    console.log('topicId 变化:', newTopicId);
+    if (newTopicId && props.level >= 2) {
       fetchGraphData();
     }
+  },
+  { immediate: true }
+);
+
+// 监听domainId变化
+watch(
+  () => props.domainId,
+  (newDomainId) => {
+    console.log('domainId 变化:', newDomainId);
+    if (newDomainId && props.level >= 1) {
+      fetchGraphData();
+    }
+  },
+  { immediate: true }
+);
+
+// 监听level变化
+watch(
+  () => props.level,
+  (newLevel) => {
+    console.log('level 变化:', newLevel);
+    // 当level变化时，根据新的level和相应的ID调用fetchGraphData
+    setTimeout(() => {
+        fetchGraphData();
+      }, 500);
   },
   { immediate: true }
 );
@@ -1596,50 +1809,83 @@ watch(
 watch(
   [() => props.nodes, () => props.edges],
   ([newNodes, newEdges]) => {
-    console.log('nodes和edges变化:', newNodes, newEdges);
+    console.log('节点或边数据变化:', newNodes, newEdges);
     nodes.value = newNodes || [];
     edges.value = newEdges || [];
-    // 只有当PDF加载完成后才渲染节点
-    if (props.pdfLoaded) {
+    // 延迟渲染，确保画布大小已经更新
+    setTimeout(() => {
       renderGraph();
-    }
+    }, 50);
   },
   { deep: true }
 );
 
-// 监听PDF加载完成事件
+// 监听pdfLoaded变化，确保PDF加载后重新调整画布大小并初始化图谱
 watch(
   () => props.pdfLoaded,
-  (newValue) => {
-    console.log('PDF加载状态变化:', newValue);
-    if (newValue) {
-      // PDF加载完成，渲染节点
-      renderGraph();
+  (newPdfLoaded) => {
+    console.log('pdfLoaded 变化:', newPdfLoaded);
+    if (newPdfLoaded) {
+      // PDF加载完成后，延迟初始化图谱和调整画布大小，确保DOM已经更新
+      setTimeout(() => {
+        if (!graphInitialized.value) {
+          initGraph();
+          graphInitialized.value = true;
+        } else {
+          handleResize();
+        }
+      }, 500);
     }
   }
 );
 
-// 组件挂载时初始化图谱
+// 监听props变化，确保当组件切换页面时能够重新渲染图谱
+watch(
+  () => props,
+  () => {
+    console.log('Props变化，重新渲染图谱');
+    // 延迟渲染，确保画布大小已经更新
+    setTimeout(() => {
+      // 先检查画布大小是否有效
+      if (graphRef.value) {
+        const width = graphRef.value.clientWidth;
+        const height = graphRef.value.clientHeight;
+        console.log('Props变化时的画布大小:', width, height);
+        // 如果画布大小有效，渲染图谱
+        if (width > 0 && height > 0) {
+          renderGraph();
+        } else {
+          // 画布大小无效，延迟重试
+          setTimeout(() => {
+            renderGraph();
+          }, 200);
+        }
+      } else {
+        // 画布元素不存在，延迟重试
+        setTimeout(() => {
+          renderGraph();
+        }, 200);
+      }
+    }, 100);
+  },
+  { deep: true }
+);
+
 onMounted(() => {
-  console.log('GraphViewer 组件挂载，articleId:', props.articleId);
-  nextTick(() => {
-    console.log('GraphViewer 组件 nextTick 执行');
-    // 先获取数据，但不立即渲染
-    fetchGraphData();
-  });
+  // 检查PDF是否已经加载
+  if (props.pdfLoaded) {
+    // PDF已加载，初始化图谱
+    setTimeout(() => {
+      initGraph();
+    }, 200);
+  }
 });
 
-// 组件卸载时清理资源
 onUnmounted(() => {
   if (graph.value) {
     graph.value.destroy();
   }
   window.removeEventListener("resize", handleResize);
-});
-
-// 暴露方法给父组件
-defineExpose({
-  graph,
 });
 </script>
 
@@ -1654,75 +1900,48 @@ defineExpose({
 .graph-canvas {
   width: 100%;
   height: 100%;
-  overflow: visible !important;
 }
 
-:deep(.g6-canvas) {
-  overflow: visible !important;
-}
-
-:deep(.g6-canvas svg) {
-  overflow: visible !important;
-}
 .zoom-controls {
   position: absolute;
-  bottom: 25px;
-  right: 28px;
+  bottom: 20px;
+  right: 20px;
   display: flex;
   align-items: center;
-  border-radius: 40px;
-  padding: 1px;
-  background: #ffffff;
-  border: 0.5px solid rgba(226, 226, 226, 1);
-  box-shadow: 0px 8px 10px 0px rgba(78, 89, 105, 0.18);
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  padding: 4px;
+  z-index: 10;
 }
 
 .zoom-btn {
   width: 36px;
   height: 36px;
   border: none;
-  background: none;
-  font-size: 14px;
-  font-weight: bold;
+  background: white;
+  border-radius: 4px;
   cursor: pointer;
-  margin: 0 2px;
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative;
+  transition: all 0.2s ease;
+}
+
+.zoom-btn:hover {
+  background: #f5f7fa;
 }
 
 .zoom-icon {
-  position: relative;
-  z-index: 1;
   width: 18px;
   height: 18px;
 }
 
 .zoom-level {
-  width: 50px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  margin: 0 12px;
   font-size: 14px;
-  color: #333;
-  font-weight: bold;
-  margin: 0 2px;
+  color: #606266;
   min-width: 50px;
-}
-</style>
-
-<style>
-/* 全局抗锯齿样式 - 不影响功能 */
-.g6-canvas canvas {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-[data-node-id] {
-  -webkit-font-smoothing: antialiased !important;
-  -moz-osx-font-smoothing: grayscale !important;
-  text-rendering: optimizeLegibility !important;
+  text-align: center;
 }
 </style>

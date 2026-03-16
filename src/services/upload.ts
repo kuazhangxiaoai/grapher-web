@@ -7,7 +7,7 @@ export default {
     uploadFile(file: File): Promise<any> {
         const formData = new FormData()
         formData.append('file', file)
-        return axios.post(`/serve_api/attachment/upload`, formData, {
+        return axios.post(`/attachment/upload`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
         })
     },
@@ -17,7 +17,7 @@ export default {
         const useProject = useProjectStore();
         formData.append('file', file)
         formData.append('pptProjectId', (useProject.pptProjectId || 0).toString())
-        return axios.post(`/serve_api/attachment/pptUpload`, formData, {
+        return axios.post(`/attachment/pptUpload`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
         })
     },
@@ -27,7 +27,7 @@ export default {
             responseType: 'blob'
         };
 
-        return axios.get(`/serve_api/attachment/download`, config)
+        return axios.get(`/attachment/download`, config)
             .then((response) => {
                 const blob = response.data as Blob;
 
@@ -51,7 +51,7 @@ export default {
             params: { projId: useProject.pptProjectId },
             // responseType: 'blob'
         };
-        return axios.post(`/serve_api/project/downloadProj?projId=`+useProject.pptProjectId)
+        return axios.post(`/project/downloadProj?projId=`+useProject.pptProjectId)
             .then((response) => {
                 console.log(response.data.downloadUrl);
                 return response.data.downloadUrl;
