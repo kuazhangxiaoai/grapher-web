@@ -1,6 +1,6 @@
 <template>
   <div v-if="documentId" class="pdf-selection-container">
-    <Viewport :document-id="documentId" style="overflow: hidden; width: 100%; height: 100%; padding: 10px">
+    <Viewport :document-id="documentId" style="overflow: hidden; width: 100%; height: 100%; padding: 0px">
       <Scroller :document-id="documentId">
         <template #default="{page}">
           <div

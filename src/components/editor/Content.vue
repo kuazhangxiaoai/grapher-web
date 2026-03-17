@@ -14,6 +14,7 @@
             :nodes="props.graphNodes"
             :edges="props.graphEdges"
             :is-connecting="props.isConnecting"
+            :has-clicked-relationship-template="props.hasClickedRelationshipTemplate"
             @add-entity="handleAddEntity"
             @create-relationship="
               (sourceId) => handleCreateRelationship(sourceId)
@@ -72,6 +73,10 @@ const props = defineProps({
     default: false,
   },
   isConnecting: {
+    type: Boolean,
+    default: false,
+  },
+  hasClickedRelationshipTemplate: {
     type: Boolean,
     default: false,
   },

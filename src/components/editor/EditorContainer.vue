@@ -1,10 +1,11 @@
 <template>
   <div class="graph-container">
     <div ref="graphRef" class="graph-canvas"></div>
-    <GraphContextMenu
+    <GraphBuilderContextMenu
       v-if="showContextMenu"
       :position="contextMenuPosition"
       :is-node-click="isNodeClick"
+      :has-clicked-relationship-template="props.hasClickedRelationshipTemplate"
       @add-entity="handleAddEntity"
       @create-relationship="handleCreateRelationship"
       @close="showContextMenu = false"
@@ -39,7 +40,7 @@ import {
   h,
 } from "vue";
 import { Graph, register, ExtensionCategory } from "@antv/g6";
-import GraphContextMenu from "../graph/GraphContextMenu.vue";
+import GraphBuilderContextMenu from "../graph/GraphBuilderContextMenu.vue";
 import { VueNode } from "g6-extension-vue";
 import EditorTool from "@/components/editor/EditorTool.vue";
 // 内边距配置常量
@@ -70,6 +71,10 @@ const props = defineProps({
     default: true,
   },
   isConnecting: {
+    type: Boolean,
+    default: false,
+  },
+  hasClickedRelationshipTemplate: {
     type: Boolean,
     default: false,
   },
@@ -385,7 +390,7 @@ const clampNodePosition = (x, y, nodeHalfWidth, nodeHalfHeight) => {
 };
 
 // 检测节点是否重叠
-const checkNodeOverlap = (x1, y1, size1, x2, y2, size2, margin = 40) => {
+const checkNodeOverlap = (x1, y1, size1, x2, y2, size2, margin = 60) => {
   const distance = Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2));
   const minDistance = (size1 + size2) / 2 + margin;
   return distance < minDistance;
@@ -424,15 +429,23 @@ const calculateNodePositions = (nodes, edges, width, height) => {
   const centerNodes = [];
   const processedNodes = new Set();
   
-  // 找出所有中心节点（边数大于等于3的节点）
+  // 找出所有中心节点（边数大于等于1的节点，确保至少有一个中心节点）
   nodes.forEach(node => {
     const nodeId = typeof node.id === "string" ? node.id : node.id.toString();
     const edgeCount = nodeEdgeCounts.get(nodeId) || 0;
-    if (edgeCount >= 3 && !processedNodes.has(nodeId)) {
+    if (edgeCount >= 1 && !processedNodes.has(nodeId)) {
       centerNodes.push(nodeId);
       processedNodes.add(nodeId);
     }
   });
+  
+  // 如果没有中心节点（所有节点都没有边），至少选择一个节点作为中心
+  if (centerNodes.length === 0 && nodes.length > 0) {
+    const firstNode = nodes[0];
+    const nodeId = typeof firstNode.id === "string" ? firstNode.id : firstNode.id.toString();
+    centerNodes.push(nodeId);
+    processedNodes.add(nodeId);
+  }
   
   // 按边数排序中心节点
   centerNodes.sort((a, b) => nodeEdgeCounts.get(b) - nodeEdgeCounts.get(a));
@@ -490,7 +503,7 @@ const calculateNodePositions = (nodes, edges, width, height) => {
     const connectedNodeList = Array.from(connected).filter(id => !positions.has(id));
     
     if (connectedNodeList.length > 0) {
-      const radius = 200; // 增加环绕半径，确保连线长度合适
+      const radius = 250; // 增加环绕半径，确保节点不会在连线上
       
       connectedNodeList.forEach((connectedNodeId, connIndex) => {
         if (!positions.has(connectedNodeId)) {
@@ -858,8 +871,8 @@ const initGraph = () => {
                 const nodeX = sourceNode.x;
                 const nodeY = sourceNode.y;
                 style.controlPoints = [
-                  { x: nodeX + 120, y: nodeY - 240 },
-                  { x: nodeX - 120, y: nodeY - 240 },
+                  { x: nodeX + 150, y: nodeY - 300 },
+                  { x: nodeX - 150, y: nodeY - 300 },
                 ];
               }
             }
@@ -915,18 +928,18 @@ const initGraph = () => {
             const targetEdgeCount = props.edges.filter(e => e.source === target || e.target === target).length;
             
             if (hasReverseEdge) {
-              // 双向边的处理
+              // 双向边的处理，使用更大的偏移避免交叉
               if (source < target) {
-                style.controlPoints = [{ x: centerX, y: centerY - 80 }];
+                style.controlPoints = [{ x: centerX, y: centerY - 120 }];
               } else {
-                style.controlPoints = [{ x: centerX, y: centerY + 80 }];
+                style.controlPoints = [{ x: centerX, y: centerY + 120 }];
               }
             } else if (sourceEdgeCount >= 3 && targetEdgeCount >= 3) {
               // 连接两个中心节点的边，使用更明显的曲线
               const dx = targetX - sourceX;
               const dy = targetY - sourceY;
               const distance = Math.sqrt(dx * dx + dy * dy);
-              const offset = Math.min(100, distance / 3);
+              const offset = Math.min(150, distance / 2);
               
               // 计算垂直于连线的方向
               const normalX = -dy / distance;
@@ -937,7 +950,7 @@ const initGraph = () => {
                 y: centerY + normalY * offset
               }];
             } else if (sourceEdgeCount >= 3 || targetEdgeCount >= 3) {
-              // 连接中心节点和普通节点的边
+              // 连接中心节点和普通节点的边，使用更平滑的曲线
               const isSourceCenter = sourceEdgeCount >= 3;
               const centerNode = isSourceCenter ? sourceNode : targetNode;
               const otherNode = isSourceCenter ? targetNode : sourceNode;
@@ -952,12 +965,33 @@ const initGraph = () => {
               const cy = otherPosY - centerPosY;
               const dist = Math.sqrt(cx * cx + cy * cy);
               
-              // 在中心节点和其他节点之间添加一个控制点，使连线更加平滑
-              const controlDist = dist / 3;
-              const controlX = centerPosX + (cx / dist) * controlDist;
-              const controlY = centerPosY + (cy / dist) * controlDist;
+              // 使用两个控制点创建更平滑的曲线
+              const controlDist1 = dist / 3;
+              const controlDist2 = dist * 2 / 3;
+              const controlX1 = centerPosX + (cx / dist) * controlDist1;
+              const controlY1 = centerPosY + (cy / dist) * controlDist1;
+              const controlX2 = centerPosX + (cx / dist) * controlDist2;
+              const controlY2 = centerPosY + (cy / dist) * controlDist2;
               
-              style.controlPoints = [{ x: controlX, y: controlY }];
+              style.controlPoints = [
+                { x: controlX1, y: controlY1 },
+                { x: controlX2, y: controlY2 }
+              ];
+            } else {
+              // 普通边，使用简单的曲线避免交叉
+              const dx = targetX - sourceX;
+              const dy = targetY - sourceY;
+              const distance = Math.sqrt(dx * dx + dy * dy);
+              const offset = Math.min(80, distance / 3);
+              
+              // 计算垂直于连线的方向
+              const normalX = -dy / distance;
+              const normalY = dx / distance;
+              
+              style.controlPoints = [{
+                x: centerX + normalX * offset,
+                y: centerY + normalY * offset
+              }];
             }
           }
 
@@ -969,8 +1003,8 @@ const initGraph = () => {
               const nodeX = sourceNode.x;
               const nodeY = sourceNode.y;
               style.controlPoints = [
-                { x: nodeX + 120, y: nodeY - 240 },
-                { x: nodeX - 120, y: nodeY - 240 },
+                { x: nodeX + 150, y: nodeY - 300 },
+                { x: nodeX - 150, y: nodeY - 300 },
               ];
             }
           }
@@ -1681,6 +1715,18 @@ const bindEvents = () => {
     });
   });
 
+  // 节点鼠标按下事件
+  graph.value.on("node:mousedown", (event) => {
+    // 检查是否是右键点击
+    if (event.originalEvent && event.originalEvent.button === 2) {
+      // 如果没有点击过左侧关系模板，阻止默认行为，防止节点跟随鼠标移动
+      if (!props.hasClickedRelationshipTemplate) {
+        event.originalEvent.preventDefault();
+        event.originalEvent.stopPropagation();
+      }
+    }
+  });
+
   // 节点鼠标进入事件
   graph.value.on("node:mouseenter", (event) => {
     const node = event.item;
@@ -1718,6 +1764,11 @@ const bindEvents = () => {
   // 节点右键菜单
   graph.value.on("node:contextmenu", (evt) => {
     evt.preventDefault();
+
+    // 如果没有点击过左侧关系模板，不显示任何东西
+    if (!props.hasClickedRelationshipTemplate) {
+      return;
+    }
 
     let nodeId = null;
 
@@ -1895,11 +1946,11 @@ const renderGraph = () => {
       const nodeId = typeof node.id === "string" ? node.id : node.id.toString();
       let nodeX, nodeY;
       
-      // 优先使用布局算法计算的位置
-      if (calculatedPositions.has(nodeId)) {
-        const pos = calculatedPositions.get(nodeId);
-        nodeX = pos.x;
-        nodeY = pos.y;
+      // 优先使用节点自身的位置信息，这样拖拽放置的位置不会被布局算法覆盖
+      if (node.x && node.y) {
+        // 使用节点指定的位置（例如拖拽放置时的位置）
+        nodeX = node.x;
+        nodeY = node.y;
       } else if (!isApplyingSavedPositions.value && nodePositions.value.has(nodeId)) {
         // 其次使用保存的位置
         const savedPosition = nodePositions.value.get(nodeId);
@@ -1914,19 +1965,16 @@ const renderGraph = () => {
             savedPosition.y <= height - nodeHalfHeight - 60) {
           nodeX = savedPosition.x;
           nodeY = savedPosition.y;
-        } else if (node.x && node.y) {
-          // 如果保存的位置无效，使用节点指定的位置
-          nodeX = node.x;
-          nodeY = node.y;
         } else {
           // fallback到中心位置
           nodeX = width / 2;
           nodeY = height / 2;
         }
-      } else if (node.x && node.y) {
-        // 如果节点有指定位置，使用指定位置
-        nodeX = node.x;
-        nodeY = node.y;
+      } else if (calculatedPositions.has(nodeId)) {
+        // 最后使用布局算法计算的位置
+        const pos = calculatedPositions.get(nodeId);
+        nodeX = pos.x;
+        nodeY = pos.y;
       } else {
         // fallback到中心位置
         nodeX = width / 2;
@@ -2133,6 +2181,10 @@ onMounted(() => {
 // 重置连线状态
 const resetConnectionState = () => {
   cancelConnect();
+  // 清除节点选中状态
+  clearNodeSelection();
+  // 清除连线选中状态
+  clearEdgesSelection();
 };
 
 // 组件卸载时清理资源
@@ -2157,6 +2209,7 @@ defineExpose({
   clearEdgesSelection,
   confirmConnection,
   graph,
+  showContextMenu,
 });
 </script>
 

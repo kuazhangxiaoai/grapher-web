@@ -1273,7 +1273,12 @@ const handleClosePropertyPanel = () => {
   // 关闭属性面板后，清除虚线
   if (currentOperation.value === "relationship" && contentRef.value) {
     contentRef.value.resetConnectionState();
-    console.log("关闭属性面板后，调用resetConnectionState方法清除虚线");
+    console.log("关闭属性面板后，调用resetConnectionState方法清除虚线和临时连线");
+    // 关闭右键菜单
+    if (contentRef.value.graphContainerRef) {
+      contentRef.value.graphContainerRef.showContextMenu = false;
+      console.log("关闭属性面板后，关闭右键菜单");
+    }
   }
   console.log(
     "关闭属性面板后22222",
@@ -1313,18 +1318,18 @@ const handleClosePropertyPanel = () => {
   selectedEdgeId.value = null;
   // 清除选中的关系模板
   selectedRelationshipTemplate.value = null;
+  // 重置已点击关系模板的标记
+  hasClickedRelationshipTemplate.value = false;
   // 重置正在创建连线的标记
   isCreatingRelationship.value = false;
 
-  // 如果当前是关系操作，退出连线模式
-  if (currentOperation.value === "relationship") {
-    isConnecting.value = false;
-    // 清空源节点和目标节点ID
-    sourceNodeId.value = null;
-    targetNodeId.value = null;
-    originalSourceNodeId.value = null;
-    originalTargetNodeId.value = null;
-  }
+  // 退出连线模式
+  isConnecting.value = false;
+  // 清空源节点和目标节点ID
+  sourceNodeId.value = null;
+  targetNodeId.value = null;
+  originalSourceNodeId.value = null;
+  originalTargetNodeId.value = null;
 };
 
 const handleCancelPropertyPanel = () => {
@@ -1333,7 +1338,12 @@ const handleCancelPropertyPanel = () => {
   // 取消属性面板后，清除虚线
   if (currentOperation.value === "relationship" && contentRef.value) {
     contentRef.value.resetConnectionState();
-    console.log("取消属性面板后，调用resetConnectionState方法清除虚线");
+    console.log("取消属性面板后，调用resetConnectionState方法清除虚线和临时连线");
+    // 关闭右键菜单
+    if (contentRef.value.graphContainerRef) {
+      contentRef.value.graphContainerRef.showContextMenu = false;
+      console.log("取消属性面板后，关闭右键菜单");
+    }
   }
 
   // 清除节点选中状态
@@ -1369,16 +1379,16 @@ const handleCancelPropertyPanel = () => {
   selectedEdgeId.value = null;
   // 清除选中的关系模板
   selectedRelationshipTemplate.value = null;
+  // 重置已点击关系模板的标记
+  hasClickedRelationshipTemplate.value = false;
 
-  // 如果当前是关系操作，退出连线模式
-  if (currentOperation.value === "relationship") {
-    isConnecting.value = false;
-    // 清空源节点和目标节点ID
-    sourceNodeId.value = null;
-    targetNodeId.value = null;
-    originalSourceNodeId.value = null;
-    originalTargetNodeId.value = null;
-  }
+  // 退出连线模式
+  isConnecting.value = false;
+  // 清空源节点和目标节点ID
+  sourceNodeId.value = null;
+  targetNodeId.value = null;
+  originalSourceNodeId.value = null;
+  originalTargetNodeId.value = null;
 };
 
 // 处理连接完成
@@ -1728,6 +1738,8 @@ const handleSavePropertyPanel = (data) => {
 
   // 清除选中的关系模板，避免后续连线时仍使用该模板进行校验
   selectedRelationshipTemplate.value = null;
+  // 重置已点击关系模板的标记
+  hasClickedRelationshipTemplate.value = false;
   console.log("保存属性后，清除选中的关系模板");
 
   // 保存关系后，清除虚线
@@ -2490,6 +2502,8 @@ operationSource.value = "library";
   if (relationshipTemplate) {
     // 存储当前选中的关系模板
     selectedRelationshipTemplate.value = relationshipTemplate;
+    // 标记已点击了关系模板
+    hasClickedRelationshipTemplate.value = true;
     
     // 设置关系类型
     let relationTypeText = "定向";
@@ -2743,8 +2757,10 @@ const isCreatingRelationship = ref(false);
 const selectedNodeId = ref(null);
 // 存储当前选中的边ID
 const selectedEdgeId = ref(null);
-// 存储当前选中的关系模板
+// 选中的关系模板
 const selectedRelationshipTemplate = ref(null);
+// 是否点击了左侧面板的关系模板
+const hasClickedRelationshipTemplate = ref(false);
 
 // 组件库列表
 const components = ref([]);
@@ -3438,6 +3454,7 @@ const handleDeleteItem = () => {
           :entity-properties="entityProperties"
           @add-entity="handleAddEntity"
           :is-connecting="isConnecting"
+          :has-clicked-relationship-template="hasClickedRelationshipTemplate"
           @create-relationship="handleCreateRelationship"
           @connection-complete="handleConnectionComplete"
           @drop="handleDrop"

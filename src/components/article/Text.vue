@@ -1,5 +1,5 @@
 <template>
-  <div v-if="isLoading || !engine" class="loading-pane">
+  <div v-if="isEngineLoading || !engine" class="loading-pane">
     Loading PDF Engine...
   </div>
   <div v-else-if="!props.src" class="loading-pane">
@@ -26,7 +26,7 @@
 </template>
 
 <script setup lang="ts">
-import {ref, computed, watch} from 'vue';
+import {ref, computed, watch, onMounted} from 'vue';
 import { usePdfiumEngine } from '@embedpdf/engines/vue';
 import { EmbedPDF } from '@embedpdf/core/vue';
 import { createPluginRegistration } from '@embedpdf/core';
@@ -43,6 +43,8 @@ import type { Mark } from "@/configs/text";
 //const { engine, isLoading } = usePdfiumEngine({wasmUrl: "http://localhost:8090/pdf/pdfium.wasm"}); => product.env
 const { engine, isLoading } = usePdfiumEngine();
 
+// 手动管理加载状态，确保初始时显示加载界面
+const isEngineLoading = ref(true);
 
 const props = defineProps<{
   src?: string | null;
@@ -91,14 +93,72 @@ let pdfLoadedEmitted = ref(false);
 
 // 当文档内容加载完成时触发pdf-loaded事件
 watch(() => engine.value, (newEngine) => {
-  if (newEngine && !pdfLoadedEmitted.value) {
-    // 延迟触发，确保PDF完全加载
+  console.log('engine.value changed:', newEngine);
+  if (newEngine && props.src) {
+    // 确保引擎真正加载完成且有src时才设置为false
     setTimeout(() => {
-      emit('pdf-loaded', true);
-      pdfLoadedEmitted.value = true;
-    }, 1000);
+      isEngineLoading.value = false;
+      console.log('isEngineLoading set to false');
+    }, 500);
+    if (!pdfLoadedEmitted.value) {
+      // 延迟触发，确保PDF完全加载
+      setTimeout(() => {
+        emit('pdf-loaded', true);
+        pdfLoadedEmitted.value = true;
+      }, 1000);
+    }
+  } else if (newEngine && !props.src) {
+    // 引擎加载完成但没有src，保持加载状态
+    console.log('Engine loaded but no src, keeping loading state');
   }
 }, { deep: true });
+
+// 监听isLoading的变化
+watch(isLoading, (newIsLoading) => {
+  console.log('isLoading changed:', newIsLoading);
+  if (!newIsLoading && engine.value && props.src) {
+    // 当isLoading变为false、engine有值且有src时，设置isEngineLoading为false
+    setTimeout(() => {
+      isEngineLoading.value = false;
+      console.log('isEngineLoading set to false based on isLoading');
+    }, 500);
+  }
+});
+
+// 监听props.src的变化
+watch(() => props.src, (newSrc) => {
+  console.log('props.src changed:', newSrc);
+  if (newSrc && engine.value) {
+    // 当有src且引擎已加载时，设置isEngineLoading为false
+    setTimeout(() => {
+      isEngineLoading.value = false;
+      console.log('isEngineLoading set to false based on src');
+    }, 500);
+  } else if (!newSrc) {
+    // 当没有src时，保持加载状态
+    console.log('No src, keeping loading state');
+  }
+});
+
+// 调试信息
+onMounted(() => {
+  console.log('Text.vue mounted:', {
+    isLoading: isLoading.value,
+    engine: engine.value,
+    isEngineLoading: isEngineLoading.value,
+    src: props.src
+  });
+  
+  // 强制显示加载状态至少1秒
+  setTimeout(() => {
+    console.log('After 1s:', {
+      isLoading: isLoading.value,
+      engine: engine.value,
+      isEngineLoading: isEngineLoading.value,
+      src: props.src
+    });
+  }, 1000);
+});
 
 </script>
 

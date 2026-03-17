@@ -184,7 +184,7 @@
               disabled
             ></el-input>
           </div>
-          <div class="property-item"  v-if="operationSource === 'canvas'">
+          <div class="property-item"  v-if="operationSource === 'canvas' && referenceContent">
             <label>触发词</label>
             <el-select
               v-model="selectedTriggerWord"

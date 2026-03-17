@@ -59,7 +59,7 @@
         @create-graph="handleCreateGraph"
         @cancel="handleCancelCreateGraph"
       />
-      <div v-if="currentGraphId&&textUrl" class="text-container">
+      <div v-if="currentGraphId" class="text-container">
         <Text
           ref="textRef"
           :src="textUrl"
@@ -68,9 +68,29 @@
           @rectangle-click="handleRectangleClick"
           @pdf-loaded="handlePdfLoaded"
         />
+        <TextTool
+          class="tool"
+          @previous-page="hanlePreviousPage"
+          @next-page="hanleNextPage"
+          @jump-page="handleJumpPage"
+          @refresh="hanleRefresh"
+          @edit-graph="openGraphEditor"
+        />
       </div>
       <div class="graph-container" v-if="currentMode === 'graph'">
         <GraphViewer
+          v-if="!currentGraphId"
+          ref="graphViewer"
+          :nodes="graphNodes"
+          :edges="graphEdges"
+          :article-id="currentGraphId"
+          :topic-id="currentSubDomainId"
+          :domain-id="currentDomainId"
+          :level="currentLevel"
+          :pdf-loaded="pdfLoaded"
+        />
+        <GraphViewer2
+          v-else
           ref="graphViewer"
           :nodes="graphNodes"
           :edges="graphEdges"
@@ -105,15 +125,12 @@
             @clear="handleClear"
             @save-graph="handleSaveGraph"
           /> -->
-        <TextTool
-         v-if="currentGraphId&&textUrl"
+          <!-- 画布工具栏 -->
+        <!-- <GraphEditTool
+         v-if="currentGraphId"
           class="tool"
-          @previous-page="hanlePreviousPage"
-          @next-page="hanleNextPage"
-          @jump-page="handleJumpPage"
-          @refresh="hanleRefresh"
           @edit-graph="openGraphEditor"
-        />
+        /> -->
       </div>
       <GraphEditor
         ref="graphEditorRef"
@@ -153,9 +170,11 @@ import Text from "@/components/article/Text.vue";
 import { useConverter } from "@/mock/modules/converter.ts";
 import { GraphConfig, type NodeProperty } from "@/configs/graph.js";
 import TextTool from "@/components/article/TextTool.vue";
+// import GraphEditTool from "@/components/article/GraphEditTool.vue";
 import { storeToRefs } from "pinia";
 import { useTextStore } from "@/store/useTextStore";
 import GraphViewer from "@/views/GraphBuilder/GraphViewer.vue";
+import GraphViewer2 from "@/views/GraphBuilder/GraphViewer2.vue";
 import GraphEditor from "@/views/GraphBuilder/GraphEditor.vue";
 import type { Mark, Rect } from "@/configs/text";
 import type { NodeTemplate } from "@/configs/graph.js";
@@ -1838,9 +1857,7 @@ const handleEditorSubmit = async () => {
 }
 .tool {
   position: absolute;
-  left: 4%;
-  bottom: 3%;
-  height: 70px;
+  height: 55px;
 }
 </style>
 

@@ -59,7 +59,9 @@ const handleNextPageClick = () => {
 };
 
 const openJumpPageDialog = () => {
+  console.log('openJumpPageDialog called');
   showJumpPageDialog.value = true;
+  console.log('showJumpPageDialog:', showJumpPageDialog.value);
 };
 
 const handleJumpPage = (page: number) => {
@@ -82,16 +84,20 @@ const hanleRefreshClick = () => {
 .graph-tool {
   position: absolute;
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   gap: 10px;
-  height: 100%;
+  height: auto;
   background: #ffffff;
   border: 0.5px solid rgba(226, 226, 226, 1);
   box-shadow: 0px 8px 10px 0px rgba(78, 89, 105, 0.18);
   border-radius: 50px;
-  padding: 15px 20px;
+  padding: 5px 10px;
   box-sizing: border-box;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
 }
 .toolbar {
   flex-shrink: 0;
@@ -185,7 +191,7 @@ const hanleRefreshClick = () => {
 .refresh:hover {
   cursor: pointer;
   background-image: url("@/assets/images/刷新-点击.png");
-}
+  }
 .edit {
   position: relative;
   display: flex;
