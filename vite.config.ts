@@ -35,7 +35,7 @@ export default defineConfig({
   ],
   server: {
     host: "0.0.0.0", // 本地ip地址
-    port: 5176,
+    port: 5173,
     proxy: {
       "/serve_api": {
         // target: "http://10.11.52.199:8080", //杨刚
