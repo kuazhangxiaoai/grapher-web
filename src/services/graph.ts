@@ -166,4 +166,16 @@ export default {
       `/sequence/getGraphByFieldId?fieldId=${fieldId}`,
     );
   },
+  /** 模糊查询节点名称 */
+  getNodeNamesByArticleId(articleId: String,nodeName: String): Promise<any> {
+    return axios.get(
+      `/sequence/getNodeNamesByArticleId?articleId=${articleId}&nodeName=${nodeName}`,
+    );
+  },
+  /** 模糊查询关系名称 */
+  getRelationNamesByArticleId(articleId: String,relationName: String): Promise<any> {
+    return axios.get(
+      `/sequence/getRelationNamesByArticleId?articleId=${articleId}&relationName=${relationName}`,
+    );
+  },
 };

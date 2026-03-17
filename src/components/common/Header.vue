@@ -51,7 +51,7 @@ const handleMenuSelect = (key: string) => {
   activeMenu.value = key;
   if (key === "/home") {
     emit("mode-change", "ontology");
-  } else if (key === "/graphbuilder") {
+  } else if (key === "/graph-builder") {
     emit("mode-change", "graph");
   }
 };

@@ -40,7 +40,7 @@ import { SelectionPluginPackage } from '@embedpdf/plugin-selection/vue';
 import TextSelection from "@/components/article/TextSelection.vue";
 import type { Mark } from "@/configs/text";
 
-//const { engine, isLoading } = usePdfiumEngine({wasmUrl: "http://localhost:8090/pdf/pdfium.wasm"}); => product.env
+// const { engine, isLoading } = usePdfiumEngine({wasmUrl: "http://10.11.9.107:8091/pdfium/pdfium.wasm"}); 
 const { engine, isLoading } = usePdfiumEngine();
 
 // 手动管理加载状态，确保初始时显示加载界面

@@ -1471,18 +1471,18 @@ const handleEditGraph = (graph) => {
 };
 
 // 处理删除图谱
-const handleDeleteGraph = (id) => {
-  console.log("删除图谱:", id);
+const handleDeleteGraph = (graph) => {
+  console.log("删除图谱:", graph.id, "名称:", graph.name);
   // 从图谱列表中移除
 
-  ElMessageBox.confirm("确定是否删除图谱吗", "提示", {
+  ElMessageBox.confirm(`确定是否删除图谱 "${graph.name}" 吗`, "提示", {
     confirmButtonText: "确定",
     cancelButtonText: "取消",
     type: "warning",
   })
     .then((result) => {
-      projectService.deleteArticle(id).then((response) => {
-        graphs.value = graphs.value.filter((graph) => graph.id !== id);
+      projectService.deleteArticle(graph.id).then((response) => {
+        graphs.value = graphs.value.filter((g) => g.id !== graph.id);
         console.log(response);
       });
     })
@@ -1841,16 +1841,16 @@ const handleEditorSubmit = async () => {
 
 .text-container {
   position: relative;
-  width: 35%;
   height: 100%;
   top: 0;
   left: 0;
+  flex: 1;
 }
 
 .graph-container {
   position: relative;
   display: flex;
-  flex: 1;
+  flex: 2;
   height: 100%;
   top: 0;
   left: 0;

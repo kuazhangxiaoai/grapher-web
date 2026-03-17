@@ -91,7 +91,7 @@ const dialogVisible = ref(props.visible !== undefined ? props.visible : true);
 
 // 从localStorage读取状态，或使用默认值
 const loadState = () => {
-  const savedState = localStorage.getItem("homePageState");
+  const savedState = localStorage.getItem("GraphEditorPageState");
   if (savedState) {
     return JSON.parse(savedState);
   }
@@ -365,7 +365,7 @@ const saveState = () => {
     graphNodes: graphNodes.value,
     graphEdges: graphEdges.value,
   };
-  localStorage.setItem("homePageState", JSON.stringify(state));
+  localStorage.setItem("GraphEditorPageState", JSON.stringify(state));
 };
 
 // 监听状态变化，自动保存
@@ -1544,7 +1544,7 @@ const handleSavePropertyPanel = (data) => {
   if (data.currentOperation === "entity") {
     // 更新entityProperties变量，这样当用户再次点击同一个实体类型或组件时，属性面板会显示修改后的值
     entityProperties.value = [...data.entityProperties];
-
+    console.log(999999999999,data,currentNodeTemplateId.value)
     if (selectedNodeId.value) {
       // 更新现有节点
       const nodeIndex = graphNodes.value.findIndex(node => node.id === selectedNodeId.value);
@@ -1559,6 +1559,7 @@ const handleSavePropertyPanel = (data) => {
           nodeName: data.nodeName || data.entityName,
           nodeDescription: data.entityDescription || "",
           nodeColor: data.backgroundColor || "#43D7B5",
+          nodeTemplateId: data.nodeTemplateId,
         };
         
         // 更新临时存储中的节点
@@ -1573,6 +1574,7 @@ const handleSavePropertyPanel = (data) => {
             nodeName: data.nodeName || data.entityName,
             nodeDescription: data.entityDescription || "",
             nodeColor: data.backgroundColor || "#43D7B5",
+            nodeTemplateId: data.nodeTemplateId,
           };
         }
         
@@ -1581,6 +1583,7 @@ const handleSavePropertyPanel = (data) => {
         console.log("节点已更新:", graphNodes.value[nodeIndex]);
       }
     } else {
+      
       // 创建新节点并添加到画布和临时存储
       const newNode = {
         type: "entity",
@@ -1590,7 +1593,7 @@ const handleSavePropertyPanel = (data) => {
         y: rightClickPosition.value.y,
         properties: data.entityProperties,
         backgroundColor: data.backgroundColor || "#43D7B5",
-        nodeTemplateId: 0,
+        nodeTemplateId: data.nodeTemplateId,
         isLibraryFlag: "0",
         nodeTemplateName: data.entityName,
         nodeName: data.nodeName || data.entityName,
@@ -1644,6 +1647,7 @@ const handleSavePropertyPanel = (data) => {
           relationType: getRelationTypeValue(data.relationshipType),
           relationTrigger: data.selectedTriggerWord || "",
           relationTemplateName: data.relationshipName,
+          relationTemplateId: data.relationTemplateId,
         };
         
         // 更新临时存储中的关系
@@ -1660,6 +1664,7 @@ const handleSavePropertyPanel = (data) => {
             relationType: getRelationTypeValue(data.relationshipType),
             relationTrigger: data.selectedTriggerWord || "",
             relationTemplateName: data.relationshipName,
+            relationTemplateId: data.relationTemplateId,
           };
         }
         
@@ -1679,7 +1684,7 @@ const handleSavePropertyPanel = (data) => {
           type: data.relationshipType,
           properties: data.entityProperties,
         },
-        relationTemplateId: currentRelationTemplateId.value || 0,
+        relationTemplateId: data.relationTemplateId,
         isLibraryFlag: "0",
         relationHash: relationHash,
         relationName: data.relationName || data.relationshipName,
@@ -2055,7 +2060,7 @@ const fetchGraphBySequenceId = async (sequenceId) => {
             y: y,
             properties: nodeProperties,
             backgroundColor: node.nodeColor || "#43D7B5",
-            nodeTemplateId: 0,
+            nodeTemplateId: node.nodeTemplateId || 0,
             isLibraryFlag: "0",
             nodeHash: node.nodeHash,
             nodeTemplateName: node.nodeTemplateName,
@@ -2103,7 +2108,7 @@ const fetchGraphBySequenceId = async (sequenceId) => {
               type: relationTypeText,
               properties: edgeProperties,
             },
-            relationTemplateId: 0,
+            relationTemplateId: relation.relationTemplateId || 0,
             isLibraryFlag: "0",
             relationHash: relation.relationHash,
             relationName: relation.relationName,
@@ -2224,7 +2229,7 @@ const fetchGraphByArticleId = async (articleId) => {
             y: y,
             properties: nodeProperties,
             backgroundColor: node.nodeColor || "#43D7B5",
-            nodeTemplateId: 0,
+            nodeTemplateId: node.nodeTemplateId || 0,
             isLibraryFlag: "0",
             nodeHash: node.nodeHash,
             nodeTemplateName: node.nodeTemplateName,
@@ -2272,7 +2277,7 @@ const fetchGraphByArticleId = async (articleId) => {
               type: relationTypeText,
               properties: edgeProperties,
             },
-            relationTemplateId: 0,
+            relationTemplateId: relation.relationTemplateId || 0,
             isLibraryFlag: "0",
             relationHash: relation.relationHash,
             relationName: relation.relationName,
@@ -3299,6 +3304,7 @@ const handleSaveGraph = async () => {
         nodeName: node.nodeName || node.name,
         nodeDescription: node.nodeDescription || node.description || "",
         nodeColor: node.nodeColor || node.backgroundColor || "#43D7B5",
+        nodeTemplateId: node.nodeTemplateId,
         properties: (node.properties || []).map((prop) => ({
           propertyKey: prop.name,
           propertyValue: prop.value || "",
@@ -3320,6 +3326,7 @@ const handleSaveGraph = async () => {
             propertyValue: prop.value || "",
           })),
           relationTemplateName: edge.relationTemplateName || "",
+          relationTemplateId: edge.relationTemplateId,
         };
       }),
     };
@@ -3500,6 +3507,7 @@ const handleDeleteItem = () => {
         :reference-content="content"
         :operation-source="operationSource"
         :relation-trigger="relationTrigger"
+        :article-id="articleId"
         @close="handleClosePropertyPanel"
         @save="handleSavePropertyPanel"
         @add-property="handleAddProperty"

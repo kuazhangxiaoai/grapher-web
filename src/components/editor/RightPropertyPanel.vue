@@ -20,10 +20,20 @@
           </div>
           <div class="property-item" v-if="operationSource === 'canvas'">
             <label>节点名称</label>
-            <el-input
+            <el-autocomplete
               v-model="localNodeName"
               placeholder="请输入~"
-            ></el-input>
+              :fetch-suggestions="fetchNodeNames"
+              @focus="handleNodeNameFocus"
+              @select="handleNodeNameSelect"
+              style="width: 100%"
+            >
+              <!-- <template #prefix>
+                <el-icon class="el-input__icon">
+                  <Search />
+                </el-icon>
+              </template> -->
+            </el-autocomplete>
           </div>
           <div class="property-item">
             <label>定义描述</label>
@@ -133,10 +143,20 @@
           </div>
           <div class="property-item" v-if="operationSource === 'canvas'">
             <label>关系名称</label>
-            <el-input
+            <el-autocomplete
               v-model="localRelationName"
               placeholder="请输入~"
-            ></el-input>
+              :fetch-suggestions="fetchRelationNames"
+              @focus="handleRelationNameFocus"
+              @select="handleRelationNameSelect"
+              style="width: 100%"
+            >
+              <!-- <template #prefix>
+                <el-icon class="el-input__icon">
+                  <Search />
+                </el-icon>
+              </template> -->
+            </el-autocomplete>
           </div>
           <!-- <div class="property-item">
             <label>定义描述</label>
@@ -155,7 +175,7 @@
               v-model="localRelationshipType"
               style="width: 100%"
               :popper-append-to-body="false"
-              :disabled="operationSource !== 'canvas'"
+              disabled
             >
               <el-option label="定向" value="定向"></el-option>
               <el-option label="双向" value="双向"></el-option>
@@ -365,7 +385,7 @@
 
 <script setup>
 import { ref, watch, nextTick, onMounted, onUnmounted } from "vue";
-import { Plus } from "@element-plus/icons-vue";
+import { Plus, Search } from "@element-plus/icons-vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import graph from "@/services/graph";
 
@@ -470,6 +490,10 @@ const props = defineProps({
     type: String,
     default: "",
   },
+  articleId: {
+    type: String,
+    default: "",
+  },
 });
 
 const emit = defineEmits(["close", "cancel", "save", "add-property", "delete-item"]);
@@ -496,6 +520,12 @@ const selectedTriggerWord = ref(props.relationTrigger);
 
 // 加载状态
 const isLoading = ref(false);
+
+// 节点名称和关系名称搜索相关
+const nodeNameOptions = ref([]);
+const relationNameOptions = ref([]);
+const isLoadingNodeNames = ref(false);
+const isLoadingRelationNames = ref(false);
 
 // 新增属性对话框相关
 const addPropertyDialogVisible = ref(false);
@@ -716,7 +746,7 @@ const handleSavePropertyPanel = async () => {
 
     // 设置加载状态
     isLoading.value = true;
-
+    console.log(666666666,props)
     // 准备保存到父组件的数据
   const saveData = {
     currentOperation: props.currentOperation,
@@ -735,6 +765,8 @@ const handleSavePropertyPanel = async () => {
     isFromComponentLibrary: props.isFromComponentLibrary,
     isFromCanvas: props.isFromCanvas,
     selectedTriggerWord: selectedTriggerWord.value,
+    nodeTemplateId: props.nodeTemplateId,
+    relationTemplateId: props.relationTemplateId,
   };
 
     // 延迟关闭面板，让用户看到加载状态
@@ -871,6 +903,102 @@ const handleTriggerWordVisible = (visible) => {
   if (visible) {
     // fetchTriggerWords("");
   }
+};
+
+// 处理节点名称下拉框可见性变化
+const handleNodeNameVisible = (visible) => {
+  if (visible && props.articleId) {
+    fetchNodeNames("", (suggestions) => {
+      // 可见性变化时触发搜索
+    });
+  }
+};
+
+// 处理节点名称搜索框焦点事件
+const handleNodeNameFocus = () => {
+  if (props.articleId) {
+    fetchNodeNames("", (suggestions) => {
+      // 焦点时触发搜索
+    });
+  }
+};
+
+// 处理节点名称选择事件
+const handleNodeNameSelect = (item) => {
+  localNodeName.value = item.value;
+};
+
+// 处理关系名称搜索框焦点事件
+const handleRelationNameFocus = () => {
+  if (props.articleId) {
+    fetchRelationNames("", (suggestions) => {
+      // 焦点时触发搜索
+    });
+  }
+};
+
+// 处理关系名称选择事件
+const handleRelationNameSelect = (item) => {
+  localRelationName.value = item.value;
+};
+
+// 获取节点名称列表
+const fetchNodeNames = (queryString, callback) => {
+  console.log(222222,props.articleId)
+  if (!props.articleId) {
+    callback([]);
+    return;
+  }
+  
+  isLoadingNodeNames.value = true;
+  graph.getNodeNamesByArticleId(props.articleId, queryString)
+    .then(response => {
+      if (response && response.data) {
+        const suggestions = response.data.map(item => ({
+          value: item,
+          label: item
+        }));
+        callback(suggestions);
+      } else {
+        callback([]);
+      }
+    })
+    .catch(error => {
+      console.error("获取节点名称列表失败:", error);
+      callback([]);
+    })
+    .finally(() => {
+      isLoadingNodeNames.value = false;
+    });
+};
+
+// 获取关系名称列表
+const fetchRelationNames = (queryString, callback) => {
+  if (!props.articleId) {
+    callback([]);
+    return;
+  }
+  
+  isLoadingRelationNames.value = true;
+  graph.getRelationNamesByArticleId(props.articleId, queryString)
+    .then(response => {
+      if (response && response.data) {
+        const suggestions = response.data.map(item => ({
+          value: item,
+          label: item
+        }));
+        callback(suggestions);
+      } else {
+        callback([]);
+      }
+    })
+    .catch(error => {
+      console.error("获取关系名称列表失败:", error);
+      callback([]);
+    })
+    .finally(() => {
+      isLoadingRelationNames.value = false;
+    });
 };
 
 // 验证属性值

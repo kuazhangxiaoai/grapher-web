@@ -146,6 +146,11 @@ const calculateTextWidth = (text, fontSize = 12) => {
 // 创建自定义节点渲染函数 - 添加 data-node-id 属性
 const createCustomNode = (model) => {
   return () => {
+    // 检查是否是虚拟节点，如果是则不显示
+    if (model.id && model.id.toString().startsWith("virtual-")) {
+      return h("div", { style: { display: "none" } });
+    }
+
     const nodeData = model.data || {};
     const label = nodeData.name || "未命名节点";
     const attrs = nodeData.properties || [];
@@ -1341,10 +1346,13 @@ const cancelConnect = async () => {
       const nodes = currentData.nodes || [];
       const edges = currentData.edges || [];
 
+      // 过滤掉所有虚拟节点和临时边，确保彻底清理
       const updatedNodes = nodes.filter(
-        (node) => node.id !== virtualNodeId.value,
+        (node) => !(node.id && node.id.toString().startsWith("virtual-")),
       );
-      const updatedEdges = edges.filter((edge) => edge.id !== tempEdgeId.value);
+      const updatedEdges = edges.filter(
+        (edge) => !(edge.id && edge.id.toString().startsWith("temp-edge-")),
+      );
 
       await graph.value.setData({
         ...currentData,
@@ -1358,12 +1366,14 @@ const cancelConnect = async () => {
     }
   }
 
+  // 重置所有相关状态
   tempEdgeId.value = null;
   virtualNodeId.value = null;
   sourceNodeId.value = null;
   targetNodeId.value = null;
   isConnectingMode.value = false;
   mouseOverNodeId.value = null;
+  pendingConnection.value = null;
 };
 
 // 更新虚拟节点位置
@@ -2018,12 +2028,13 @@ const renderGraph = () => {
     const currentNodes = currentData.nodes || [];
     const currentEdges = currentData.edges || [];
 
+    // 只保留当前正在使用的虚拟节点和临时边
     const virtualNodes = currentNodes.filter(
-      (node) => node.id && node.id.toString().startsWith("virtual-"),
+      (node) => node.id && node.id.toString().startsWith("virtual-") && node.id === virtualNodeId.value,
     );
 
     const tempEdges = currentEdges.filter(
-      (edge) => edge.id && edge.id.toString().startsWith("temp-edge-"),
+      (edge) => edge.id && edge.id.toString().startsWith("temp-edge-") && edge.id === tempEdgeId.value,
     );
 
     const finalNodes = [...formattedNodes, ...virtualNodes];

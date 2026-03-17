@@ -130,16 +130,16 @@
         </div>
         <div class="domain-icons" v-if="currentMode === 'ontology'">
           <img
-            class="arrow-icon"
-            src="@/assets/images/复制.png"
-            alt="arrow"
-            @click.stop="handleCopyDomain(domain.id)"
-            title="复制"
-          />
+              class="arrow-icon"
+              src="@/assets/images/复制.png"
+              alt="arrow"
+              @click.stop="handleCopyDomain(domain)"
+              title="复制"
+            />
           <div class="domain-actions">
             <button
               class="delete-btn"
-              @click.stop="handleDeleteDomain(domain.id)"
+              @click.stop="handleDeleteDomain(domain)"
               title="删除"
             >
               <img src="@/assets/images/矩形.png" alt="delete" />
@@ -245,13 +245,13 @@
               class="arrow-icon"
               src="@/assets/images/复制.png"
               alt="arrow"
-              @click.stop="handleCopyTopic(topic.id)"
+              @click.stop="handleCopyTopic(topic)"
               title="复制"
             />
             <div class="domain-actions">
               <button
                 class="delete-btn"
-                @click.stop="handleDeleteTopic(topic.id)"
+                @click.stop="handleDeleteTopic(topic)"
                 title="删除"
               >
                 <img src="@/assets/images/矩形.png" alt="delete" />
@@ -360,7 +360,7 @@
                 />
                 <button
                   class="delete-btn"
-                  @click.stop="handleDeleteGraph(graph.id)"
+                  @click.stop="handleDeleteGraph(graph)"
                   title="删除"
                 >
                   <img src="@/assets/images/矩形.png" alt="delete" />
@@ -913,14 +913,14 @@ watch([() => props.searchOptions, () => props.topicSearchOptions], () => {
   }
 });
 
-const handleDeleteDomain = (id) => {
-  emit("delete-domain", id);
+const handleDeleteDomain = (domain) => {
+  emit("delete-domain", domain);
 };
 
-const handleCopyDomain = (id) => {
-  copyId.value = id;
+const handleCopyDomain = (domain) => {
+  copyId.value = domain.id;
   copyType.value = "domain";
-  copyDialogTitle.value = "复制领域";
+  copyDialogTitle.value = `复制领域: ${domain.name}`;
   copyForm.value.name = "";
   copyDialogVisible.value = true;
 };
@@ -929,11 +929,11 @@ const openAddDialog = () => {
   emit("open-add-dialog");
 };
 
-const handleCopyTopic = (id) => {
-  copyId.value = id;
+const handleCopyTopic = (topic) => {
+  copyId.value = topic.id;
   copyType.value = "topic";
-  copyDialogTitle.value = "复制专题";
-  copyForm.value.name = "";
+  copyDialogTitle.value = `复制专题: ${topic.name}`;
+  copyForm.value.name ="";
   copyDialogVisible.value = true;
 };
 
@@ -956,8 +956,8 @@ const openAddGraphDialog = () => {
   emit("open-add-graph-dialog");
 };
 
-const handleDeleteTopic = (id) => {
-  emit("delete-topic", id);
+const handleDeleteTopic = (topic) => {
+  emit("delete-topic", topic);
 };
 
 const handleTopicSearch = (query) => {
@@ -1138,8 +1138,8 @@ const handleEditGraph = (graph) => {
 };
 
 // 处理删除图谱
-const handleDeleteGraph = (id) => {
-  emit("delete-graph", id);
+const handleDeleteGraph = (graph) => {
+  emit("delete-graph", graph);
 };
 
 const handleBackToGraphList = () => {
@@ -2195,5 +2195,16 @@ defineExpose({
 /* 确保样式能够正确应用 */
 :global(.el-dialog__headerbtn:hover .el-dialog__close) {
   color: rgba(61, 210, 176, 1) !important;
+}
+
+/* 复制弹窗样式 */
+:global(.el-dialog .el-form-item__label) {
+  font-size: 15px !important;
+  height:45px;
+  line-height:45px;
+}
+
+:global(.el-dialog .el-input__inner) {
+  font-size: 15px !important;
 }
 </style>

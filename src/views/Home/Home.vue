@@ -464,12 +464,12 @@ const searchDomains = async (condition = "") => {
   }
 };
 
-const handleDeleteDomain = async (id) => {
-  console.log("开始删除领域，ID:", id);
+const handleDeleteDomain = async (domain) => {
+  console.log("开始删除领域，ID:", domain.id, "名称:", domain.name);
   try {
     // 询问是否删除
     console.log("显示确认对话框");
-    await ElMessageBox.confirm("确定要删除该领域吗？", "删除确认", {
+    await ElMessageBox.confirm(`确定要删除领域 "${domain.name}" 吗？`, "删除确认", {
       confirmButtonText: "确定",
       cancelButtonText: "取消",
       type: "warning",
@@ -480,7 +480,7 @@ const handleDeleteDomain = async (id) => {
 
     console.log("用户确认删除，执行删除操作");
     // 用户确认删除
-    await projectService.deleteDomain(id);
+    await projectService.deleteDomain(domain.id);
     console.log("删除操作成功，重新获取领域列表");
     // 删除成功后，重新获取所有领域列表
     await fetchAllDomains();
@@ -804,10 +804,10 @@ const fetchTopics = async (fieldId, condition = "") => {
 };
 
 // 删除专题
-const handleDeleteTopic = async (id) => {
+const handleDeleteTopic = async (topic) => {
   try {
     // 询问是否删除
-    await ElMessageBox.confirm("确定要删除该专题吗？", "删除确认", {
+    await ElMessageBox.confirm(`确定要删除专题 "${topic.name}" 吗？`, "删除确认", {
       confirmButtonText: "确定",
       cancelButtonText: "取消",
       type: "warning",
@@ -817,7 +817,7 @@ const handleDeleteTopic = async (id) => {
     });
 
     // 用户确认删除
-    await projectService.deleteTopic(id);
+    await projectService.deleteTopic(topic.id);
 
     // 删除成功后，重新获取专题列表
     const currentDomainObj = domains.value.find(
