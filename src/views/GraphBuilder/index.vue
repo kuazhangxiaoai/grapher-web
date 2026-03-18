@@ -21,6 +21,7 @@
       :relationship-types="relationshipTypes"
       :relation-templates="relationTemplates"
       :current-mode="currentMode"
+      :node-templates="nodeTemplates"
       @delete-domain="handleDeleteDomain"
       @open-add-dialog="openAddDialog"
       @open-add-topic-dialog="openAddTopicDialog"

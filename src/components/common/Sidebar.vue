@@ -450,41 +450,58 @@
                   v-if="relationTemplates.length === 0"
                   >暂无关系模板</span
                 >
-                <div
+                <el-tooltip
                   v-for="template in relationTemplates"
                   :key="template.relationTemplateId"
-                  class="relationship-type-item"
-                  :class="{
-                    'relationship-type-item-selected':
-                      selectedRelationshipType ===
-                      template.relationTemplateName,
-                  }"
-                  draggable="true"
-                  @dragstart="
-                    handleDragStart(
-                      $event,
-                      'relationship',
-                      template.relationTemplateName,
-                    )
-                  "
-                  @dragend="handleDragEnd"
-                  @click="
-                    handleRelationshipTypeClick(template.relationTemplateName)
-                  "
+                  :content="`${template.relationTemplateName} ${getStartNodeName(template)} → ${getEndNodeName(template)}`"
+                  placement="right"
+                  effect="dark"
                 >
                   <div
-                    class="relationship-icon"
+                    class="relationship-type-item"
                     :class="{
-                      'relationship-icon-directed':
-                        template.relationTemplateType === '1',
-                      'relationship-icon-bidirectional':
-                        template.relationTemplateType === '2',
-                      'relationship-icon-loop':
-                        template.relationTemplateType === '3',
+                      'relationship-type-item-selected':
+                        selectedRelationshipType ===
+                        template.relationTemplateName,
                     }"
-                  ></div>
-                  {{ template.relationTemplateName }}
-                </div>
+                    draggable="true"
+                    @dragstart="
+                      handleDragStart(
+                        $event,
+                        'relationship',
+                        template.relationTemplateName,
+                      )
+                    "
+                    @dragend="handleDragEnd"
+                    @click="
+                      handleRelationshipTypeClick(template.relationTemplateName)
+                    "
+                  >
+                    <div class="relationship-info">
+                      <div class="relationship-row">
+                        <div
+                          class="relationship-icon"
+                          :class="{
+                            'relationship-icon-directed':
+                              template.relationTemplateType === '1',
+                            'relationship-icon-bidirectional':
+                              template.relationTemplateType === '2',
+                            'relationship-icon-loop':
+                              template.relationTemplateType === '3',
+                          }"
+                        ></div>
+                        <div class="relationship-content">
+                          <span class="relationship-name">{{ template.relationTemplateName }}</span>
+                          <span class="relationship-endpoints">
+                            <span class="endpoint">{{ getStartNodeName(template) }}</span>
+                            <span class="arrow">→</span>
+                            <span class="endpoint">{{ getEndNodeName(template) }}</span>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </el-tooltip>
               </div>
             </div>
             <!-- <div class="graphMessage">
@@ -564,40 +581,57 @@
               <span class="empty-data-msg" v-if="relationTemplates.length === 0"
                 >暂无关系模板</span
               >
-              <div
-                v-for="template in relationTemplates"
-                :key="template.relationTemplateId"
-                class="relationship-type-item"
-                :class="{
-                  'relationship-type-item-selected':
-                    selectedRelationshipType === template.relationTemplateName,
-                }"
-                draggable="true"
-                @dragstart="
-                  handleDragStart(
-                    $event,
-                    'relationship',
-                    template.relationTemplateName,
-                  )
-                "
-                @dragend="handleDragEnd"
-                @click="
-                  handleRelationshipTypeClick(template.relationTemplateName)
-                "
-              >
-                <div
-                  class="relationship-icon"
-                  :class="{
-                    'relationship-icon-directed':
-                      template.relationTemplateType === '1',
-                    'relationship-icon-bidirectional':
-                      template.relationTemplateType === '2',
-                    'relationship-icon-loop':
-                      template.relationTemplateType === '3',
-                  }"
-                ></div>
-                {{ template.relationTemplateName }}
-              </div>
+              <el-tooltip
+                  v-for="template in relationTemplates"
+                  :key="template.relationTemplateId"
+                  :content="`${template.relationTemplateName} ${getStartNodeName(template)} → ${getEndNodeName(template)}`"
+                  placement="right"
+                  effect="dark"
+                >
+                  <div
+                    class="relationship-type-item"
+                    :class="{
+                      'relationship-type-item-selected':
+                        selectedRelationshipType === template.relationTemplateName,
+                    }"
+                    draggable="true"
+                    @dragstart="
+                      handleDragStart(
+                        $event,
+                        'relationship',
+                        template.relationTemplateName,
+                      )
+                    "
+                    @dragend="handleDragEnd"
+                    @click="
+                      handleRelationshipTypeClick(template.relationTemplateName)
+                    "
+                  >
+                    <div class="relationship-info">
+                      <div class="relationship-row">
+                        <div
+                          class="relationship-icon"
+                          :class="{
+                            'relationship-icon-directed':
+                              template.relationTemplateType === '1',
+                            'relationship-icon-bidirectional':
+                              template.relationTemplateType === '2',
+                            'relationship-icon-loop':
+                              template.relationTemplateType === '3',
+                          }"
+                        ></div>
+                        <div class="relationship-content">
+                          <span class="relationship-name">{{ template.relationTemplateName }}</span>
+                          <span class="relationship-endpoints">
+                            <span class="endpoint">{{ getStartNodeName(template) }}</span>
+                            <span class="arrow">→</span>
+                            <span class="endpoint">{{ getEndNodeName(template) }}</span>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </el-tooltip>
             </div>
           </div>
         </div>
@@ -743,6 +777,7 @@
 <script setup>
 import { ref, watch } from "vue";
 import { Search, Plus } from "@element-plus/icons-vue";
+import { ElTooltip } from "element-plus";
 import { string } from "three/tsl";
 
 // 复制重命名弹窗相关
@@ -841,11 +876,32 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  nodeTemplates: {
+    type: Array,
+    default: () => [],
+  },
   activeGraphItem: {
     type: String,
     default: "",
   },
 });
+
+// 计算关系模板的开始和结束节点名称
+const getStartNodeName = (template) => {
+  if (!template.startNodeTemplateId) return "";
+  const nodeTemplate = props.nodeTemplates.find(
+    node => String(node.nodeTemplateId) === String(template.startNodeTemplateId)
+  );
+  return nodeTemplate ? nodeTemplate.nodeTemplateName : "无";
+};
+
+const getEndNodeName = (template) => {
+  if (!template.endNodeTemplateId) return "";
+  const nodeTemplate = props.nodeTemplates.find(
+    node => String(node.nodeTemplateId) === String(template.endNodeTemplateId)
+  );
+  return nodeTemplate ? nodeTemplate.nodeTemplateName : "无";
+};
 
 // Use components from props directly
 
@@ -1697,9 +1753,64 @@ defineExpose({
   color: #333;
   cursor: pointer;
   transition: all 0.3s;
+}
+
+.relationship-info {
+  width: 100%;
+}
+
+.relationship-row {
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
+}
+
+.relationship-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.relationship-name {
+  font-weight: 500;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+.relationship-endpoints {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #666;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.endpoint {
+  background-color: #f6fcff;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 0.8px solid rgba(224, 226, 235, 1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 80px;
+}
+
+.arrow {
+  font-size: 10px;
+  color: #999;
+  flex-shrink: 0;
 }
 
 .relationship-icon {

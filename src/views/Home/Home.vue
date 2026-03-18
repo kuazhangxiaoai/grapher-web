@@ -67,6 +67,7 @@ const savedEntitiesCount = ref(0);
 const entityTypes = ref([]);
 const relationshipTypes = ref([]);
 const relationTemplates = ref([]);
+const nodeTemplates = ref([]);
 const backgroundColor = ref("#43D7B5");
 // 当前操作类型：'entity' 或 'relationship'
 const currentOperation = ref("");
@@ -378,6 +379,9 @@ onMounted(async () => {
                   response.data.nodeTemplates &&
                   Array.isArray(response.data.nodeTemplates)
                 ) {
+                  // 保存节点模板数据
+                  nodeTemplates.value = response.data.nodeTemplates;
+                  
                   response.data.nodeTemplates.forEach((template) => {
                     if (
                       template.nodeTemplateName &&
@@ -959,6 +963,9 @@ const handleTopicClick = async (topic, skipComponentLibrarySearch = false) => {
             response.data.nodeTemplates &&
             Array.isArray(response.data.nodeTemplates)
           ) {
+            // 保存节点模板数据
+            nodeTemplates.value = response.data.nodeTemplates;
+            
             // 为节点模板分配位置（均匀分散分布）
             const nodeCount = response.data.nodeTemplates.length;
             const nodePositions = [];
@@ -2419,6 +2426,7 @@ const handleClearSelections = () => {
         :relationship-types="relationshipTypes"
         :relation-templates="relationTemplates"
         :components="components"
+        :node-templates="nodeTemplates"
         @delete-domain="handleDeleteDomain"
         @open-add-dialog="openAddDialog"
         @open-add-topic-dialog="openAddTopicDialog"
