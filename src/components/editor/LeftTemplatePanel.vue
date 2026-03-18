@@ -179,7 +179,7 @@ const getStartNodeName = (template) => {
   const nodeTemplate = props.nodeTemplates.find(
     node => node.nodeTemplateId === template.startNodeTemplateId
   );
-  return nodeTemplate ? nodeTemplate.nodeTemplateName : "";
+  return nodeTemplate ? nodeTemplate.nodeTemplateName : "无";
 };
 
 const getEndNodeName = (template) => {
@@ -187,7 +187,7 @@ const getEndNodeName = (template) => {
   const nodeTemplate = props.nodeTemplates.find(
     node => node.nodeTemplateId === template.endNodeTemplateId
   );
-  return nodeTemplate ? nodeTemplate.nodeTemplateName : "";
+  return nodeTemplate ? nodeTemplate.nodeTemplateName : "无";
 };
 
 const handleDragStart = (event, type, item) => {

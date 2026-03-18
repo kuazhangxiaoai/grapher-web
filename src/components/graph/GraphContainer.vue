@@ -1808,6 +1808,16 @@ const resetConnectionState = () => {
   cancelConnect();
 };
 
+// 强制重绘图谱
+const forceRedraw = () => {
+  renderGraph();
+};
+
+// 刷新画布
+const refreshCanvas = () => {
+  renderGraph();
+};
+
 // 组件卸载时清理资源
 onUnmounted(() => {
   if (graph.value) {
@@ -1830,6 +1840,8 @@ defineExpose({
   clearEdgesSelection,
   confirmConnection,
   graph,
+  forceRedraw,
+  refreshCanvas,
 });
 </script>
 

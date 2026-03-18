@@ -2076,7 +2076,16 @@ const fetchGraphBySequenceId = async (sequenceId) => {
       
       // 处理关系数据
       if (relations && Array.isArray(relations)) {
+        // 创建节点ID集合，用于快速查找
+        const nodeIds = new Set(graphNodes.value.map(node => node.id));
+        
         relations.forEach((relation) => {
+          // 检查起始节点和结束节点是否存在
+          if (!nodeIds.has(relation.startNodeHash) || !nodeIds.has(relation.endNodeHash)) {
+            // 如果节点不存在，跳过该关系
+            return;
+          }
+          
           // 转换关系属性格式
           const edgeProperties = relation.properties ? relation.properties.map((prop) => ({
             name: prop.propertyKey,
@@ -2245,7 +2254,16 @@ const fetchGraphByArticleId = async (articleId) => {
       
       // 处理关系数据
       if (relations && Array.isArray(relations)) {
+        // 创建节点ID集合，用于快速查找
+        const nodeIds = new Set(graphNodes.value.map(node => node.id));
+        
         relations.forEach((relation) => {
+          // 检查起始节点和结束节点是否存在
+          if (!nodeIds.has(relation.startNodeHash) || !nodeIds.has(relation.endNodeHash)) {
+            // 如果节点不存在，跳过该关系
+            return;
+          }
+          
           // 转换关系属性格式
           const edgeProperties = relation.properties ? relation.properties.map((prop) => ({
             name: prop.propertyKey,
@@ -3198,6 +3216,12 @@ const handleSubmit = () => {
 // 处理清除
 const handleClear = () => {
   console.log("GraphEditor组件接收到清除事件");
+  
+  // 首先重置连接状态，清除临时边和虚拟节点
+  if (contentRef.value && contentRef.value.resetConnectionState) {
+    contentRef.value.resetConnectionState();
+  }
+  
   // 只保留接口返回的节点和连线，清除手动添加的
   // 接口返回的节点和连线通常有 nodeHash 或 relationHash 属性，但手动添加的也会生成这些属性
   // 所以我们需要检查节点和连线是否在pendingGraphNodes或pendingGraphEdges中
@@ -3219,11 +3243,6 @@ const handleClear = () => {
   // 清除选中状态
   selectedNodeId.value = null;
   selectedEdgeId.value = null;
-  
-  // 重置连接状态，清除虚线
-  if (contentRef.value && contentRef.value.resetConnectionState) {
-    contentRef.value.resetConnectionState();
-  }
   
   // 退出连线模式
   isConnecting.value = false;

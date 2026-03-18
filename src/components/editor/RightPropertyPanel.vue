@@ -189,7 +189,7 @@
             </div> -->
             <el-input
               v-model="localStartNodeName"
-              placeholder="请输入~"
+              placeholder="暂无"
               disabled
             ></el-input>
           </div>
@@ -200,7 +200,7 @@
             </div> -->
              <el-input
               v-model="localEndNodeName"
-              placeholder="请输入~"
+              placeholder="暂无"
               disabled
             ></el-input>
           </div>

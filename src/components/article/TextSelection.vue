@@ -144,7 +144,7 @@ const drawMark = (mark: Mark) => {
   const rects = mark.rects;
   rects.forEach((r) => {
     //highlightRef.value?.drawLine(x0, y0, length, lineness, mark.color);
-    highlightRef.value?.drawRectangle(r.x0, r.y0, r.width, r.height, 2, mark.color, mark.type, mark.sequenceId);
+    highlightRef.value?.drawRectangle(r.x0, r.y0, r.width, r.height, 2, mark.color, mark.type, mark.sequenceId, mark.style);
   })
 };
 

@@ -155,7 +155,7 @@ const createCustomNode = (model) => {
     const label = nodeData.name || "未命名节点";
     const attrs = nodeData.properties || [];
     const color = nodeData.backgroundColor || "#43D7B5";
-    const backGround = hexToRgba(nodeData.backgroundColor || "#43D7B5", 0.4);
+    const backGround = hexToRgba(nodeData.backgroundColor || "#43D7B5", 0.6);
     const isSelected = model.states && model.states.includes("selected");
 
     // 直接计算节点大小，不依赖model.style.size
@@ -2165,6 +2165,12 @@ const handleQuitClick = () => {
 
 // 处理清除：向父组件抛出 clear 事件
 const handleClearClick = () => {
+  // 清理临时边和虚拟节点
+  cancelConnect();
+  // 清除节点和连线的选中状态
+  clearNodeSelection();
+  clearEdgesSelection();
+  // 向父组件抛出 clear 事件
   emit("clear");
 };
 // 处理保存图谱：向父组件抛出 save-graph 事件

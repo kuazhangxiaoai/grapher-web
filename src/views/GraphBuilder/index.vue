@@ -184,6 +184,7 @@ const textStore = useTextStore();
 const contentRef = ref(null);
 const textRef = ref<InstanceType<typeof Text> | null>(null);
 const graphEditorRef = ref<InstanceType<typeof GraphEditor> | null>(null);
+const graphViewer = ref(null);
 const { currentPage, markList } = storeToRefs(textStore);
 const textUrl = ref("");
 const nodeTemplates = ref([]);
@@ -1431,8 +1432,56 @@ const getSequenceList = async (articleId) => {
       
       // 绘制黄色下划线
       if (textRef.value && sequenceListData.value.length > 0) {
+        // 先清除之前的标记
+        textRef.value.clearMark();
+        // 清除textStore中的标记列表，确保样式计算的准确性
+        textStore.setMarkList([]);
+        
+        // 计算段落之间的重叠关系
+        const sequenceRelations = [];
+        
+        // 分析每个段落的位置范围
+        sequenceListData.value.forEach((sequence, index) => {
+          if (sequence.sequencePositionList && sequence.sequencePositionList.length > 0) {
+            const firstPos = sequence.sequencePositionList[0];
+            const lastPos = sequence.sequencePositionList[sequence.sequencePositionList.length - 1];
+            sequenceRelations.push({
+              sequenceId: sequence.sequenceId,
+              content: sequence.sequenceContent,
+              startX: firstPos.sequenceX0,
+              startY: firstPos.sequenceY0,
+              endX: lastPos.sequenceX1,
+              endY: lastPos.sequenceY1,
+              length: sequence.sequenceContent.length,
+              page: firstPos.sequencePage,
+              sequencePositionList: sequence.sequencePositionList
+            });
+          }
+        });
+        
+        // 为每个段落确定样式
         sequenceListData.value.forEach(sequence => {
           if (sequence.sequencePositionList && sequence.sequencePositionList.length > 0) {
+            let style = "solid"; // 默认样式
+            
+            // 检查是否与其他段落重叠
+            const currentSeq = sequenceRelations.find(s => s.sequenceId === sequence.sequenceId);
+            if (currentSeq) {
+              const overlappingSequences = sequenceRelations.filter(s => {
+                if (s.sequenceId === sequence.sequenceId) return false;
+                // 检查是否在同一页
+                if (currentSeq.page !== s.page) return false;
+                // 简单的重叠检测：检查Y坐标范围是否重叠
+                return !(s.endY < currentSeq.startY || s.startY > currentSeq.endY);
+              });
+              
+              if (overlappingSequences.length > 0) {
+                // 有重叠，根据内容长度确定样式
+                const isLonger = overlappingSequences.every(s => currentSeq.length > s.length);
+                style = isLonger ? "double" : "dashed";
+              }
+            }
+            
             const mark = {
               id: `sequence-${sequence.sequenceId}`,
               content: sequence.sequenceContent || "",
@@ -1448,11 +1497,20 @@ const getSequenceList = async (articleId) => {
               type: 0, // MarkType.submitted
               articleId: articleId,
               color: "#ffff00", // 黄色
-              sequenceId: sequence.sequenceId
+              sequenceId: sequence.sequenceId,
+              style: style // 添加样式信息
             };
             // 将标记添加到 textStore 中，确保手动选中文本时不会消失
             if (!textStore.markList.some(m => m.id === mark.id)) {
               textStore.addMark(mark);
+            } else {
+              // 如果标记已存在，更新它的样式
+              const existingMark = textStore.markList.find(m => m.id === mark.id);
+              if (existingMark) {
+                existingMark.style = style;
+                // 保存更新后的标记列表
+                textStore.setMarkList([...textStore.markList]);
+              }
             }
             textRef.value.drawMark(mark);
           }
@@ -1484,6 +1542,11 @@ const handleDeleteGraph = (graph) => {
       projectService.deleteArticle(graph.id).then((response) => {
         graphs.value = graphs.value.filter((g) => g.id !== graph.id);
         console.log(response);
+        nextTick(() => {
+          if (graphViewer.value) {
+            graphViewer.value.fetchGraphData();
+          }
+        });
       });
     })
     .catch((e) => {
@@ -1777,9 +1840,54 @@ const handleEditorSubmit = async () => {
         if (textRef.value && sequenceListData.value.length > 0) {
           // 先清除之前的标记
           textRef.value.clearMark();
+          // 清除textStore中的标记列表，确保样式计算的准确性
+          textStore.setMarkList([]);
+          
+          // 计算段落之间的重叠关系
+          const sequenceRelations = [];
+          
+          // 分析每个段落的位置范围
+          sequenceListData.value.forEach((sequence, index) => {
+            if (sequence.sequencePositionList && sequence.sequencePositionList.length > 0) {
+              const firstPos = sequence.sequencePositionList[0];
+              const lastPos = sequence.sequencePositionList[sequence.sequencePositionList.length - 1];
+              sequenceRelations.push({
+                sequenceId: sequence.sequenceId,
+                content: sequence.sequenceContent,
+                startX: firstPos.sequenceX0,
+                startY: firstPos.sequenceY0,
+                endX: lastPos.sequenceX1,
+                endY: lastPos.sequenceY1,
+                length: sequence.sequenceContent.length,
+                page: firstPos.sequencePage,
+                sequencePositionList: sequence.sequencePositionList
+              });
+            }
+          });
+          
           // 重新绘制黄色下划线
           sequenceListData.value.forEach(sequence => {
             if (sequence.sequencePositionList && sequence.sequencePositionList.length > 0) {
+              let style = "solid"; // 默认样式
+              
+              // 检查是否与其他段落重叠
+            const currentSeq = sequenceRelations.find(s => s.sequenceId === sequence.sequenceId);
+            if (currentSeq) {
+              const overlappingSequences = sequenceRelations.filter(s => {
+                if (s.sequenceId === sequence.sequenceId) return false;
+                // 检查是否在同一页
+                if (currentSeq.page !== s.page) return false;
+                // 简单的重叠检测：检查Y坐标范围是否重叠
+                return !(s.endY < currentSeq.startY || s.startY > currentSeq.endY);
+              });
+              
+              if (overlappingSequences.length > 0) {
+                // 有重叠，根据内容长度确定样式
+                const isLonger = overlappingSequences.every(s => currentSeq.length > s.length);
+                style = isLonger ? "double" : "dashed";
+              }
+            }
+              
               const mark = {
                 id: `sequence-${sequence.sequenceId}`,
                 content: sequence.sequenceContent || "",
@@ -1795,8 +1903,21 @@ const handleEditorSubmit = async () => {
                 type: 0, // MarkType.submitted
                 articleId: currentGraphId.value,
                 color: "#ffff00", // 黄色
-                sequenceId: sequence.sequenceId
+                sequenceId: sequence.sequenceId,
+                style: style // 添加样式信息
               };
+              // 将标记添加到 textStore 中，确保手动选中文本时不会消失
+              if (!textStore.markList.some(m => m.id === mark.id)) {
+                textStore.addMark(mark);
+              } else {
+                // 如果标记已存在，更新它的样式
+                const existingMark = textStore.markList.find(m => m.id === mark.id);
+                if (existingMark) {
+                  existingMark.style = style;
+                  // 保存更新后的标记列表
+                  textStore.setMarkList([...textStore.markList]);
+                }
+              }
               textRef.value.drawMark(mark);
             }
           });

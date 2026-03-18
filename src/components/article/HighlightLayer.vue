@@ -60,16 +60,28 @@ const handleRectangleClick = (x0: number, y0: number, width: number, height: num
   emit('rectangle-click', { x0, y0, width, height, color, type, sequenceId });
 };
 
-const drawRectangle = (x0:number, y0:number, width: number, height: number, lineness: number, color: MarkColor, type: MarkType, sequenceId?: string) => {
+const drawRectangle = (x0:number, y0:number, width: number, height: number, lineness: number, color: MarkColor, type: MarkType, sequenceId?: string, style?: string) => {
   const layerElem = document.getElementById("highlight");
   const rectangleElem = document.createElement("div");
-  rectangleElem.id = `${type}-${x0}-${y0}-${width}-${height}`;
+  rectangleElem.id = `${type}-${x0}-${y0}-${width}-${height}-${sequenceId}`;
   rectangleElem.className = "rectangle";
   rectangleElem.style.position = "absolute";
   rectangleElem.style.pointerEvents = "auto";
   const colorValue = typeof color === "string" ? color : (color ?? "#3dd2b0");
-  // 从上到下仅 80%-90% 区段染色，其余透明
-  rectangleElem.style.background = `linear-gradient(to bottom, transparent 0%, transparent 80%, ${colorValue} 80%, ${colorValue} 90%, transparent 90%, transparent 100%)`;
+  
+  // 根据样式设置不同的背景效果
+  let backgroundStyle = `linear-gradient(to bottom, transparent 0%, transparent 80%, ${colorValue} 80%, ${colorValue} 90%, transparent 90%, transparent 100%)`;
+  
+  // 为不同样式设置不同的效果
+  if (style === "dashed") {
+    // 短序列使用单下划实线（位置偏上）
+    backgroundStyle = `linear-gradient(to bottom, transparent 0%, transparent 70%, ${colorValue} 70%, ${colorValue} 80%, transparent 80%, transparent 100%)`;
+  } else if (style === "double") {
+    // 长序列使用单下划实线（位置偏下）
+    backgroundStyle = `linear-gradient(to bottom, transparent 0%, transparent 80%, ${colorValue} 80%, ${colorValue} 90%, transparent 90%, transparent 100%)`;
+  }
+  
+  rectangleElem.style.background = backgroundStyle;
   rectangleElem.style.left = x0 + "px";
   rectangleElem.style.top = y0 + "px";
   rectangleElem.style.width = width + "px";
