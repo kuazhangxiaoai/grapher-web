@@ -1881,13 +1881,10 @@ watch(
 );
 
 onMounted(() => {
-  // 检查PDF是否已经加载
-  if (props.pdfLoaded) {
-    // PDF已加载，初始化图谱
-    setTimeout(() => {
-      initGraph();
-    }, 200);
-  }
+  // 无论PDF是否加载，都初始化图谱
+  setTimeout(() => {
+    initGraph();
+  }, 200);
 });
 
 onUnmounted(() => {

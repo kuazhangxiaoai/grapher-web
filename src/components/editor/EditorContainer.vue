@@ -2199,7 +2199,7 @@ onMounted(() => {
 const resetConnectionState = () => {
   cancelConnect();
   // 清除节点选中状态
-  clearNodeSelection();
+  // clearNodeSelection();
   // 清除连线选中状态
   clearEdgesSelection();
 };
