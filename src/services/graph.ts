@@ -167,15 +167,19 @@ export default {
     );
   },
   /** 模糊查询节点名称 */
-  getNodeNamesByArticleId(articleId: String,nodeName: String): Promise<any> {
-    return axios.get(
-      `/sequence/getNodeNamesByArticleId?articleId=${articleId}&nodeName=${nodeName}`,
+  getNodeNamesByArticleId(data: Object): Promise<any> {
+    return axios.post(
+      `/sequence/getNodeNamesByArticleId`, data, {
+        headers: { "Content-Type": "application/json" }
+      }
     );
   },
   /** 模糊查询关系名称 */
-  getRelationNamesByArticleId(articleId: String,relationName: String): Promise<any> {
-    return axios.get(
-      `/sequence/getRelationNamesByArticleId?articleId=${articleId}&relationName=${relationName}`,
+  getRelationNamesByArticleId(data: Object): Promise<any> {
+    return axios.post(
+      `/sequence/getRelationNamesByArticleId`, data, {
+        headers: { "Content-Type": "application/json" }
+      }
     );
   },
 };

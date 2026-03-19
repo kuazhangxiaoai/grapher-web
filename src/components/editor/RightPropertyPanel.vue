@@ -24,7 +24,6 @@
               v-model="localNodeName"
               placeholder="请输入~"
               :fetch-suggestions="fetchNodeNames"
-              @focus="handleNodeNameFocus"
               @select="handleNodeNameSelect"
               style="width: 100%"
             >
@@ -147,7 +146,6 @@
               v-model="localRelationName"
               placeholder="请输入~"
               :fetch-suggestions="fetchRelationNames"
-              @focus="handleRelationNameFocus"
               @select="handleRelationNameSelect"
               style="width: 100%"
             >
@@ -944,14 +942,20 @@ const handleRelationNameSelect = (item) => {
 
 // 获取节点名称列表
 const fetchNodeNames = (queryString, callback) => {
-  console.log(222222,props.articleId)
+  console.log(props.articleId)
   if (!props.articleId) {
     callback([]);
     return;
   }
   
   isLoadingNodeNames.value = true;
-  graph.getNodeNamesByArticleId(props.articleId, queryString)
+  console.log(props)
+  let data={
+    articleId: props.articleId,
+    nodeName: queryString,
+    nodeTemplateId: props.nodeTemplateId,
+  }
+  graph.getNodeNamesByArticleId(data)
     .then(response => {
       if (response && response.data) {
         const suggestions = response.data.map(item => ({
@@ -980,7 +984,13 @@ const fetchRelationNames = (queryString, callback) => {
   }
   
   isLoadingRelationNames.value = true;
-  graph.getRelationNamesByArticleId(props.articleId, queryString)
+  console.log(props)
+  let data={
+    articleId: props.articleId,
+    relationName: queryString,
+    relationTemplateId: props.relationTemplateId,
+  }
+  graph.getRelationNamesByArticleId(data)
     .then(response => {
       if (response && response.data) {
         const suggestions = response.data.map(item => ({

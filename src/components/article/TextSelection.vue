@@ -17,7 +17,7 @@
               <SelectionLayer :document-id="documentId" :page-index="page.pageIndex">
               </SelectionLayer>
               <!-- 下划线叠加层：根据 marksToDraw 在当前页绘制 -->
-              <HighlightLayer ref="highlightRef" :document-id="documentId" :page-index="page.pageIndex" @rectangle-click="handleRectangleClick"/>
+              <HighlightLayer ref="highlightRef" :document-id="documentId" :current-page="currentPage" :page-index="page.pageIndex" @rectangle-click="handleRectangleClick"/>
             </PagePointerProvider>
           </div>
         </template>
@@ -27,7 +27,7 @@
 </template>
 
 <script setup lang="ts">
-import {computed, onMounted, onUnmounted, ref, watch} from 'vue';
+import {computed, onMounted, onUnmounted, ref, watch, nextTick} from 'vue';
 import {v4 as uuid} from "uuid"
 import {Viewport} from '@embedpdf/plugin-viewport/vue';
 import {Scroller, useScroll} from '@embedpdf/plugin-scroll/vue';
@@ -77,6 +77,15 @@ watch(
     if (scope != null && page != null) {
       // embedpdf 的 pageNumber 是 1-based，我们 currentPage 是 0-based
       scope.scrollToPage({ pageNumber: page + 1, behavior: 'smooth' });
+      // 页面变化后重新绘制标记
+      nextTick(() => {
+        // 清除之前的标记
+        highlightRef.value?.clear?.();
+        // 重新绘制所有标记
+        marksToDraw.value.forEach(mark => {
+          drawMark(mark);
+        });
+      });
     }
   },
   { immediate: true },
@@ -86,6 +95,9 @@ const { provides: selectionCapability } = useSelectionCapability();
 const selection = computed(() => selectionCapability.value?.forDocument(props.documentId));
 const hasSelection = ref(false);
 const selectedText = ref('');
+const accumulatedText = ref('');
+const accumulatedRects = ref<Rect[]>([]);
+const isCtrlPressed = ref(false);
 const copied = ref(false);
 const menuCopied = ref(false);
 
@@ -94,11 +106,27 @@ const emit = defineEmits<{ (e: 'selection-change', payload: Mark): void; (e: 're
 let unsubscribeSelectionChange: (() => void) | undefined;
 let unsubscribeEndSelection: (() => void) | undefined;
 
+// 键盘事件处理函数
+const handleKeyDown = (e: KeyboardEvent) => {
+  if (e.key === 'Control' || e.key === 'Meta') {
+    isCtrlPressed.value = true;
+  }
+};
+
+const handleKeyUp = (e: KeyboardEvent) => {
+  if (e.key === 'Control' || e.key === 'Meta') {
+    isCtrlPressed.value = false;
+  }
+};
+
 /** 将 embedpdf 的 getHighlightRects 转为我们的 Rect[]（每行/每段一个矩形） */
 const highlightRectsToOurRects = (highlightRects: Record<number, { origin?: { x: number; y: number }; size?: { width: number; height: number } }[]>): Rect[] => {
   const list: Rect[] = [];
   for (const [pageStr, rects] of Object.entries(highlightRects)) {
     const page = Number(pageStr);
+    // 直接使用page作为0-based页面编号，因为embedpdf的getHighlightRects返回的pageStr已经是0-based
+    const zeroBasedPage = page;
+    console.log('Processing page:', pageStr, 'zeroBasedPage:', zeroBasedPage);
     for (const r of rects ?? []) {
       const o = r.origin ?? { x: 0, y: 0 };
       const s = r.size ?? { width: 0, height: 0 };
@@ -109,7 +137,7 @@ const highlightRectsToOurRects = (highlightRects: Record<number, { origin?: { x:
         y1: o.y + s.height,
         width: s.width,
         height: s.height,
-        page,
+        page: zeroBasedPage,
       });
     }
   }
@@ -136,15 +164,28 @@ const getSelectionContentAndCoordinates = () => {
 
 /** 在当前 PDF 上绘制 mark 的下划线（加入绘制列表并在叠加层显示） */
 const drawMark = (mark: Mark) => {
+  console.log('drawMark called:', mark);
   // 将mark添加到全局store中，以便页面刷新时重新绘制
   if (!marksToDraw.value.some(m => m.id === mark.id)) {
     textStore.addMark(mark);
   }
   
   const rects = mark.rects;
+  console.log('rects to draw:', rects);
   rects.forEach((r) => {
-    //highlightRef.value?.drawLine(x0, y0, length, lineness, mark.color);
-    highlightRef.value?.drawRectangle(r.x0, r.y0, r.width, r.height, 2, mark.color, mark.type, mark.sequenceId, mark.style);
+    // 只绘制当前页的标记
+    // 检查页面编号是否匹配，处理可能的类型转换
+    const rectPage = Number(r.page);
+    const currentPageNum = Number(currentPage.value);
+    console.log('rectPage:', rectPage, 'currentPageNum:', currentPageNum);
+    // 这里使用currentPageNum直接比较，因为在highlightRectsToOurRects中页面编号已转换为0-based
+    if (rectPage === currentPageNum) {
+      console.log('Drawing rectangle:', r);
+      //highlightRef.value?.drawLine(x0, y0, length, lineness, mark.color);
+      highlightRef.value?.drawRectangle(r.x0, r.y0, r.width, r.height, 2, mark.color, mark.type, mark.sequenceId, mark.style);
+    } else {
+      console.log('Skipping rectangle on different page:', r);
+    }
   })
 };
 
@@ -166,38 +207,83 @@ onMounted(() => {
     });
   }, 1000); // 延迟1秒，确保PDF已经加载完成
 
+  // 添加键盘事件监听器
+  window.addEventListener('keydown', handleKeyDown);
+  window.addEventListener('keyup', handleKeyUp);
+
   unsubscribeSelectionChange = selection.value.onSelectionChange(
       (selectionRange: SelectionRangeX | null) => {
         hasSelection.value = !!selectionRange;
         if (!selectionRange) {
-          selectedText.value = '';
-          selectedMark.value = null;
-          selectedRects.value = [];
+          // 只有在ctrl键未按下时才清空选中状态
+          if (!isCtrlPressed.value) {
+            selectedText.value = '';
+            accumulatedText.value = '';
+            accumulatedRects.value = [];
+            selectedMark.value = null;
+            selectedRects.value = [];
+          }
         }
       },
   );
 
   unsubscribeEndSelection = selection.value.onEndSelection(() => {
+    console.log('onEndSelection triggered');
     const scope = selection.value!;
     // 使用 getHighlightRects 获取每行/每段一个矩形；getBoundingRects 只返回每页一个外包矩形，跨行会合并成一条
     const highlightRects = scope.getHighlightRects?.() ?? {};
+    console.log('highlightRects:', highlightRects);
     selectedRects.value = highlightRectsToOurRects(highlightRects as Record<number, { origin?: { x: number; y: number }; size?: { width: number; height: number } }[]>);
+    console.log('selectedRects after conversion:', selectedRects.value);
     const textTask = scope.getSelectedText();
     textTask.wait((textLines) => {
-      selectedText.value = textLines.join('\n');
+      console.log('getSelectedText completed:', textLines);
+      const currentText = textLines.join('\n');
+      
+      // 根据ctrl键状态决定是否累积文本
+      if (isCtrlPressed.value) {
+        // 累积文本和矩形
+        if (accumulatedText.value) {
+          accumulatedText.value += '\n' + currentText;
+        } else {
+          accumulatedText.value = currentText;
+        }
+        accumulatedRects.value = [...accumulatedRects.value, ...selectedRects.value];
+        selectedText.value = accumulatedText.value;
+      } else {
+        // 重置累积状态
+        selectedText.value = currentText;
+        accumulatedText.value = currentText;
+        accumulatedRects.value = [...selectedRects.value];
+        // 非ctrl选择时，清除之前的编辑标记
+        textStore.setMarkList(textStore.markList.filter(mark => mark.type !== MarkType.editing));
+        // 清除之前的蓝线
+        highlightRef.value?.clear?.();
+      }
+      
       const mark: Mark = {
         id: uuid(),
         content: selectedText.value,
-        rects: selectedRects.value ?? [],
+        rects: accumulatedRects.value,
         articleId: props.articleId ?? '',
         type: MarkType.editing,
         color: MarkColor.editing,
       };
       selectedMark.value = mark;
+      console.log('selectedMark:', mark);
+      console.log('highlightRef:', highlightRef.value);
+      // 直接调用drawMark绘制蓝线
+      drawMark(mark);
+      // 强制重新渲染，确保蓝线显示
+      nextTick(() => {
+        console.log('nextTick called, redrawing mark');
+        drawMark(mark);
+      });
       emit('selection-change', mark);
       console.log('selection-change:', mark);
     });
   });
+  
 });
 
 defineExpose({
@@ -212,6 +298,9 @@ defineExpose({
 });
 
 onUnmounted(() => {
+  // 移除键盘事件监听器
+  window.removeEventListener('keydown', handleKeyDown);
+  window.removeEventListener('keyup', handleKeyUp);
   unsubscribeSelectionChange?.();
   unsubscribeEndSelection?.();
 });

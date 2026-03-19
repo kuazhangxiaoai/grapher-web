@@ -1810,6 +1810,8 @@ const hanleRefresh = () => {
   textRef.value?.clearEditing();
   // 只清除手动选择的蓝线（MarkType.editing），保留从接口返回的黄色下划线标记
   textStore.setMarkList(textStore.markList.filter(mark => mark.type !== 1));
+  // 清空PDF选择标记，确保点击编辑按钮时不会显示旧的参考文本
+  pdfSelectionMark.value = null;
   showEditor.value = false;
 };
 

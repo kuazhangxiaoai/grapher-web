@@ -2,19 +2,19 @@
   <el-dialog
     v-model="dialogVisible"
     :title="title"
-    width="400px"
+    width="430px"
     :class="dialogClassName"
     @close="handleClose"
   >
-    <el-form :model="form" label-width="85px">
-      <el-form-item label="图谱名称">
+    <el-form ref="formRef" :model="form" :rules="rules" label-width="95px">
+      <el-form-item label="图谱名称" prop="graphName">
         <el-input
           v-model="form.graphName"
           placeholder="请输入图谱名称"
           style="width: 100%; height: 45px"
         />
       </el-form-item>
-      <el-form-item label="创建方式">
+      <el-form-item label="创建方式" prop="createMethod">
         <el-select
           v-model="form.createMethod"
           placeholder="请选择创建方式"
@@ -25,21 +25,24 @@
           <el-option label="任意创建" value="any" />
         </el-select>
       </el-form-item>
-      <el-form-item v-if="form.createMethod === 'text'" label="上传附件">
+      <el-form-item v-if="form.createMethod === 'text'" label="上传附件" prop="uploadedFile">
         <el-upload
+          ref="uploadRef"
           class="upload-demo"
           action="#"
           :on-change="handleFileChange"
           :auto-upload="false"
           :show-file-list="true"
+          :limit="1"
+          :on-exceed="handleExceed"
         >
           <el-button class="upload-btn">
             <Upload class="upload-icon" />
             上传附件
           </el-button>
-          <!-- <template #tip>
-            <div class="el-upload__tip">支持上传 docx、pdf 等格式文件</div>
-          </template> -->
+          <template #tip>
+            <div class="el-upload__tip">支持上传 pdf、txt 格式文件</div>
+          </template>
         </el-upload>
       </el-form-item>
       <el-form-item v-if="form.createMethod == 'text'" label="发表时间">
@@ -88,6 +91,7 @@
 <script setup>
 import { ref, watch } from "vue";
 import { Upload } from "@icon-park/vue-next";
+import { ElMessage } from "element-plus";
 
 const dialogClassName = "add-graph-dialog";
 const props = defineProps({
@@ -112,6 +116,8 @@ const props = defineProps({
 const emit = defineEmits(["update:visible", "create-graph", "cancel"]);
 
 const dialogVisible = ref(props.visible);
+const formRef = ref(null);
+const uploadRef = ref(null);
 const form = ref({
   graphName: "",
   createMethod: "",
@@ -120,6 +126,37 @@ const form = ref({
   anyContent: "",
   publishDate: "",
 });
+
+const rules = {
+  graphName: [
+    {
+      required: true,
+      message: "请输入图谱名称",
+      trigger: "blur",
+    },
+  ],
+  createMethod: [
+    {
+      required: true,
+      message: "请选择创建方式",
+      trigger: "change",
+    },
+  ],
+  uploadedFile: [
+    {
+      required: true,
+      message: "请上传附件",
+      trigger: "change",
+      validator: (rule, value, callback) => {
+        if (form.value.createMethod === "text" && !value) {
+          callback(new Error("请上传附件"));
+        } else {
+          callback();
+        }
+      },
+    },
+  ],
+};
 
 // 监听 visible 属性变化，当弹框显示时重置表单
 watch(
@@ -141,7 +178,25 @@ watch(
 );
 
 const handleFileChange = (file) => {
-  form.value.uploadedFile = file.raw;
+  // 手动校验文件类型
+  const isPDF = file.raw.type === 'application/pdf';
+  const isTXT = file.raw.type === 'text/plain';
+  const isCorrectType = isPDF || isTXT;
+  
+  if (!isCorrectType) {
+    ElMessage.error('只能上传 PDF 和 TXT 格式的文件');
+    form.value.uploadedFile = null;
+    // 清除文件列表
+    if (uploadRef.value) {
+      uploadRef.value.clearFiles();
+    }
+  } else {
+    form.value.uploadedFile = file.raw;
+  }
+};
+
+const handleExceed = () => {
+  ElMessage.error('只能上传一个文件');
 };
 
 const handleCancel = () => {
@@ -151,10 +206,12 @@ const handleCancel = () => {
 };
 
 const handleConfirm = () => {
-  if (form.value.graphName.trim() && form.value.createMethod) {
-    emit("create-graph", form.value);
-    // 不再自动关闭弹窗，由父组件在 API 调用成功后关闭
-  }
+  formRef.value.validate((valid) => {
+    if (valid) {
+      emit("create-graph", form.value);
+      // 不再自动关闭弹窗，由父组件在 API 调用成功后关闭
+    }
+  });
 };
 
 const handleClose = () => {
