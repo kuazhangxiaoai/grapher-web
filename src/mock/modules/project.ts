@@ -75,6 +75,13 @@ const mockTemplates = {
   101: [
     // 政务服务专题的模板
     {
+      nodeTemplateId: 1000,
+      nodeTemplateName: "政府部门节点是",
+      templateType: "node",
+      topicId: 101,
+      nodeTemplateColor: "#43D7B5",
+    },
+    {
       nodeTemplateId: 1001,
       nodeTemplateName: "政府部门节点",
       templateType: "node",
@@ -89,11 +96,63 @@ const mockTemplates = {
       nodeTemplateColor: "#3B82F6",
     },
     {
-      relationTemplateId: 1003,
+      nodeTemplateId: 1003,
+      nodeTemplateName: "服务事项节点在",
+      templateType: "node",
+      topicId: 101,
+      nodeTemplateColor: "#3B82F6",
+    },
+    {
+      relationTemplateId: 1004,
       relationTemplateName: "办理流程关系",
       templateType: "relation",
       topicId: 101,
       startNodeTemplateId: 1001,
+      endNodeTemplateId: 1002,
+      relationTemplateType: "1",
+    },
+    {
+      relationTemplateId: 1005,
+      relationTemplateName: "办理流程关系顶顶顶顶",
+      templateType: "relation",
+      topicId: 101,
+      startNodeTemplateId: 1002,
+      endNodeTemplateId: 1001,
+      relationTemplateType: "1",
+    },
+    {
+      relationTemplateId: 1006,
+      relationTemplateName: "办理流程关系谢谢谢谢",
+      templateType: "relation",
+      topicId: 101,
+      startNodeTemplateId: 1001,
+      endNodeTemplateId: 1003,
+      relationTemplateType: "1",
+    },
+    {
+      relationTemplateId: 1007,
+      relationTemplateName: "办理流程关系",
+      templateType: "relation",
+      topicId: 101,
+      startNodeTemplateId: 1003,
+      endNodeTemplateId: 1002,
+      relationTemplateType: "1",
+    },
+    {
+      relationTemplateId: 1008,
+      relationTemplateName: "办理流程关系是",
+      templateType: "relation",
+      topicId: 101,
+      startNodeTemplateId: 1003,
+      endNodeTemplateId: 1002,
+      relationTemplateType: "1",
+    },
+    {
+      relationTemplateId: 1009,
+      relationTemplateName: "办理流程关系的",
+      templateType: "relation",
+      topicId: 101,
+      startNodeTemplateId: 1003,
       endNodeTemplateId: 1002,
       relationTemplateType: "1",
     },
@@ -157,7 +216,7 @@ const mockLibraryTemplates = [
 export default [
   // 获取领域列表
   {
-    url: "/field/selectFieldByCondition",
+    url: "/serve_api/field/selectFieldByCondition",
     method: "get",
     response: ({ query }) => {
       const { condition } = query;
@@ -180,7 +239,7 @@ export default [
 
   // 新增领域
   {
-    url: "/field/addField",
+    url: "/serve_api/field/addField",
     method: "post",
     response: ({ body }) => {
       const { fieldName } = body;
@@ -201,7 +260,7 @@ export default [
 
   // 删除领域
   {
-    url: "/field/remove",
+    url: "/serve_api/field/remove",
     method: "get",
     response: () => {
       return {
@@ -213,7 +272,7 @@ export default [
 
   // 获取专题列表
   {
-    url: "/topic/selectTopicByCondition",
+    url: "/serve_api/topic/selectTopicByCondition",
     method: "get",
     response: ({ query }) => {
       const { condition, fieldId } = query;
@@ -241,7 +300,7 @@ export default [
 
   // 新增专题
   {
-    url: "/topic/addTopic",
+    url: "/serve_api/topic/addTopic",
     method: "post",
     response: ({ body }) => {
       const { topicName, fieldId } = body;
@@ -263,7 +322,7 @@ export default [
 
   // 删除专题
   {
-    url: "/topic/remove",
+    url: "/serve_api/topic/remove",
     method: "get",
     response: () => {
       return {
@@ -275,7 +334,7 @@ export default [
 
   // 节点/关系模版查询
   {
-    url: "/template/queryTemplate",
+    url: "/serve_api/template/queryTemplate",
     method: "get",
     response: ({ query }) => {
       const { topicId } = query;
@@ -332,7 +391,7 @@ export default [
 
   // 节点模板保存
   {
-    url: "/template/saveNodeTemplate",
+    url: "/serve_api/template/saveNodeTemplate",
     method: "post",
     response: ({ body }) => {
       const {
@@ -370,7 +429,7 @@ export default [
 
   // 关系模板保存
   {
-    url: "/template/saveRelationTemplate",
+    url: "/serve_api/template/saveRelationTemplate",
     method: "post",
     response: ({ body }) => {
       const {
@@ -411,7 +470,7 @@ export default [
 
   // 节点模版删除
   {
-    url: "/template/deleteNodeTemplate",
+    url: "/serve_api/template/deleteNodeTemplate",
     method: "post",
     response: () => {
       return {
@@ -423,7 +482,7 @@ export default [
 
   // 关系模版删除
   {
-    url: "/template/deleteRelationTemplate",
+    url: "/serve_api/template/deleteRelationTemplate",
     method: "post",
     response: () => {
       return {
@@ -435,7 +494,7 @@ export default [
 
   // 组件库查询
   {
-    url: "/template/queryLibraryTemplate",
+    url: "/serve_api/template/queryLibraryTemplate",
     method: "get",
     response: ({ query }) => {
       const { templateName } = query;
@@ -457,7 +516,7 @@ export default [
 
   // 添加到模型接口
   {
-    url: "/template/addToModel",
+    url: "/serve_api/template/addToModel",
     method: "post",
     response: () => {
       return {
@@ -469,7 +528,7 @@ export default [
 
   // 复制领域
   {
-    url: "/field/copyField",
+    url: "/serve_api/field/copyField",
     method: "get",
     response: ({ query }) => {
       const { fieldId } = query;
@@ -498,7 +557,7 @@ export default [
 
   // 复制专题
   {
-    url: "/topic/copyTopic",
+    url: "/serve_api/topic/copyTopic",
     method: "get",
     response: ({ query }) => {
       const { topicId } = query;
@@ -530,4 +589,953 @@ export default [
       };
     },
   },
+
+  // 文章相关接口
+  // 获取graph列表
+  {
+    url: "/serve_api/article/selectArticle",
+    method: "get",
+    response: ({ query }) => {
+      const { topicId, condition } = query;
+      // 模拟文章数据
+      const mockArticles = [
+        {
+          articleId: 1,
+          articleName: "城市规划图谱",
+          createMethod: "0",
+          topicId: topicId,
+          createTime: "2024-01-01 10:00:00",
+          fileSize: "123KB",
+        },
+        {
+          articleId: 2,
+          articleName: "交通网络分析",
+          createMethod: "1",
+          topicId: topicId,
+          createTime: "2024-01-02 14:30:00",
+          fileSize: "256KB",
+        },
+      ];
+
+      // 如果有搜索条件，进行过滤
+      let filteredArticles = mockArticles;
+      if (condition) {
+        filteredArticles = mockArticles.filter((article) =>
+          article.articleName.toLowerCase().includes(condition.toLowerCase()),
+        );
+      }
+
+      return {
+        code: 200,
+        msg: "获取图谱列表成功",
+        data: filteredArticles,
+      };
+    },
+  },
+
+  // 创建文章
+  {
+    url: "/serve_api/article/addArticle",
+    method: "post",
+    response: () => {
+      return {
+        code: 200,
+        msg: "创建文章成功",
+        data: {
+          articleId: Date.now(),
+          articleName: "新创建的图谱",
+        },
+      };
+    },
+  },
+
+  // 获取后端pdf的url
+  {
+    url: "/serve_api/article/getFileUrl",
+    method: "get",
+    response: () => {
+      return {
+        code: 200,
+        msg: "获取文件URL成功",
+        data: {
+          fileUrl: "https://example.com/sample.pdf",
+        },
+      };
+    },
+  },
+
+  // 删除文章
+  {
+    url: "/serve_api/article/deleteArticle",
+    method: "get",
+    response: () => {
+      return {
+        code: 200,
+        msg: "删除文章成功",
+      };
+    },
+  },
+
+  // 模板相关接口
+  // 获取topic下的所有节点模板
+  {
+    url: "/serve_api/template/queryNodeTemplate",
+    method: "get",
+    response: ({ query }) => {
+      const { topicId } = query;
+      // 模拟节点模板数据
+      return {
+        code: 200,
+        msg: "获取节点模板成功",
+        data: [
+          {
+            nodeTemplateId: 1,
+            nodeTemplateName: "基础节点",
+            topicId: topicId,
+            nodeTemplateColor: "#43D7B5",
+          },
+          {
+            nodeTemplateId: 2,
+            nodeTemplateName: "高级节点",
+            topicId: topicId,
+            nodeTemplateColor: "#3B82F6",
+          },
+        ],
+      };
+    },
+  },
+
+  // 获取nodeTemplate 属性
+  {
+    url: "/serve_api/template/queryNodeTemplateProperties",
+    method: "get",
+    response: ({ query }) => {
+      const { nodeTemplateId } = query;
+      // 模拟节点模板属性数据
+      return {
+        code: 200,
+        msg: "获取节点模板属性成功",
+        data: [
+          {
+            propertyId: 1,
+            propertyName: "名称",
+            propertyType: "string",
+            required: true,
+          },
+          {
+            propertyId: 2,
+            propertyName: "描述",
+            propertyType: "text",
+            required: false,
+          },
+        ],
+      };
+    },
+  },
+
+  // 查询关系模板
+  {
+    url: "/serve_api/template/queryRelationTemplate",
+    method: "get",
+    response: ({ query }) => {
+      const { topicId } = query;
+      // 模拟关系模板数据
+      return {
+        code: 200,
+        msg: "获取关系模板成功",
+        data: [
+          {
+            relationTemplateId: 1,
+            relationTemplateName: "关联关系",
+            topicId: topicId,
+            relationTemplateType: "1",
+          },
+          {
+            relationTemplateId: 2,
+            relationTemplateName: "包含关系",
+            topicId: topicId,
+            relationTemplateType: "2",
+          },
+        ],
+      };
+    },
+  },
+
+  // 查询关系模板属性
+  {
+    url: "/serve_api/template/queryRelationTemplateProperties",
+    method: "get",
+    response: ({ query }) => {
+      const { relationTemplateId } = query;
+      // 模拟关系模板属性数据
+      return {
+        code: 200,
+        msg: "获取关系模板属性成功",
+        data: [
+          {
+            propertyId: 1,
+            propertyName: "关系名称",
+            propertyType: "string",
+            required: true,
+          },
+          {
+            propertyId: 2,
+            propertyName: "关系描述",
+            propertyType: "text",
+            required: false,
+          },
+        ],
+      };
+    },
+  },
+
+  // 序列相关接口
+  // 段落分词接口
+  {
+    url: "/serve_api/sequence/segmentSequence",
+    method: "post",
+    response: ({ body }) => {
+      // 模拟分词结果
+      return {
+        code: 200,
+        msg: "分词成功",
+        data: {
+          segments: [
+            "城市",
+            "规划",
+            "交通",
+            "网络",
+          ],
+        },
+      };
+    },
+  },
+
+  // 段落列表查询接口
+  {
+    url: "/serve_api/sequence/getSequenceList",
+    method: "get",
+    response: ({ query }) => {
+      const { articleId } = query;
+      // 模拟段落列表数据
+      return {
+        code: 200,
+        msg: "获取段落列表成功",
+        data: [
+          {
+            sequenceId: 1,
+            articleId: articleId,
+            sequenceContent: "城市规划是城市发展的重要指导。",
+            sequenceNumber: 1,
+          },
+          {
+            sequenceId: 2,
+            articleId: articleId,
+            sequenceContent: "交通网络是城市的重要基础设施。",
+            sequenceNumber: 2,
+          },
+        ],
+      };
+    },
+  },
+
+  // 段落对应图谱保存提交接口
+  {
+    url: "/serve_api/sequence/saveGraph",
+    method: "post",
+    response: () => {
+      return {
+        code: 200,
+        msg: "保存图谱成功",
+      };
+    },
+  },
+
+  // 段落对应图谱查询接口
+  {
+    url: "/serve_api/sequence/getGraphBySequenceId",
+    method: "get",
+    response: ({ query }) => {
+      const { sequenceId } = query;
+      // 模拟图谱数据
+      return {
+        code: 200,
+        msg: "获取图谱成功",
+        data: {
+          nodes: [
+            {
+              nodeHash: "node-hash-1",
+              nodeId: 1,
+              nodeDescription: "城市是人类聚居的场所",
+              nodeColor: "#43D7B5",
+              nodeName: "城市",
+              nodeTemplateName: "基础节点",
+              nodeTemplateId: 1,
+              properties: [
+                { key: "name", value: "城市" },
+                { key: "type", value: "基础节点" }
+              ]
+            },
+            {
+              nodeHash: "node-hash-2",
+              nodeId: 2,
+              nodeDescription: "规划是对未来的安排",
+              nodeColor: "#3B82F6",
+              nodeName: "规划",
+              nodeTemplateName: "基础节点",
+              nodeTemplateId: 1,
+              properties: [
+                { key: "name", value: "规划" },
+                { key: "type", value: "基础节点" }
+              ]
+            },
+            {
+              nodeHash: "node-hash-3",
+              nodeId: 3,
+              nodeDescription: "交通是城市的血脉",
+              nodeColor: "#F59E0B",
+              nodeName: "交通",
+              nodeTemplateName: "基础节点",
+              nodeTemplateId: 1,
+              properties: [
+                { key: "name", value: "交通" },
+                { key: "type", value: "基础节点" }
+              ]
+            },
+          ],
+          relations: [
+            {
+              relationTemplateId: 1,
+              startNodeHash: "node-hash-2",
+              endNodeHash: "node-hash-1",
+              properties: [
+                { key: "name", value: "关联" },
+                { key: "type", value: "关联关系" }
+              ],
+              relationHash: "relation-hash-1",
+              relationId: 1,
+              relationName: "关联",
+              relationTemplateName: "关联关系",
+              relationTrigger: "manual",
+              relationType: "1"
+            },
+            {
+              relationTemplateId: 1,
+              startNodeHash: "node-hash-1",
+              endNodeHash: "node-hash-2",
+              properties: [
+                { key: "name", value: "关联" },
+                { key: "type", value: "关联关系" }
+              ],
+              relationHash: "relation-hash-5",
+              relationId: 1,
+              relationName: "关联899",
+              relationTemplateName: "关联关系",
+              relationTrigger: "manual",
+              relationType: "1"
+            },
+            {
+              relationTemplateId: 1,
+              startNodeHash: "node-hash-1",
+              endNodeHash: "node-hash-2",
+              properties: [
+                { key: "name", value: "关联" },
+                { key: "type", value: "关联关系" }
+              ],
+              relationHash: "relation-hash-6",
+              relationId: 1,
+              relationName: "关联6544",
+              relationTemplateName: "关联关系",
+              relationTrigger: "manual",
+              relationType: "1"
+            },
+            {
+              relationTemplateId: 1,
+              startNodeHash: "node-hash-1",
+              endNodeHash: "node-hash-3",
+              properties: [
+                { key: "name", value: "关联" },
+                { key: "type", value: "关联关系" }
+              ],
+              relationHash: "relation-hash-2",
+              relationId: 2,
+              relationName: "关联",
+              relationTemplateName: "关联关系",
+              relationTrigger: "manual",
+              relationType: "1"
+            },
+            {
+              relationTemplateId: 1,
+              startNodeHash: "node-hash-3",
+              endNodeHash: "node-hash-1",
+              properties: [
+                { key: "name", value: "关联" },
+                { key: "type", value: "关联关系" }
+              ],
+              relationHash: "relation-hash-3",
+              relationId: 2,
+              relationName: "关联666",
+              relationTemplateName: "关联关系",
+              relationTrigger: "manual",
+              relationType: "1"
+            },
+            {
+              relationTemplateId: 1,
+              startNodeHash: "node-hash-2",
+              endNodeHash: "node-hash-3",
+              properties: [
+                { key: "name", value: "关联" },
+                { key: "type", value: "关联关系" }
+              ],
+              relationHash: "relation-hash-4",
+              relationId: 2,
+              relationName: "关联77788",
+              relationTemplateName: "关联关系",
+              relationTrigger: "manual",
+              relationType: "1"
+            },
+          ],
+        },
+      };
+    },
+  },
+
+  // 文章对应图谱查询接口
+  {
+    url: "/serve_api/sequence/getGraphByArticleId",
+    method: "get",
+    response: ({ query }) => {
+      const { articleId } = query;
+      // 模拟图谱数据
+      return {
+        code: 200,
+        msg: "获取图谱成功",
+        data: {
+          nodes: [
+            {
+              nodeHash: "node-hash-1",
+              nodeId: 1,
+              nodeDescription: "城市是人类聚居的场所",
+              nodeColor: "#43D7B5",
+              nodeName: "城市",
+              nodeTemplateName: "基础节点",
+              nodeTemplateId: 1,
+              properties: [
+                { key: "name", value: "城市" },
+                { key: "type", value: "基础节点" }
+              ]
+            },
+            {
+              nodeHash: "node-hash-2",
+              nodeId: 2,
+              nodeDescription: "规划是对未来的安排",
+              nodeColor: "#3B82F6",
+              nodeName: "规划",
+              nodeTemplateName: "基础节点",
+              nodeTemplateId: 1,
+              properties: [
+                { key: "name", value: "规划" },
+                { key: "type", value: "基础节点" }
+              ]
+            },
+            {
+              nodeHash: "node-hash-3",
+              nodeId: 3,
+              nodeDescription: "交通是城市的血脉",
+              nodeColor: "#F59E0B",
+              nodeName: "交通",
+              nodeTemplateName: "基础节点",
+              nodeTemplateId: 1,
+              properties: [
+                { key: "name", value: "交通" },
+                { key: "type", value: "基础节点" }
+              ]
+            },
+          ],
+          relations: [
+            {
+              relationTemplateId: 1,
+              startNodeHash: "node-hash-2",
+              endNodeHash: "node-hash-1",
+              properties: [
+                { key: "name", value: "关联" },
+                { key: "type", value: "关联关系" }
+              ],
+              relationHash: "relation-hash-1",
+              relationId: 1,
+              relationName: "关联",
+              relationTemplateName: "关联关系",
+              relationTrigger: "manual",
+              relationType: "1"
+            },
+            {
+              relationTemplateId: 1,
+              startNodeHash: "node-hash-1",
+              endNodeHash: "node-hash-2",
+              properties: [
+                { key: "name", value: "关联" },
+                { key: "type", value: "关联关系" }
+              ],
+              relationHash: "relation-hash-5",
+              relationId: 1,
+              relationName: "关联899",
+              relationTemplateName: "关联关系",
+              relationTrigger: "manual",
+              relationType: "1"
+            },
+            {
+              relationTemplateId: 1,
+              startNodeHash: "node-hash-1",
+              endNodeHash: "node-hash-2",
+              properties: [
+                { key: "name", value: "关联" },
+                { key: "type", value: "关联关系" }
+              ],
+              relationHash: "relation-hash-6",
+              relationId: 1,
+              relationName: "关联6544",
+              relationTemplateName: "关联关系",
+              relationTrigger: "manual",
+              relationType: "1"
+            },
+            {
+              relationTemplateId: 1,
+              startNodeHash: "node-hash-1",
+              endNodeHash: "node-hash-3",
+              properties: [
+                { key: "name", value: "关联" },
+                { key: "type", value: "关联关系" }
+              ],
+              relationHash: "relation-hash-2",
+              relationId: 2,
+              relationName: "关联",
+              relationTemplateName: "关联关系",
+              relationTrigger: "manual",
+              relationType: "1"
+            },
+            {
+              relationTemplateId: 1,
+              startNodeHash: "node-hash-3",
+              endNodeHash: "node-hash-1",
+              properties: [
+                { key: "name", value: "关联" },
+                { key: "type", value: "关联关系" }
+              ],
+              relationHash: "relation-hash-3",
+              relationId: 2,
+              relationName: "关联666",
+              relationTemplateName: "关联关系",
+              relationTrigger: "manual",
+              relationType: "1"
+            },
+            {
+              relationTemplateId: 1,
+              startNodeHash: "node-hash-2",
+              endNodeHash: "node-hash-3",
+              properties: [
+                { key: "name", value: "关联" },
+                { key: "type", value: "关联关系" }
+              ],
+              relationHash: "relation-hash-4",
+              relationId: 2,
+              relationName: "关联77788",
+              relationTemplateName: "关联关系",
+              relationTrigger: "manual",
+              relationType: "1"
+            },
+          ],
+        },
+      };
+    },
+  },
+
+  // 专题下所有图谱对应图谱查询接口
+  {
+    url: "/serve_api/sequence/getGraphByTopicId",
+    method: "get",
+    response: ({ query }) => {
+      const { topicId } = query;
+      // 模拟图谱列表数据
+      return {
+        code: 200,
+        msg: "获取图谱列表成功",
+        data: {
+          nodes: [
+            {
+              nodeHash: "node-hash-1",
+              nodeId: 1,
+              nodeDescription: "城市是人类聚居的场所",
+              nodeColor: "#43D7B5",
+              nodeName: "城市",
+              nodeTemplateName: "基础节点",
+              nodeTemplateId: 1,
+              properties: [
+                { key: "name", value: "城市" },
+                { key: "type", value: "基础节点" }
+              ]
+            },
+            {
+              nodeHash: "node-hash-2",
+              nodeId: 2,
+              nodeDescription: "规划是对未来的安排",
+              nodeColor: "#3B82F6",
+              nodeName: "规划",
+              nodeTemplateName: "基础节点",
+              nodeTemplateId: 1,
+              properties: [
+                { key: "name", value: "规划" },
+                { key: "type", value: "基础节点" }
+              ]
+            },
+            {
+              nodeHash: "node-hash-3",
+              nodeId: 3,
+              nodeDescription: "交通是城市的血脉",
+              nodeColor: "#F59E0B",
+              nodeName: "交通",
+              nodeTemplateName: "基础节点",
+              nodeTemplateId: 1,
+              properties: [
+                { key: "name", value: "交通" },
+                { key: "type", value: "基础节点" }
+              ]
+            },
+          ],
+          relations: [
+            {
+              relationTemplateId: 1,
+              startNodeHash: "node-hash-2",
+              endNodeHash: "node-hash-1",
+              properties: [
+                { key: "name", value: "关联" },
+                { key: "type", value: "关联关系" }
+              ],
+              relationHash: "relation-hash-1",
+              relationId: 1,
+              relationName: "关联",
+              relationTemplateName: "关联关系",
+              relationTrigger: "manual",
+              relationType: "1"
+            },
+            {
+              relationTemplateId: 1,
+              startNodeHash: "node-hash-1",
+              endNodeHash: "node-hash-2",
+              properties: [
+                { key: "name", value: "关联" },
+                { key: "type", value: "关联关系" }
+              ],
+              relationHash: "relation-hash-5",
+              relationId: 1,
+              relationName: "关联899",
+              relationTemplateName: "关联关系",
+              relationTrigger: "manual",
+              relationType: "1"
+            },
+            {
+              relationTemplateId: 1,
+              startNodeHash: "node-hash-1",
+              endNodeHash: "node-hash-2",
+              properties: [
+                { key: "name", value: "关联" },
+                { key: "type", value: "关联关系" }
+              ],
+              relationHash: "relation-hash-6",
+              relationId: 1,
+              relationName: "关联6544",
+              relationTemplateName: "关联关系",
+              relationTrigger: "manual",
+              relationType: "1"
+            },
+            {
+              relationTemplateId: 1,
+              startNodeHash: "node-hash-1",
+              endNodeHash: "node-hash-3",
+              properties: [
+                { key: "name", value: "关联" },
+                { key: "type", value: "关联关系" }
+              ],
+              relationHash: "relation-hash-2",
+              relationId: 2,
+              relationName: "关联",
+              relationTemplateName: "关联关系",
+              relationTrigger: "manual",
+              relationType: "1"
+            },
+            {
+              relationTemplateId: 1,
+              startNodeHash: "node-hash-3",
+              endNodeHash: "node-hash-1",
+              properties: [
+                { key: "name", value: "关联" },
+                { key: "type", value: "关联关系" }
+              ],
+              relationHash: "relation-hash-3",
+              relationId: 2,
+              relationName: "关联666",
+              relationTemplateName: "关联关系",
+              relationTrigger: "manual",
+              relationType: "1"
+            },
+            {
+              relationTemplateId: 1,
+              startNodeHash: "node-hash-2",
+              endNodeHash: "node-hash-3",
+              properties: [
+                { key: "name", value: "关联" },
+                { key: "type", value: "关联关系" }
+              ],
+              relationHash: "relation-hash-4",
+              relationId: 2,
+              relationName: "关联77788",
+              relationTemplateName: "关联关系",
+              relationTrigger: "manual",
+              relationType: "1"
+            },
+          ],
+        },
+      };
+    },
+  },
+
+  // 领域下所有专题对应图谱查询接口
+  {
+    url: "/serve_api/sequence/getGraphByFieldId",
+    method: "get",
+    response: ({ query }) => {
+      const { fieldId } = query;
+      // 模拟图谱列表数据
+      return {
+        code: 200,
+        msg: "获取图谱列表成功",
+        data: {
+          nodes: [
+            {
+              nodeHash: "node-hash-1",
+              nodeId: 1,
+              nodeDescription: "城市是人类聚居的场所",
+              nodeColor: "#43D7B5",
+              nodeName: "城市",
+              nodeTemplateName: "基础节点",
+              nodeTemplateId: 1,
+              properties: [
+                { key: "name", value: "城市" },
+                { key: "type", value: "基础节点" }
+              ]
+            },
+            {
+              nodeHash: "node-hash-2",
+              nodeId: 2,
+              nodeDescription: "规划是对未来的安排",
+              nodeColor: "#3B82F6",
+              nodeName: "规划",
+              nodeTemplateName: "基础节点",
+              nodeTemplateId: 1,
+              properties: [
+                { key: "name", value: "规划" },
+                { key: "type", value: "基础节点" }
+              ]
+            },
+            {
+              nodeHash: "node-hash-3",
+              nodeId: 3,
+              nodeDescription: "交通是城市的血脉",
+              nodeColor: "#F59E0B",
+              nodeName: "交通",
+              nodeTemplateName: "基础节点",
+              nodeTemplateId: 1,
+              properties: [
+                { key: "name", value: "交通" },
+                { key: "type", value: "基础节点" }
+              ]
+            },
+          ],
+          relations: [
+            {
+              relationTemplateId: 1,
+              startNodeHash: "node-hash-2",
+              endNodeHash: "node-hash-1",
+              properties: [
+                { key: "name", value: "关联" },
+                { key: "type", value: "关联关系" }
+              ],
+              relationHash: "relation-hash-1",
+              relationId: 1,
+              relationName: "关联",
+              relationTemplateName: "关联关系",
+              relationTrigger: "manual",
+              relationType: "1"
+            },
+            {
+              relationTemplateId: 1,
+              startNodeHash: "node-hash-1",
+              endNodeHash: "node-hash-2",
+              properties: [
+                { key: "name", value: "关联" },
+                { key: "type", value: "关联关系" }
+              ],
+              relationHash: "relation-hash-5",
+              relationId: 1,
+              relationName: "关联899",
+              relationTemplateName: "关联关系",
+              relationTrigger: "manual",
+              relationType: "1"
+            },
+            {
+              relationTemplateId: 1,
+              startNodeHash: "node-hash-1",
+              endNodeHash: "node-hash-2",
+              properties: [
+                { key: "name", value: "关联" },
+                { key: "type", value: "关联关系" }
+              ],
+              relationHash: "relation-hash-6",
+              relationId: 1,
+              relationName: "关联6544",
+              relationTemplateName: "关联关系",
+              relationTrigger: "manual",
+              relationType: "1"
+            },
+            {
+              relationTemplateId: 1,
+              startNodeHash: "node-hash-1",
+              endNodeHash: "node-hash-3",
+              properties: [
+                { key: "name", value: "关联" },
+                { key: "type", value: "关联关系" }
+              ],
+              relationHash: "relation-hash-2",
+              relationId: 2,
+              relationName: "关联",
+              relationTemplateName: "关联关系",
+              relationTrigger: "manual",
+              relationType: "1"
+            },
+            {
+              relationTemplateId: 1,
+              startNodeHash: "node-hash-3",
+              endNodeHash: "node-hash-1",
+              properties: [
+                { key: "name", value: "关联" },
+                { key: "type", value: "关联关系" }
+              ],
+              relationHash: "relation-hash-3",
+              relationId: 2,
+              relationName: "关联666",
+              relationTemplateName: "关联关系",
+              relationTrigger: "manual",
+              relationType: "1"
+            },
+            {
+              relationTemplateId: 1,
+              startNodeHash: "node-hash-2",
+              endNodeHash: "node-hash-3",
+              properties: [
+                { key: "name", value: "关联" },
+                { key: "type", value: "关联关系" }
+              ],
+              relationHash: "relation-hash-4",
+              relationId: 2,
+              relationName: "关联77788",
+              relationTemplateName: "关联关系",
+              relationTrigger: "manual",
+              relationType: "1"
+            },
+          ],
+        },
+      };
+    },
+  },
+
+  // 模糊查询节点名称
+  {
+    url: "/serve_api/sequence/getNodeNamesByArticleId",
+    method: "post",
+    response: () => {
+      // 模拟节点名称数据
+      return {
+        code: 200,
+        msg: "获取节点名称成功",
+        data: [
+          "城市",
+          "规划",
+          "交通",
+          "网络",
+        ],
+      };
+    },
+  },
+
+  // 模糊查询关系名称
+  {
+    url: "/serve_api/sequence/getRelationNamesByArticleId",
+    method: "post",
+    response: () => {
+      // 模拟关系名称数据
+      return {
+        code: 200,
+        msg: "获取关系名称成功",
+        data: [
+          "关联",
+          "包含",
+          "影响",
+        ],
+      };
+    },
+  },
+
+  // 节点保存提交接口
+  {
+    url: "/serve_api/sequence/saveNode",
+    method: "post",
+    response: () => {
+      return {
+        code: 200,
+        msg: "保存节点成功",
+        data: {
+          nodeId: Date.now(),
+        },
+      };
+    },
+  },
+
+  // 节点删除接口
+  {
+    url: "/serve_api/sequence/deleteNode",
+    method: "post",
+    response: () => {
+      return {
+        code: 200,
+        msg: "删除节点成功",
+      };
+    },
+  },
+
+  // 关系保存接口
+  {
+    url: "/serve_api/sequence/saveRelation",
+    method: "post",
+    response: () => {
+      return {
+        code: 200,
+        msg: "保存关系成功",
+        data: {
+          relationId: Date.now(),
+        },
+      };
+    },
+  },
+
+  // 关系删除接口
+  {
+    url: "/serve_api/sequence/deleteRelation",
+    method: "post",
+    response: () => {
+      return {
+        code: 200,
+        msg: "删除关系成功",
+      };
+    },
+  },
 ];
+

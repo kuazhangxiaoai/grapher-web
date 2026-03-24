@@ -202,7 +202,7 @@
               disabled
             ></el-input>
           </div>
-          <div class="property-item"  v-if="operationSource === 'canvas' && referenceContent">
+          <div class="property-item"  v-if="operationSource === 'canvas' && showReferenceText">
             <label>触发词</label>
             <el-select
               v-model="selectedTriggerWord"
@@ -346,7 +346,7 @@
     :close-on-click-modal="false"
     :close-on-press-escape="false"
   >
-    <el-form :model="newProperty" label-width="80px">
+    <el-form :model="newProperty" label-width="100px">
       <el-form-item label="属性名称" required>
         <el-input
           v-model="newProperty.name"
@@ -382,7 +382,7 @@
 </template>
 
 <script setup>
-import { ref, watch, nextTick, onMounted, onUnmounted } from "vue";
+import { ref, watch, nextTick, onMounted, onUnmounted,computed } from "vue";
 import { Plus, Search } from "@element-plus/icons-vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import graph from "@/services/graph";
@@ -480,6 +480,10 @@ const props = defineProps({
     type: String,
     default: "",
   },
+  showReferenceText: {
+    type: Boolean,
+    default: true,
+  },
   operationSource: {
     type: String,
     default: "",
@@ -492,9 +496,65 @@ const props = defineProps({
     type: String,
     default: "",
   },
+  domainId: {
+    type: String,
+    default: "",
+  },
+  sequenceId: {
+    type: String,
+    default: "",
+  },
+  currentLevel: {
+    type: Number,
+    default: null,
+  },
+  currentGraphCreateMethod: {
+    type: String,
+    default: "",
+  },
+  nodeId: {
+    type: String,
+    default: "",
+  },
+  nodeHash: {
+    type: String,
+    default: "",
+  },
+  relationId: {
+    type: String,
+    default: "",
+  },
+  relationHash: {
+    type: String,
+    default: "",
+  },
+  startNodeId: {
+    type: String,
+    default: "",
+  },
+  endNodeId: {
+    type: String,
+    default: "",
+  },
+  startNodeHash: {
+    type: String,
+    default: "",
+  },
+  endNodeHash: {
+    type: String,
+    default: "",
+  },
+  selectedSequence: {
+    type: Object,
+    default: () => null,
+  },
+  marks: {
+    type: Array,
+    default: () => [],
+  },
 });
 
-const emit = defineEmits(["close", "cancel", "save", "add-property", "delete-item"]);
+const emit = defineEmits(["close", "cancel", "save", "add-property", "delete-item", "update-nodes"]);
 
 // 本地状态
 const localEntityName = ref(props.entityName);
@@ -532,6 +592,44 @@ const newProperty = ref({ name: "", type: "string" });
 // 标记是否正在添加属性，避免被props更新覆盖
 const isAddingProperty = ref(false);
 
+// 保存从getSequenceList获取到的最新sequenceId
+const latestSequenceIdFromServer = ref("");
+
+// 跟踪面板之前的状态，用于判断是否是重新打开
+const wasPanelOpen = ref(false);
+
+// 计算段落内容（用于段落下保存时传递 sequenceContent）
+const content = computed(() => {
+  // 优先使用选中的段落内容
+  if (props.selectedSequence && props.selectedSequence.sequenceContent) {
+    return props.selectedSequence.sequenceContent;
+  }
+  // 如果没有选中的段落，使用marks中的内容
+  if (!props.marks || props.marks.length === 0) return "";
+  return props.marks.map((mark) => mark.content ?? "").join("");
+});
+
+// 计算段落位置列表（用于段落下保存时传递 sequencePositionList）
+const sequencePositionList = computed(() => {
+  if (props.selectedSequence && props.selectedSequence.sequencePositionList) {
+    return props.selectedSequence.sequencePositionList;
+  }
+  if (props.marks && props.marks.length > 0) {
+    return props.marks.flatMap(mark =>
+      mark.rects && mark.rects.length > 0
+        ? mark.rects.map(rect => ({
+            sequenceX0: rect.x0,
+            sequenceY0: rect.y0,
+            sequenceX1: rect.x1,
+            sequenceY1: rect.y1,
+            sequencePage: rect.page
+          }))
+        : []
+    );
+  }
+  return [];
+});
+
 // 初始化属性列表
 localEntityProperties.value = props.entityProperties.map((prop) => ({
   ...prop,
@@ -563,6 +661,8 @@ watch(
   async (newValue) => {
     if (newValue) {
       isAddingProperty.value = false; // 重置添加状态
+      // latestSequenceIdFromServer.value = ""; // 重置服务器返回的sequenceId
+      // wasPanelOpen.value = true; // 标记面板已打开
       localEntityName.value = props.entityName;
       // 当操作来源是画布且nodeName未定义时，设置为空字符串
       localNodeName.value = props.operationSource === 'canvas' && props.nodeName === undefined ? '' : (props.nodeName !== undefined ? props.nodeName : props.entityName);
@@ -733,18 +833,150 @@ const handleClosePropertyPanel = () => {
 const handleCancelPropertyPanel = () => {
   emit("cancel");
 };
-
+const levelIdCome=()=>{
+   //层级：1-全部 2-领域下 3-专题下 4-文章下 5-段落下
+   //层级关联ID：level=2填fieldId的值，level=3填topicId的值，level=4填articleId的值，level=5填sequenceId的值
+  if(props.showReferenceText){
+    return latestSequenceIdFromServer.value || props.sequenceId || "";//段落下
+  }else if(props.currentGraphCreateMethod=='0'){
+    return props.articleId;//文章下
+  }else if(props.currentGraphCreateMethod=='1'||props.currentGraphCreateMethod=='2'){
+    return props.articleId;//文章下
+  }else if(props.currentGraphCreateMethod==''&&props.currentLevel==2){
+    return props.topicId;//专题下
+  }else if(props.currentGraphCreateMethod==''&&props.currentLevel==1){
+    return props.domainId;//领域下
+  }else{
+    return ''//全部
+  }
+};
+const levelCome=()=>{
+  console.log(333333333333333,props)
+   //层级：1-全部 2-领域下 3-专题下 4-文章下 5-段落下
+   //层级关联ID：level=2填fieldId的值，level=3填topicId的值，level=4填articleId的值，level=5填sequenceId的值
+  if(props.showReferenceText){
+    return 5;//段落下
+  }else if(props.currentGraphCreateMethod=='0'){
+    return 4;//文章下
+  }else if(props.currentGraphCreateMethod=='1'||props.currentGraphCreateMethod=='2'){
+    return 4;//文章下
+  }else if(props.currentGraphCreateMethod==''&&props.currentLevel==2){
+    return 3;//专题下
+  }else if(props.currentGraphCreateMethod==''&&props.currentLevel==1){
+    return 2;//领域下
+  }else{
+    return 1;//全部
+  }
+};
 const handleSavePropertyPanel = async () => {
   try {
-    // // 检查 topicId 是否为空
-    // if (!props.topicId) {
-    //   ElMessage.warning("请先选择专题");
-    //   return;
-    // }
+    // 验证必填字段
+    if (props.currentOperation === "entity") {
+      if (!localNodeName.value || localNodeName.value.trim() === "") {
+        ElMessage.warning("节点名称不能为空");
+        return;
+      }
+    } else if (props.currentOperation === "relationship") {
+      if (!localRelationName.value || localRelationName.value.trim() === "") {
+        ElMessage.warning("关系名称不能为空");
+        return;
+      }
+    }
 
     // 设置加载状态
     isLoading.value = true;
-    console.log(666666666,props)
+    console.log(111111111111111,props);
+    console.log(666666666,latestSequenceIdFromServer.value)
+      // 检查是否有参考文本
+    // if (!props.showReferenceText) {
+      if (props.currentOperation === "entity") {
+      const templateData = {
+        level:levelCome(),
+        levelId:levelIdCome(),
+        node:{
+          nodeId: props.nodeId,  //为空新增、不为空修改
+          nodeHash: props.nodeHash,
+          nodeName: localNodeName.value,
+          nodeDescription: localEntityDescription.value,
+          nodeColor: localBackgroundColor.value,
+          nodeTemplateName: props.entityName,
+          nodeTemplateId: props.nodeTemplateId
+        },
+        properties: localEntityProperties.value.map((prop) => ({
+          propertyKey: prop.name,
+          propertyValue: prop.value
+        })),
+        
+        // 段落下时添加 sequence 相关参数
+        // 优先使用从服务器获取的最新sequenceId，如果没有则使用props中的sequenceId
+        ...(props.showReferenceText && {
+          articleId:props.articleId || "",
+          sequenceId: latestSequenceIdFromServer.value || props.sequenceId || "",
+          sequenceContent: content.value,
+          sequencePositionList: sequencePositionList.value,
+        }),
+      };
+      console.log("保存====",templateData);
+      await graph.saveNode(templateData);
+    } else if (props.currentOperation === "relationship") {
+      // 检查 startNodeId 和 endNodeId 是否为空
+      // if (!props.startNodeId || !props.endNodeId) {
+      //   ElMessage.warning("请选择关系的起始节点和结束节点");
+      //   isLoading.value = false;
+      //   return;
+      // }
+      // 构建关系模板保存数据
+      const getRelationTypeValue = (type) => {
+        switch (type) {
+          case "定向":
+            return "1";
+          case "双向":
+            return "2";
+          case "循环":
+            return "3";
+          default:
+            return "1";
+        }
+      };
+      // 构建关系模板保存数据
+      console.log("Props startNodeHash:", props.startNodeHash);
+      console.log("Props startNodeId:", props.startNodeId);
+      console.log("Props endNodeHash:", props.endNodeHash);
+      console.log("Props endNodeId:", props.endNodeId);
+      console.log("All props:", props);
+      const relationTemplateData = {
+        level:levelCome(),
+        levelId:levelIdCome(),
+        relation: {
+          relationId: props.relationId,
+          relationHash: props.relationHash,
+          relationName: localRelationName.value,
+          relationType: getRelationTypeValue(props.relationshipType),
+          relationTrigger: selectedTriggerWord.value,
+          startNodeHash: props.startNodeHash,
+          endNodeHash: props.endNodeHash,
+          relationTemplateName: props.relationshipName,
+          relationTemplateId: props.relationTemplateId
+        },
+        properties: localEntityProperties.value.map((prop) => ({
+          propertyKey: prop.name,
+          propertyValue: prop.value
+        })),
+        // 段落下时添加 sequence 相关参数
+        // 优先使用从服务器获取的最新sequenceId，如果没有则使用props中的sequenceId
+        ...(props.showReferenceText && {
+          articleId:props.articleId || "",
+          sequenceId: latestSequenceIdFromServer.value || props.sequenceId || "",
+          sequenceContent: content.value,
+          sequencePositionList: sequencePositionList.value,
+        }),
+      };
+      console.log("保存关系数据:", relationTemplateData);
+      console.log("保存====",relationTemplateData);
+      await graph.saveRelation(relationTemplateData);
+    }
+    ElMessage.success("保存成功");
+    // }
     // 准备保存到父组件的数据
   const saveData = {
     currentOperation: props.currentOperation,
@@ -752,7 +984,8 @@ const handleSavePropertyPanel = async () => {
     nodeName: localNodeName.value,
     entityDescription: localEntityDescription.value,
     entityProperties: localEntityProperties.value.map((prop) => ({
-      ...prop,
+      propertyKey: prop.name,
+      propertyValue: prop.value
     })),
     relationshipName: localRelationshipName.value,
     relationName: localRelationName.value,
@@ -767,6 +1000,51 @@ const handleSavePropertyPanel = async () => {
     relationTemplateId: props.relationTemplateId,
   };
 
+    // 异步更新数据，不阻塞面板关闭
+    setTimeout(async () => {
+      try {
+        // 根据不同层级调用相应的查询接口
+        let graphResponse;
+        if (props.showReferenceText) {
+          // 段落下：先调getSequenceList获取最新sequenceId，再调getGraphBySequenceId
+          const sequenceListRes = await graph.getSequenceList(props.articleId);
+          if (sequenceListRes && sequenceListRes.data && sequenceListRes.data.length > 0) {
+            // 根据内容匹配获取对应的sequenceId
+            const currentContent = content.value;
+            const matchedSequence = sequenceListRes.data.find(
+              (seq) => seq.sequenceContent === currentContent
+            );
+            const latestSequenceId = matchedSequence
+              ? matchedSequence.sequenceId
+              : sequenceListRes.data[0].sequenceId;
+            // 保存从服务器获取的最新sequenceId，供后续保存使用
+            latestSequenceIdFromServer.value = latestSequenceId;
+            console.log(777777777777777,latestSequenceId,latestSequenceIdFromServer.value)
+            graphResponse = await graph.getGraphBySequenceId(latestSequenceId);
+          }
+        } else if (props.currentGraphCreateMethod === '0') {
+          // 文章下
+          graphResponse = await graph.getGraphByArticleId(props.articleId);
+        } else if (props.currentGraphCreateMethod === '1' || props.currentGraphCreateMethod === '2') {
+          // 专题下
+          graphResponse = await graph.getGraphByArticleId(props.articleId);
+        } else if (props.currentLevel === 2) {
+          // 专题下
+          graphResponse = await graph.getGraphByTopicId(props.topicId);
+        } else if (props.currentLevel === 1) {
+          // 领域下
+          graphResponse = await graph.getGraphByFieldId(props.domainId);
+        }
+
+        if (graphResponse && graphResponse.data) {
+          // 触发更新事件，通知父组件更新图谱数据
+          emit("update-nodes", graphResponse.data);
+        }
+      } catch (error) {
+        console.error("更新数据失败:", error);
+      }
+    }, 100);
+
     // 延迟关闭面板，让用户看到加载状态
     setTimeout(() => {
       isLoading.value = false;
@@ -779,6 +1057,7 @@ const handleSavePropertyPanel = async () => {
 };
 
 const handleDeletePropertyPanel = async () => {
+   console.log(111111111111111,props);
   try {
     // 弹出确认对话框
     await ElMessageBox.confirm("确定要删除吗？", "删除确认", {
@@ -787,8 +1066,89 @@ const handleDeletePropertyPanel = async () => {
       type: "warning",
     });
 
+    // if(!props.showReferenceText){
+      // 设置加载状态
+    // isLoading.value = true;
+
+    if (props.currentOperation === "entity") {
+      // 检查 nodeTemplateId 是否为空
+      // if (!props.nodeTemplateId) {
+      //   ElMessage.warning("实体模板ID不能为空");
+      //   isLoading.value = false;
+      //   return;
+      // }
+      let data={
+        level:levelCome(),
+        levelId:levelIdCome(),
+        nodeHash:props.nodeHash
+      }
+      // 调用删除接口
+      await graph.deleteNode(data);
+    } else if (props.currentOperation === "relationship") {
+      // 检查 relationTemplateId 是否为空
+      // if (!props.relationTemplateId) {
+      //   ElMessage.warning("关系模板ID不能为空");
+      //   isLoading.value = false;
+      //   return;
+      // }
+      let data={
+        level:levelCome(),
+        levelId:levelIdCome(),
+        relationHash:props.relationHash
+      }
+      // 调用删除接口
+      await graph.deleteRelation(data);
+    }
+
+    // 删除成功提示
+    ElMessage.success("删除成功");
+    // }
     // 直接触发删除事件，让父组件处理删除逻辑
     emit("delete-item");
+
+    // 异步更新数据，不阻塞面板关闭
+    setTimeout(async () => {
+      try {
+        // 根据不同层级调用相应的查询接口
+        let graphResponse;
+        if (props.showReferenceText) {
+          // 段落下：先调getSequenceList获取最新sequenceId，再调getGraphBySequenceId
+          const sequenceListRes = await graph.getSequenceList(props.articleId);
+          if (sequenceListRes && sequenceListRes.data && sequenceListRes.data.length > 0) {
+            // 根据内容匹配获取对应的sequenceId
+            const currentContent = content.value;
+            const matchedSequence = sequenceListRes.data.find(
+              (seq) => seq.sequenceContent === currentContent
+            );
+            const latestSequenceId = matchedSequence
+              ? matchedSequence.sequenceId
+              : sequenceListRes.data[0].sequenceId;
+            // 保存从服务器获取的最新sequenceId，供后续保存使用
+            latestSequenceIdFromServer.value = latestSequenceId;
+            graphResponse = await graph.getGraphBySequenceId(latestSequenceId);
+          }
+        } else if (props.currentGraphCreateMethod === '0') {
+          // 文章下
+          graphResponse = await graph.getGraphByArticleId(props.articleId);
+        } else if (props.currentGraphCreateMethod === '1' || props.currentGraphCreateMethod === '2') {
+          // 专题下
+          graphResponse = await graph.getGraphByArticleId(props.articleId);
+        } else if (props.currentLevel === 2) {
+          // 专题下
+          graphResponse = await graph.getGraphByTopicId(props.topicId);
+        } else if (props.currentLevel === 1) {
+          // 领域下
+          graphResponse = await graph.getGraphByFieldId(props.domainId);
+        }
+
+        if (graphResponse && graphResponse.data) {
+          // 触发更新事件，通知父组件更新图谱数据
+          emit("update-nodes", graphResponse.data);
+        }
+      } catch (error) {
+        console.error("更新数据失败:", error);
+      }
+    }, 0);
 
     // 延迟关闭面板，让用户看到成功提示
     setTimeout(() => {
@@ -876,7 +1236,7 @@ const handleDeleteProperty = (index) => {
 
 // 获取触发词列表
 const fetchTriggerWords = async (sequenceContent = "") => {
-  if(props.referenceContent || sequenceContent){
+  if(props.showReferenceText || sequenceContent){
     try {
       const response = await graph.segmentSequence({
         sequenceContent: props.referenceContent || sequenceContent,
@@ -1056,6 +1416,13 @@ onMounted(() => {
   fetchTriggerWords("");
 });
 
+// 暴露重置方法给父组件
+defineExpose({
+  resetLatestSequenceId() {
+    latestSequenceIdFromServer.value = "";
+  }
+});
+
 </script>
 
 <style scoped lang="scss">
@@ -1112,6 +1479,7 @@ onMounted(() => {
   flex: 1;
   padding: 0 24px 24px 24px;
   overflow-y: auto;
+  background:#ffffff;
 }
 
 .property-item {

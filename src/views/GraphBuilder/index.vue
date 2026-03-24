@@ -2,6 +2,7 @@
   <div class="project-builder-container">
     <!-- 左侧侧边栏 -->
     <Sidebar
+      ref="sidebarRef"
       :all-option="allOption"
       :active-graph-item="currentGraphId"
       :current-domain="currentDomain"
@@ -22,6 +23,8 @@
       :relation-templates="relationTemplates"
       :current-mode="currentMode"
       :node-templates="nodeTemplates"
+      :currentGraphCreateMethod="currentGraphCreateMethod"
+      :components="components"
       @delete-domain="handleDeleteDomain"
       @open-add-dialog="openAddDialog"
       @open-add-topic-dialog="openAddTopicDialog"
@@ -49,6 +52,14 @@
       @clear-topic-history="clearTopicSearchHistory"
       @clear-graph-history="clearGraphSearchHistory"
       @topic-click="handleTopicClick"
+      @entity-type-click="handleEntityTypeClick"
+      @relationship-type-click="handleRelationshipTypeClick"
+      @component-click="handleComponentClick"
+      @component-library-search="handleComponentLibrarySearch"
+      @add-component-to-model="handleAddComponentToModel"
+      @add-entity-type="handleAddEntityType"
+      @copy-domain="handleCopyDomain"
+      @copy-topic="handleCopyTopic"
     />
     <!-- 右侧内容区域 -->
     <div class="content-container">
@@ -60,7 +71,7 @@
         @create-graph="handleCreateGraph"
         @cancel="handleCancelCreateGraph"
       />
-      <div v-if="currentGraphId" class="text-container">
+      <div v-if="currentGraphId && currentGraphCreateMethod == '0'" class="text-container">
         <Text
           ref="textRef"
           :src="textUrl"
@@ -79,19 +90,9 @@
         />
       </div>
       <div class="graph-container" v-if="currentMode === 'graph'">
-        <GraphViewer
-          v-if="!currentGraphId"
-          ref="graphViewer"
-          :nodes="graphNodes"
-          :edges="graphEdges"
-          :article-id="currentGraphId"
-          :topic-id="currentSubDomainId"
-          :domain-id="currentDomainId"
-          :level="currentLevel"
-          :pdf-loaded="pdfLoaded"
-        />
+        <!-- 自文本创建的图谱使用GraphViewer2 -->
         <GraphViewer2
-          v-else
+          v-if="currentGraphCreateMethod == '0'"
           ref="graphViewer"
           :nodes="graphNodes"
           :edges="graphEdges"
@@ -101,9 +102,9 @@
           :level="currentLevel"
           :pdf-loaded="pdfLoaded"
         />
-        <!-- 除了文章外其他两种情况 -->
-        <!-- <Content
-         v-if="！textUrl"
+        <!-- 其他创建方式的图谱使用编辑器组件 -->
+        <div v-else-if="currentGraphCreateMethod == '1'||currentGraphCreateMethod == '2'" class="other-container">
+          <Content
             ref="contentRef"
             :current-sub-domain="currentSubDomain"
             :current-mode="currentMode"
@@ -111,8 +112,13 @@
             :graph-nodes="graphNodes"
             :graph-edges="graphEdges"
             :entity-properties="entityProperties"
-            @add-entity="handleAddEntity"
             :is-connecting="isConnecting"
+            :has-clicked-relationship-template="hasClickedRelationshipTemplate"
+            :selected-relationship-template="selectedRelationshipTemplate"
+            :node-templates="nodeTemplates"
+            :relation-templates="relationTemplates"
+            :currentGraphCreateMethod="currentGraphCreateMethod"
+            @add-entity="handleAddEntity"
             @create-relationship="handleCreateRelationship"
             @connection-complete="handleConnectionComplete"
             @drop="handleDrop"
@@ -125,13 +131,70 @@
             @quit="handleQuit"
             @clear="handleClear"
             @save-graph="handleSaveGraph"
-          /> -->
-          <!-- 画布工具栏 -->
-        <!-- <GraphEditTool
-         v-if="currentGraphId"
-          class="tool"
+            @select-relationship-template="(template) => selectedRelationshipTemplate.value = template"
+          />
+          <RightPropertyPanel
+            :show-property-panel="showPropertyPanel"
+            :current-operation="currentOperation"
+            :entity-name="entityName"
+            :node-name="nodeName"
+            :entity-description="entityDescription"
+            :entity-properties="entityProperties"
+            :relationship-name="relationshipName"
+            :relation-name="relationName"
+            :relationship-type="relationshipType"
+            :start-node-name="startNodeName"
+            :end-node-name="endNodeName"
+            :add-to-component-library="addToComponentLibrary"
+            :background-color="backgroundColor"
+            :topic-id="currentSubDomainId"
+            :start-node-template-id="sourceNodeId"
+            :end-node-template-id="targetNodeId"
+            :node-template-id="currentNodeTemplateId"
+            :relation-template-id="currentRelationTemplateId"
+            :is-from-component-library="isFromComponentLibrary"
+            :is-from-canvas="isFromCanvas"
+            :is-creating-relationship="isCreatingRelationship"
+            :reference-content="content"
+            :show-reference-text="false"
+            :operation-source="operationSource"
+            :relation-trigger="relationTrigger"
+            :article-id="currentGraphId"
+            :selected-node-id="selectedNodeId"
+            :selected-edge-id="selectedEdgeId"
+            :currentLevel="currentLevel"
+            :sequence-id="currentSequenceId"
+            :domain-id="currentDomainId"
+            :currentGraphCreateMethod="currentGraphCreateMethod"
+            :nodeId="selectedNode ? selectedNode.nodeId : ''"
+            :nodeHash="selectedNode ? selectedNode.nodeHash : ''"
+            :relationId="selectedEdge ? selectedEdge.relationId : ''"
+            :relationHash="selectedEdge ? selectedEdge.relationHash : ''"
+            :startNodeId="selectedEdge ? selectedEdge.startNodeId : ''"
+            :endNodeId="selectedEdge ? selectedEdge.endNodeId : ''"
+            :startNodeHash="selectedEdge ? (selectedEdge.startNodeHash || findNodeHashBySource(selectedEdge.source)) : (originalSourceNodeId ? findNodeHashBySource(originalSourceNodeId) : '')"
+            :endNodeHash="selectedEdge ? (selectedEdge.endNodeHash || findNodeHashBySource(selectedEdge.target)) : (originalTargetNodeId ? findNodeHashBySource(originalTargetNodeId) : '')"
+            @close="handleClosePropertyPanel"
+            @save="handleSavePropertyPanel"
+            @cancel="handleCancelPropertyPanel"
+            @add-property="handleAddProperty"
+            @update-nodes="handleUpdateNodes"
+            @select-node="setSelectedNode"
+            @delete-item="handleDeleteItem"
+          />
+        </div>
+        <GraphViewer
+          v-else
+          ref="graphViewer"
+          :nodes="graphNodes"
+          :edges="graphEdges"
+          :article-id="currentGraphId"
+          :topic-id="currentSubDomainId"
+          :domain-id="currentDomainId"
+          :level="currentLevel"
+          :pdf-loaded="pdfLoaded"
           @edit-graph="openGraphEditor"
-        /> -->
+        />
       </div>
       <GraphEditor
         ref="graphEditorRef"
@@ -147,12 +210,14 @@
         :relationship-types="relationshipTypes"
         :relation-templates="relationTemplates"
         :node-templates="nodeTemplates"
+        :currentGraphCreateMethod="currentGraphCreateMethod"
         :show-reference-text="!!currentSequenceId || !!pdfSelectionMark"
+        :level="currentLevel"
         @node-drag-end="handleEditorNodeDragEnd"
         @add-entity-from-template="handleEditorAddEntity"
         @update:node="handleEditorUpdateNode"
         @update:edge="handleEditorUpdateEdge"
-        @quit="handleEditorQuit"
+        @quit="handleEditorSubmit"
         @close-right="handleClosePropertyPanel"
         @submit="handleEditorSubmit"
       />
@@ -161,9 +226,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, nextTick } from "vue";
+import { ref, onMounted, watch, nextTick, computed } from "vue";
 import { ElMessageBox } from "element-plus";
-import { ElMessage as Message } from "element-plus";
+import { ElMessage } from "element-plus";
 import Sidebar from "@/components/common/Sidebar.vue";
 import AddGraphDialog from "@/components/common/AddGraphDialog.vue";
 import projectService from "@/services/graph.ts";
@@ -177,6 +242,8 @@ import { useTextStore } from "@/store/useTextStore";
 import GraphViewer from "@/views/GraphBuilder/GraphViewer.vue";
 import GraphViewer2 from "@/views/GraphBuilder/GraphViewer2.vue";
 import GraphEditor from "@/views/GraphBuilder/GraphEditor.vue";
+import Content from "@/components/editor/Content.vue";
+import RightPropertyPanel from "@/components/editor/RightPropertyPanel.vue";
 import type { Mark, Rect } from "@/configs/text";
 import type { NodeTemplate } from "@/configs/graph.js";
 import { template } from "lodash";
@@ -186,6 +253,7 @@ const contentRef = ref(null);
 const textRef = ref<InstanceType<typeof Text> | null>(null);
 const graphEditorRef = ref<InstanceType<typeof GraphEditor> | null>(null);
 const graphViewer = ref(null);
+const sidebarRef = ref(null);
 const { currentPage, markList } = storeToRefs(textStore);
 const textUrl = ref("");
 const nodeTemplates = ref([]);
@@ -211,6 +279,7 @@ const loadState = () => {
     graphs: [],
     graphNodes: [],
     currentLevel: 0,
+    currentGraphCreateMethod:''
   };
 };
 
@@ -221,6 +290,7 @@ const currentSubDomain = ref("");
 const currentSubDomainId = ref("");
 const currentGraphId = ref("");
 const currentGraphName = ref("");
+const currentGraphCreateMethod = ref("");
 const domains = ref([]);
 const subDomains = ref([]);
 const subSubDomains = ref([]);
@@ -238,7 +308,6 @@ const showPropertyPanel = ref(false);
 const entityName = ref("");
 const entityDescription = ref("");
 const entityProperties = ref([]);
-const addToComponentLibrary = ref(true);
 const hasData = ref(false);
 const savedEntitiesCount = ref(0);
 
@@ -292,8 +361,74 @@ const currentSelectedSequence = ref(null);
 // PDF加载状态
 const pdfLoaded = ref(false);
 
+// 编辑器相关状态
+const hasClickedRelationshipTemplate = ref(false);
+const currentNodeTemplateId = ref(0);
+const currentRelationTemplateId = ref(0);
+const isFromComponentLibrary = ref(false);
+const isFromCanvas = ref(false);
+const isCreatingRelationship = ref(false);
+const content = ref("");
+const operationSource = ref("");
+const relationTrigger = ref("");
+const nodeName = ref("");
+const relationName = ref("");
+const startNodeName = ref("");
+const endNodeName = ref("");
+const backgroundColor = ref("#43D7B5");
+const addToComponentLibrary = ref(false);
+const selectedNodeId = ref(null);
+const selectedEdgeId = ref(null);
+const selectedRelationshipTemplate = ref(null);
+const components = ref([]);
+
+// 计算当前选中的节点
+const selectedNode = computed(() => {
+  if (!selectedNodeId.value) return null;
+  return graphNodes.value.find(node => node.id === selectedNodeId.value) || null;
+});
+
+// 计算当前选中的边
+const selectedEdge = computed(() => {
+  if (!selectedEdgeId.value) return null;
+  return graphEdges.value.find(edge => edge.id === selectedEdgeId.value) || null;
+});
+const pendingGraphNodes = ref([]);
+const pendingGraphEdges = ref([]);
+const originalSourceNodeId = ref(null);
+const originalTargetNodeId = ref(null);
+// 加载状态
+const isLoadingDomains = ref(false);
+const isLoadingTemplates = ref(false);
+const isLoadingComponents = ref(false);
+
 // 防止重复调用 fetchGraph 的标志
 const isFetchingGraph = ref(false);
+
+// 生成节点哈希值
+const generateNodeHash = (node) => {
+  return "";
+};
+
+// 根据节点ID查找节点的nodeHash
+const findNodeHashBySource = (sourceId) => {
+  console.log('findNodeHashBySource called with sourceId:', sourceId);
+  if (!sourceId) return '';
+  
+  // 首先尝试通过id查找节点
+  let node = graphNodes.value.find(n => String(n.id) === String(sourceId));
+  console.log('Found node by id:', node);
+  
+  // 如果通过id找不到，尝试通过nodeHash查找
+  if (!node) {
+    node = graphNodes.value.find(n => String(n.nodeHash) === String(sourceId));
+    console.log('Found node by nodeHash:', node);
+  }
+  
+  const hash = node ? node.nodeHash : '';
+  console.log('Returning hash:', hash);
+  return hash;
+};
 
 /** 当前在配置属性的节点（AddNodeDialog 确定后创建，用于属性弹窗回写） */
 const nodeForPropertyDialog = ref(null);
@@ -471,6 +606,7 @@ const saveState = () => {
     hasData: hasData.value,
     graphs: graphs.value,
     currentLevel: currentLevel.value,
+    currentGraphCreateMethod:currentGraphCreateMethod.value,
   };
   localStorage.setItem("GrapherPageState", JSON.stringify(state));
 };
@@ -495,6 +631,7 @@ watch(
     hasData,
     graphs,
     graphNodes,
+    currentGraphCreateMethod,
   ],
   () => {
     saveState();
@@ -528,6 +665,7 @@ onMounted(async () => {
   currentSubDomain.value = savedState.currentSubDomain;
   currentSubDomainId.value = savedState.currentSubDomainId;
   currentGraphId.value = savedState.currentGraphId;
+  currentGraphCreateMethod.value=savedState.currentGraphCreateMethod
   currentGraphName.value = savedState.currentGraphName;
   subDomains.value = savedState.subDomains;
   subSubDomains.value = savedState.subSubDomains;
@@ -571,17 +709,23 @@ onMounted(async () => {
           await fetchGraph(currentSubDomainObj.id);
           await fetchEntityAndRelationTypes(currentSubDomainObj.id);
 
-          // 如果当前有选中的图谱，获取对应的文章URL
+          // 如果当前有选中的图谱，获取对应的数据
           if (currentGraphId.value) {
-            const response = await projectService.getArticleUrl(
-              currentGraphId.value,
-            );
-            textUrl.value = response.data;
-            currentPage.value = 0;
-            hasData.value = true;
-            
-            // 调用段落列表查询接口
-            await getSequenceList(currentGraphId.value);
+            if (currentGraphCreateMethod.value === '0') {
+              // 文本创建方式，获取文章URL和段落列表
+              const response = await projectService.getArticleUrl(
+                currentGraphId.value,
+              );
+              textUrl.value = response.data;
+              currentPage.value = 0;
+              hasData.value = true;
+              
+              // 调用段落列表查询接口
+              await getSequenceList(currentGraphId.value);
+            } else if (currentGraphCreateMethod.value === '1' || currentGraphCreateMethod.value === '2') {
+              // 其他创建方式，重新获取图谱数据
+              await reloadGraphData(currentGraphId.value);
+            }
           }
         }
       }
@@ -592,6 +736,7 @@ onMounted(async () => {
 // 获取所有领域列表
 const fetchAllDomains = async () => {
   try {
+    isLoadingDomains.value = true;
     const response = await projectService.getDomainList("");
     if (response && response.data) {
       allDomains.value = response.data.map((item) => ({
@@ -608,6 +753,8 @@ const fetchAllDomains = async () => {
     }
   } catch (error) {
     console.error("获取领域列表失败:", error);
+  } finally {
+    isLoadingDomains.value = false;
   }
 };
 
@@ -803,21 +950,6 @@ const handleSearchIconClick = async (query) => {
   updateDomainSearchOptions();
 };
 
-const handleAddEntity = (position) => {
-  currentOperation.value = "entity";
-  if (position && (position.x !== undefined || position.y !== undefined)) {
-    rightClickPosition.value = position;
-    console.log("设置右键点击位置:", position);
-  } else {
-    // 默认位置，避免新节点出现在左上角
-    rightClickPosition.value = {
-      x: 100 + Math.random() * 400,
-      y: 100 + Math.random() * 300,
-    };
-    console.log("使用默认位置:", rightClickPosition.value);
-  }
-  showPropertyPanel.value = true;
-};
 
 // 专题搜索图标点击事件处理 - 调用接口查询
 const handleTopicSearchIconClick = async (query) => {
@@ -908,6 +1040,7 @@ const handleBackToDomains = () => {
   currentSubDomain.value = "";
   currentGraphId.value = "";
   currentGraphName.value = "";
+  currentGraphCreateMethod.value=""
   currentLevel.value = 0;
   subDomains.value = [];
   subSubDomains.value = [];
@@ -928,6 +1061,7 @@ const handleBackToSubDomains = () => {
   currentSubDomainId.value = "";
   currentGraphId.value = "";
   currentGraphName.value = "";
+  currentGraphCreateMethod.value=""
   currentLevel.value = 1;
   subSubDomains.value = [];
   // 清空图谱数据，避免显示上一个页面的图谱
@@ -944,6 +1078,7 @@ const backToSubGraphList = () => {
   // 这样就会回到图谱列表页面，而不是专题列表页面
   currentGraphId.value = "";
   currentGraphName.value = "";
+  currentGraphCreateMethod.value = "";
   // 设置层级为 2，确保显示图谱列表页面
   currentLevel.value = 2;
   // 清空图谱数据，避免返回列表页后显示详情页的图谱
@@ -969,7 +1104,7 @@ const handleDomainClick = async (domain) => {
   currentGraphName.value = "";
   currentGraphId.value = "";
   currentLevel.value = 1;
-
+currentGraphCreateMethod.value=""
   // 清空图谱数据，避免显示上一个页面的图谱
   graphNodes.value = [];
   graphEdges.value = [];
@@ -1099,6 +1234,37 @@ const handleDeleteTopic = async (id) => {
   }
 };
 
+// 处理复制领域
+const handleCopyDomain = async (id, newName) => {
+  try {
+    // 调用复制领域接口
+    await projectService.copyField(id, newName);
+    // 复制成功后，重新获取领域列表
+    await fetchAllDomains();
+    ElMessage.success("复制领域成功");
+  } catch (error) {
+    console.error("复制领域失败:", error);
+  }
+};
+
+// 处理复制专题
+const handleCopyTopic = async (id, newName) => {
+  try {
+    // 调用复制专题接口
+    await projectService.copyTopic(id, newName);
+    // 复制成功后，重新获取专题列表
+    const currentDomainObj = domains.value.find(
+      (domain) => domain.name === currentDomain.value,
+    );
+    if (currentDomainObj) {
+      await fetchTopics(currentDomainObj.id);
+    }
+    ElMessage.success("复制专题成功");
+  } catch (error) {
+    console.error("复制专题失败:", error);
+  }
+};
+
 // 搜索专题 - 只更新下拉框显示历史记录，不调用接口
 const handleTopicSearch = (query) => {
   topicSearchQuery.value = query;
@@ -1174,67 +1340,8 @@ const fetchEntityAndRelationTypes = async (topicId) => {
   }
 };
 
-const handleCreateRelationship = (sourceId) => {
-  console.log("开始创建关系，源节点ID:", sourceId);
-  // 重置关系相关属性
-  relationshipName.value = "";
-  relationshipType.value = "定向";
-  entityDescription.value = "";
-  entityProperties.value = [
-    { name: "名字", type: "text", value: "" },
-    { name: "日期", type: "date", value: "" },
-    { name: "ID", type: "number", value: "" },
-  ];
-  addToComponentLibrary.value = true;
 
-  currentOperation.value = "relationship";
-  isConnecting.value = true;
-  sourceNodeId.value = sourceId;
-  console.log("进入连线模式");
-};
 
-const handleClosePropertyPanel = () => {
-  // 关闭时清除编辑器中的临时节点（拖入未确认的 virtualNode）
-  editorNodes.value = editorNodes.value.filter(
-    (n) => String(n.id) !== "virtualNode",
-  );
-
-  // 关闭属性面板后，清除虚线
-  //if (currentOperation.value === "relationship" && contentRef.value) {
-  //  contentRef.value.resetConnectionState();
-  //  console.log("关闭属性面板后，调用resetConnectionState方法清除虚线");
-  //}
-};
-
-// 处理连接完成
-const handleConnectionComplete = (targetId) => {
-  console.log("连接完成，目标节点ID:", targetId);
-  console.log("源节点ID:", sourceNodeId.value);
-
-  // 存储目标节点ID
-  targetNodeId.value = targetId;
-
-  // 退出连线模式
-  isConnecting.value = false;
-
-  // 重置关系相关属性
-  relationshipName.value = "";
-  relationshipType.value = "定向";
-  entityDescription.value = "";
-  entityProperties.value = [
-    { name: "名字", type: "text", value: "" },
-    { name: "日期", type: "date", value: "" },
-    { name: "ID", type: "number", value: "" },
-  ];
-  addToComponentLibrary.value = true;
-
-  // 设置当前操作类型为关系
-  currentOperation.value = "relationship";
-
-  // 打开属性面板
-  showPropertyPanel.value = true;
-  console.log("打开关系属性面板");
-};
 
 // 处理拖拽开始
 const handleDragStart = (event, type, item) => {
@@ -1247,56 +1354,6 @@ const handleDragEnd = (event) => {
   // 可以在这里添加拖拽结束后的处理逻辑
 };
 
-// 处理拖拽放置
-const handleDrop = (event) => {
-  event.preventDefault();
-  const type = event.dataTransfer.getData("type");
-  const item = JSON.parse(event.dataTransfer.getData("item"));
-
-  // 获取目标元素的位置
-  const target = event.currentTarget;
-  const rect = target.getBoundingClientRect();
-
-  // 计算相对于目标元素的坐标
-  const x = event.clientX - rect.left;
-  const y = event.clientY - rect.top;
-
-  // 创建新的图谱节点
-  const newNode = {
-    id: Date.now(),
-    type: type,
-    name: item,
-    x: x,
-    y: y,
-    // 添加属性信息
-    properties: type === "entity" ? [...entityProperties.value] : [],
-    nodeTemplateName: item,
-    nodeName: item,
-  };
-
-  graphNodes.value.push(newNode);
-  hasData.value = true;
-};
-
-// 处理节点鼠标按下
-const handleNodeMouseDown = (event, nodeId) => {
-  // 处理节点鼠标按下事件
-};
-
-// 处理鼠标移动
-const handleMouseMove = (event, nodeId, position) => {
-  // 更新节点位置
-  const node = graphNodes.value.find((n) => n.id === nodeId);
-  if (node) {
-    node.x = position.x;
-    node.y = position.y;
-  }
-};
-
-// 处理鼠标释放
-const handleMouseUp = () => {
-  // 处理鼠标释放事件
-};
 
 // 接收 PDF 选区内容与坐标（来自 TextSelection → Text）
 const handlePdfSelectionChange = (payload: Mark) => {
@@ -1334,12 +1391,10 @@ const isLoading = ref(false);
 // 处理创建图谱
 const handleCreateGraph = async (graphData) => {
   if (!graphData.graphName) {
-    Message.warning("请输入图谱名称");
     return;
   }
   const state = loadState();
   if (!graphData.createMethod) {
-    Message.warning("请选择创建方式");
     return;
   }
 
@@ -1376,7 +1431,6 @@ const handleCreateGraph = async (graphData) => {
     }
   } catch (error) {
     console.error("创建图谱失败:", error);
-    Message.error("创建图谱失败，请稍后重试");
   } finally {
     isConfirmButtonDisabled.value = false;
     isLoading.value = false;
@@ -1395,9 +1449,12 @@ const handleCancelCreateGraph = () => {
 
 // 处理图谱点击
 const handleGraphClick = async (graph) => {
+  console.log("点击图谱:", graph);
   currentLevel.value = 3;
   currentGraphId.value = graph.id;
   currentGraphName.value = graph.name;
+  console.log("图谱列表",graph)
+  currentGraphCreateMethod.value = graph.createMethod;
   // 清空当前图谱数据，避免在详情页显示列表页的图谱
   graphNodes.value = [];
   graphEdges.value = [];
@@ -1405,20 +1462,217 @@ const handleGraphClick = async (graph) => {
   hasData.value = false;
   // 先设置 pdfLoaded 为 false
   pdfLoaded.value = false;
-  const response = await projectService.getArticleUrl(graph.id);
-  textUrl.value = response.data;
-  currentPage.value = 0;
   
-  // 清除之前的标记，避免切换图谱时残留上一个图谱的黄色下划线
-  textStore.setMarkList([]);
-  if (textRef.value) {
-    textRef.value.clearMark();
+  // 点击图谱时隐藏属性面板
+  showPropertyPanel.value = false;
+  
+  if(currentGraphCreateMethod.value === '0'){
+    // 设置 hasData 为 true，显示关系图（文本创建方式在获取PDF URL后显示）
+    hasData.value = true;
+    projectService.getArticleUrl(graph.id).then(response => {
+      textUrl.value = response.data;
+      currentPage.value = 0;
+      
+      // 清除之前的标记，避免切换图谱时残留上一个图谱的黄色下划线
+      textStore.setMarkList([]);
+      if (textRef.value) {
+        textRef.value.clearMark();
+      }
+      
+      // 调用段落列表查询接口
+      getSequenceList(graph.id);
+    });
+  } else {
+    // 其他创建方式（'1' 或 '2'），调用查询接口获取图谱数据
+    try {
+      console.log('开始获取其他创建方式的图谱数据，articleId:', graph.id);
+      const response = await projectService.getGraphByArticleId(graph.id);
+      console.log('获取图谱数据响应:', response);
+      if (response && response.data) {
+        // 转换节点数据格式，确保每个节点都有 id 字段
+        const rawNodes = response.data.nodes || [];
+        const rawEdges = response.data.relations || [];
+
+        // 转换节点数据格式，统一使用 nodeHash 作为 id
+        graphNodes.value = rawNodes.map(node => {
+          const nodeHash = node.nodeHash || node.nodeId || node.id;
+          // 转换属性格式
+          const properties = (node.properties || []).map(prop => ({
+            name: prop.propertyKey || prop.name,
+            type: prop.propertyType || prop.type || 'string',
+            value: prop.propertyValue || prop.value || '',
+          }));
+
+          return {
+            id: nodeHash,
+            nodeId: node.nodeId,
+            nodeHash: nodeHash,
+            name: node.nodeName || node.name,
+            nodeName: node.nodeName,
+            type: node.nodeType || node.type,
+            nodeType: node.nodeType,
+            description: node.nodeDescription || node.description,
+            nodeDescription: node.nodeDescription,
+            backgroundColor: node.nodeColor || node.backgroundColor || '#43D7B5',
+            nodeColor: node.nodeColor,
+            properties: properties,
+            nodeTemplateId: node.nodeTemplateId,
+            nodeTemplateName: node.nodeTemplateName,
+          };
+        });
+
+        // 转换边数据格式，确保 source 和 target 对应节点的 id（nodeHash）
+        graphEdges.value = rawEdges.map(edge => {
+          // 获取边的源和目标标识（使用 nodeHash）
+          const sourceKey = edge.startNodeHash || edge.startNodeId || edge.source;
+          const targetKey = edge.endNodeHash || edge.endNodeId || edge.target;
+
+          // 直接使用 nodeHash 作为 source 和 target
+          const sourceId = sourceKey;
+          const targetId = targetKey;
+
+          // 转换属性格式
+          const edgeProperties = (edge.properties || []).map(prop => ({
+            name: prop.propertyKey || prop.name,
+            type: prop.propertyType || prop.type || 'string',
+            value: prop.propertyValue || prop.value || '',
+          }));
+
+          return {
+            id: edge.relationId || edge.id || edge.relationHash,
+            relationId: edge.relationId,
+            relationHash: edge.relationHash,
+            source: String(sourceId),
+            target: String(targetId),
+            startNodeId: edge.startNodeId,
+            endNodeId: edge.endNodeId,
+            startNodeHash: edge.startNodeHash,
+            endNodeHash: edge.endNodeHash,
+            data: {
+              name: edge.relationName || edge.name,
+              type: edge.relationType || edge.type || '定向',
+              properties: edgeProperties,
+            },
+            relationName: edge.relationName,
+            relationType: edge.relationType,
+            relationTemplateId: edge.relationTemplateId,
+            relationTemplateName: edge.relationTemplateName,
+          };
+        });
+        
+        console.log('图谱数据加载成功，节点数:', graphNodes.value.length, '边数:', graphEdges.value.length);
+        console.log('转换后的节点数据:', graphNodes.value);
+        console.log('转换后的边数据:', graphEdges.value);
+      } else {
+        console.log('接口返回数据为空');
+        graphNodes.value = [];
+        graphEdges.value = [];
+      }
+      // 数据加载完成后再显示图谱，确保EditorContainer能正确渲染节点和连线
+      hasData.value = true;
+    } catch (error) {
+      console.error('获取图谱数据失败:', error);
+      ElMessage.error('获取图谱数据失败');
+      graphNodes.value = [];
+      graphEdges.value = [];
+      // 即使出错也显示图谱（空状态）
+      hasData.value = true;
+    }
   }
-  
-  // 调用段落列表查询接口
-  await getSequenceList(graph.id);
-  
-  // 注意：hasData 将在 PDF 加载完成后由 TextTool 组件通过事件设置
+};
+
+// 重新加载图谱数据（用于页面刷新后恢复数据）
+const reloadGraphData = async (articleId) => {
+  console.log('重新加载图谱数据，articleId:', articleId);
+  try {
+    const response = await projectService.getGraphByArticleId(articleId);
+    console.log('重新加载图谱数据响应:', response);
+    if (response && response.data) {
+      // 转换节点数据格式，确保每个节点都有 id 字段
+      const rawNodes = response.data.nodes || [];
+      const rawEdges = response.data.relations || [];
+
+      // 转换节点数据格式，统一使用 nodeHash 作为 id
+      graphNodes.value = rawNodes.map(node => {
+        const nodeHash = node.nodeHash || node.nodeId || node.id;
+        // 转换属性格式
+        const properties = (node.properties || []).map(prop => ({
+          name: prop.propertyKey || prop.name,
+          type: prop.propertyType || prop.type || 'string',
+          value: prop.propertyValue || prop.value || '',
+        }));
+
+        return {
+          id: nodeHash,
+          nodeId: node.nodeId,
+          nodeHash: nodeHash,
+          name: node.nodeName || node.name,
+          nodeName: node.nodeName,
+          type: node.nodeType || node.type,
+          nodeType: node.nodeType,
+          description: node.nodeDescription || node.description,
+          nodeDescription: node.nodeDescription,
+          backgroundColor: node.nodeColor || node.backgroundColor || '#43D7B5',
+          nodeColor: node.nodeColor,
+          properties: properties,
+          nodeTemplateId: node.nodeTemplateId,
+          nodeTemplateName: node.nodeTemplateName,
+        };
+      });
+
+      // 转换边数据格式，确保 source 和 target 对应节点的 id（nodeHash）
+      graphEdges.value = rawEdges.map(edge => {
+        // 获取边的源和目标标识（使用 nodeHash）
+        const sourceKey = edge.startNodeHash || edge.startNodeId || edge.source;
+        const targetKey = edge.endNodeHash || edge.endNodeId || edge.target;
+
+        // 直接使用 nodeHash 作为 source 和 target
+        const sourceId = sourceKey;
+        const targetId = targetKey;
+
+        // 转换属性格式
+        const edgeProperties = (edge.properties || []).map(prop => ({
+          name: prop.propertyKey || prop.name,
+          type: prop.propertyType || prop.type || 'string',
+          value: prop.propertyValue || prop.value || '',
+        }));
+
+        return {
+          id: edge.relationId || edge.id || edge.relationHash,
+          relationId: edge.relationId,
+          relationHash: edge.relationHash,
+          source: String(sourceId),
+          target: String(targetId),
+          startNodeId: edge.startNodeId,
+          endNodeId: edge.endNodeId,
+          startNodeHash: edge.startNodeHash,
+          endNodeHash: edge.endNodeHash,
+          data: {
+            name: edge.relationName || edge.name,
+            type: edge.relationType || edge.type || '定向',
+            properties: edgeProperties,
+          },
+          relationName: edge.relationName,
+          relationType: edge.relationType,
+          relationTemplateId: edge.relationTemplateId,
+          relationTemplateName: edge.relationTemplateName,
+        };
+      });
+      
+      console.log('图谱数据重新加载成功，节点数:', graphNodes.value.length, '边数:', graphEdges.value.length);
+      hasData.value = true;
+    } else {
+      console.log('接口返回数据为空');
+      graphNodes.value = [];
+      graphEdges.value = [];
+      hasData.value = true;
+    }
+  } catch (error) {
+    console.error('重新加载图谱数据失败:', error);
+    graphNodes.value = [];
+    graphEdges.value = [];
+    hasData.value = true;
+  }
 };
 
 // 获取段落列表并保存图谱
@@ -1609,9 +1863,1556 @@ const handleNodeDragEnd = (data) => {
   }
 };
 
+// 处理添加实体
+const handleAddEntity = (position) => {
+  currentOperation.value = "entity";
+  if (position && (position.x !== undefined || position.y !== undefined)) {
+    rightClickPosition.value = position;
+    console.log("设置右键点击位置:", position);
+  } else {
+    // 默认位置，避免新节点出现在左上角
+    rightClickPosition.value = {
+      x: 100 + Math.random() * 400,
+      y: 100 + Math.random() * 300,
+    };
+    console.log("使用默认位置:", rightClickPosition.value);
+  }
+  showPropertyPanel.value = true;
+};
+
+// 处理创建关系
+const handleCreateRelationship = (sourceId) => {
+  console.log("开始创建关系，源节点ID:", sourceId);
+  operationSource.value = "canvas";
+  // 设置正在创建连线的标记
+  isCreatingRelationship.value = true;
+  // 设置操作来源为画布
+  isFromCanvas.value = true;
+  isFromComponentLibrary.value = false;
+  
+  // 重置关系相关属性
+  relationshipName.value = "";
+  relationshipType.value = "定向";
+  entityDescription.value = "";
+  entityProperties.value = [];
+  addToComponentLibrary.value = false;
+
+  currentOperation.value = "relationship";
+  currentNodeTemplateId.value = 0;
+  currentRelationTemplateId.value = 0;
+  isConnecting.value = true;
+
+  // 存储原始的源节点ID
+  originalSourceNodeId.value = sourceId;
+  console.log(444444444444444, sourceId);
+  // 查找源节点，使用其 nodeTemplateId
+  const sourceNode = graphNodes.value.find(
+    (node) => String(node.id) === String(sourceId),
+  );
+
+  // 尝试从组件库中查找对应的 nodeTemplateId
+  let sourceTemplateId =
+    sourceNode && sourceNode.nodeTemplateId
+      ? Number(sourceNode.nodeTemplateId)
+      : 0;
+  if (!sourceTemplateId && sourceNode) {
+    // 从组件库中查找对应名称的组件
+    const sourceComponent = components.value.find(
+      (comp) => comp.nodeTemplateName === sourceNode.name,
+    );
+    if (sourceComponent && sourceComponent.nodeTemplateId) {
+      sourceTemplateId = Number(sourceComponent.nodeTemplateId);
+      // 更新节点的 nodeTemplateId
+      sourceNode.nodeTemplateId = sourceTemplateId;
+    }
+  }
+
+  sourceNodeId.value = sourceTemplateId || Number(sourceId);
+  console.log("进入连线模式，源节点模板ID:", sourceNodeId.value);
+  console.log("源节点信息:", sourceNode);
+  console.log("所有节点信息:", graphNodes.value);
+
+  // 设置开始节点名称
+  startNodeName.value = sourceNode ? sourceNode.name : "";
+  endNodeName.value = "";
+};
+
+// 处理连接完成
+const handleConnectionComplete = (targetId) => {
+  console.log("连接完成，目标节点ID:", targetId);
+  console.log("源节点ID:", sourceNodeId.value);
+  operationSource.value = "canvas";
+  // 存储原始的目标节点ID
+  originalTargetNodeId.value = targetId;
+  console.log(555555555555, targetId);
+  // 查找目标节点，使用其 nodeTemplateId
+  let targetNode = graphNodes.value.find(
+    (node) => String(node.id) === String(targetId),
+  );
+  console.log('All graph nodes:', graphNodes.value);
+  console.log('Looking for target node with id:', targetId);
+  console.log('Found target node:', targetNode);
+
+  // 查找源节点
+  let sourceNode = graphNodes.value.find(
+    (node) => String(node.id) === String(originalSourceNodeId.value),
+  );
+  console.log('Looking for source node with id:', originalSourceNodeId.value);
+  console.log('Found source node:', sourceNode);
+  
+  // 如果通过id找不到节点，尝试通过nodeHash查找
+  if (!sourceNode) {
+    sourceNode = graphNodes.value.find(
+      (node) => String(node.nodeHash) === String(originalSourceNodeId.value),
+    );
+    console.log('Looking for source node by nodeHash:', originalSourceNodeId.value);
+    console.log('Found source node by nodeHash:', sourceNode);
+  }
+  if (!targetNode) {
+    targetNode = graphNodes.value.find(
+      (node) => String(node.nodeHash) === String(targetId),
+    );
+    console.log('Looking for target node by nodeHash:', targetId);
+    console.log('Found target node by nodeHash:', targetNode);
+  }
+
+  // 尝试从组件库中查找对应的 nodeTemplateId
+  let targetTemplateId = targetNode && targetNode.nodeTemplateId
+    ? Number(targetNode.nodeTemplateId)
+    : 0;
+  if (!targetTemplateId && targetNode) {
+    // 从组件库中查找对应名称的组件
+    const targetComponent = components.value.find(
+      (comp) => comp.nodeTemplateName === targetNode.name,
+    );
+    if (targetComponent && targetComponent.nodeTemplateId) {
+      targetTemplateId = Number(targetComponent.nodeTemplateId);
+      // 更新节点的 nodeTemplateId
+      targetNode.nodeTemplateId = targetTemplateId;
+    }
+  }
+
+  targetNodeId.value = targetTemplateId || Number(targetId);
+  console.log("目标节点模板ID:", targetNodeId.value);
+  console.log("目标节点信息:", targetNode);
+
+  // 验证连接是否符合选中的关系模板
+  if (selectedRelationshipTemplate.value) {
+    const relationshipTemplate = selectedRelationshipTemplate.value;
+    
+    // 获取源节点和目标节点的实体模板名称
+    const sourceTemplateName = sourceNode ? (sourceNode.nodeTemplateName || sourceNode.name) : "";
+    const targetTemplateName = targetNode ? (targetNode.nodeTemplateName || targetNode.name) : "";
+    
+    // 从关系模板中获取期望的实体模板名称
+    const expectedStartNode = nodeTemplates.value.find(
+      (node) => String(node.nodeTemplateId) === String(relationshipTemplate.startNodeTemplateId)
+    );
+    const expectedEndNode = nodeTemplates.value.find(
+      (node) => String(node.nodeTemplateId) === String(relationshipTemplate.endNodeTemplateId)
+    );
+    
+    const expectedStartName = expectedStartNode ? expectedStartNode.nodeTemplateName : "";
+    const expectedEndName = expectedEndNode ? expectedEndNode.nodeTemplateName : "";
+    
+    // 检查节点类型是否匹配关系模板
+    const isStartNodeMatch = sourceTemplateName === expectedStartName;
+    const isEndNodeMatch = targetTemplateName === expectedEndName;
+    
+    if (!isStartNodeMatch || !isEndNodeMatch) {
+      // 显示错误提示
+      ElMessage.error(`连接类型不匹配！该关系只能连接 ${expectedStartName} → ${expectedEndName}`);
+      
+      // 退出连线模式
+      isConnecting.value = false;
+      // 清空源节点和目标节点ID
+      sourceNodeId.value = null;
+      targetNodeId.value = null;
+      originalSourceNodeId.value = null;
+      originalTargetNodeId.value = null;
+      // 不清除选中的关系模板，保持左侧面板的选中状态
+      // 这样用户可以继续使用同一个关系类型进行连接尝试
+      // 清除虚线连线
+      if (contentRef.value && contentRef.value.resetConnectionState) {
+        contentRef.value.resetConnectionState();
+      }
+      return;
+    }
+  }
+
+  // 设置结束节点名称
+  endNodeName.value = targetNode ? targetNode.name : "";
+
+  // 不立即退出连线模式，等待用户保存或取消关系后再退出
+  // isConnecting.value = false;
+
+  // 设置当前操作类型为关系
+  currentOperation.value = "relationship";
+  currentNodeTemplateId.value = 0;
+  
+  // 无论是否有选中的关系模板，创建新连线时关系名称都置空
+  if (selectedRelationshipTemplate.value) {
+    const relationshipTemplate = selectedRelationshipTemplate.value;
+    relationshipName.value = relationshipTemplate.relationTemplateName;
+    relationName.value = ""; // 重置关系名称为空
+    
+    // 设置关系类型
+    let relationTypeText = "定向";
+    switch (relationshipTemplate.relationTemplateType) {
+      case "1":
+        relationTypeText = "定向";
+        break;
+      case "2":
+        relationTypeText = "双向";
+        break;
+      case "3":
+        relationTypeText = "循环";
+        break;
+    }
+    relationshipType.value = relationTypeText;
+    
+    // 设置关系属性
+    entityProperties.value = relationshipTemplate.properties
+      ? relationshipTemplate.properties.map((prop) => ({
+          name: prop.propertyKey,
+          type: prop.propertyType.toLowerCase(),
+          value: "",
+        }))
+      : [];
+    
+    // 设置是否加入组件库
+    addToComponentLibrary.value = relationshipTemplate.isLibraryFlag === "1";
+    
+    // 设置当前关系的模板ID
+    currentRelationTemplateId.value = relationshipTemplate.relationTemplateId || 0;
+  } else {
+    // 没有选中的关系模板，重置为默认值
+    relationshipName.value = "";
+    relationName.value = "";
+    relationshipType.value = "定向";
+    entityDescription.value = "";
+    entityProperties.value = [];
+    addToComponentLibrary.value = false;
+    currentRelationTemplateId.value = 0;
+  }
+
+  // 打开属性面板
+  showPropertyPanel.value = true;
+  console.log("打开关系属性面板");
+};
+
+// 处理拖拽放置
+const handleDrop = (event) => {
+  event.preventDefault();
+  const type = event.dataTransfer.getData("type");
+  const item = JSON.parse(event.dataTransfer.getData("item"));
+
+  // 获取目标元素的位置
+  const target = event.currentTarget;
+  const rect = target.getBoundingClientRect();
+
+  // 计算相对于目标元素的坐标
+  const x = event.clientX - rect.left;
+  const y = event.clientY - rect.top;
+
+  // 查找对应的实体模板信息
+  const entityTemplate = nodeTemplates.value.find(
+    (template) => template.nodeTemplateName === (typeof item === "string" ? item : item.name)
+  );
+
+  // 创建新的图谱节点
+  const newNode = {
+    type: type,
+    name: typeof item === "string" ? item : item.name,
+    x: x,
+    y: y,
+    // 新拖拽的节点不设置description，保存后才设置
+    // description: entityTemplate ? entityTemplate.nodeTemplateDescription : "",
+    // 添加属性信息
+    properties: entityTemplate && entityTemplate.properties ? entityTemplate.properties.map((prop) => ({
+      name: prop.propertyKey,
+      type: prop.propertyType.toLowerCase(),
+      value: "",
+    })) : [],
+    // 添加节点模板ID
+    nodeTemplateId: entityTemplate ? entityTemplate.nodeTemplateId : 0,
+    // 添加背景颜色
+    backgroundColor: entityTemplate ? entityTemplate.nodeTemplateColor : backgroundColor.value,
+    // 添加库标记
+    isLibraryFlag: entityTemplate ? entityTemplate.isLibraryFlag : "0",
+    // 添加必要的字段
+    nodeTemplateName: typeof item === "string" ? item : item.name,
+    // 新拖拽的节点不设置nodeName和nodeDescription，保存后才设置
+    // nodeName: typeof item === "string" ? item : item.name,
+    // nodeDescription: entityTemplate ? entityTemplate.nodeTemplateDescription : "",
+    nodeColor: entityTemplate ? entityTemplate.nodeTemplateColor : backgroundColor.value,
+    nodeId: "", // 后端生成
+    nodeHash: "", // 后端生成
+  };
+  
+  // 生成唯一的 id，确保每次拖拽都创建新节点
+  const uniqueId = Date.now().toString() + Math.floor(Math.random() * 10000).toString();
+  newNode.id = uniqueId;
+  // 节点的哈希值由后端生成，前端不生成
+  // 第一次新增节点时nodeHash为空，当修改或连线时已经查回来了就用接口返回的
+
+  // 添加到画布
+  graphNodes.value.push(newNode);
+  // 添加到临时存储
+  pendingGraphNodes.value.push(newNode);
+  hasData.value = true;
+  
+  // 选中新创建的节点
+  selectedNodeId.value = uniqueId;
+  selectedEdgeId.value = null;
+  
+  // 设置操作来源为画布
+  isFromCanvas.value = true;
+  isFromComponentLibrary.value = false;
+  operationSource.value = "canvas";
+  
+  // 打开属性面板
+  currentOperation.value = "entity";
+  entityName.value = typeof item === "string" ? item : item.name;
+  nodeName.value = undefined; // 设置为undefined，这样RightPropertyPanel会显示为空
+  entityDescription.value = "";
+  entityProperties.value = entityTemplate && entityTemplate.properties ? entityTemplate.properties.map((prop) => ({
+    name: prop.propertyKey,
+    type: prop.propertyType.toLowerCase(),
+    value: "",
+  })) : [];
+  backgroundColor.value = entityTemplate ? entityTemplate.nodeTemplateColor : backgroundColor.value;
+  addToComponentLibrary.value = entityTemplate ? entityTemplate.isLibraryFlag === "1" : false;
+  currentNodeTemplateId.value = entityTemplate ? entityTemplate.nodeTemplateId : 0;
+  currentRelationTemplateId.value = 0;
+  
+  // 重置连接状态
+  isConnecting.value = false;
+  sourceNodeId.value = null;
+  targetNodeId.value = null;
+  originalSourceNodeId.value = null;
+  originalTargetNodeId.value = null;
+  
+  showPropertyPanel.value = true;
+  console.log("拖拽创建节点完成，打开属性面板:", newNode);
+};
+
+// 处理节点鼠标按下
+const handleNodeMouseDown = (event, nodeId) => {
+  // 处理节点鼠标按下事件
+};
+
+// 处理鼠标移动
+const handleMouseMove = (event, nodeId, position) => {
+  // 更新节点位置
+  const node = graphNodes.value.find((n) => n.id === nodeId);
+  if (node) {
+    node.x = position.x;
+    node.y = position.y;
+  }
+};
+
+// 处理鼠标释放
+const handleMouseUp = () => {
+  // 处理鼠标释放事件
+};
+
+// 处理节点点击
+const handleNodeClick = (node) => {
+  console.log("Home组件接收节点点击:", node);
+  // 设置操作来源为画布
+  operationSource.value = "canvas";
+  // 打开属性面板，设置当前操作类型为实体
+  currentOperation.value = "entity";
+  entityName.value = node.nodeTemplateName || node.name;
+  
+  // 检查节点是否是新拖拽的未保存节点
+  // 新拖拽的节点在pendingGraphNodes中，且没有nodeName属性（保存后会设置）
+  const pendingNode = pendingGraphNodes.value.find(pendingNode => pendingNode.id === node.id);
+  const isPendingNode = !!pendingNode;
+  const isSaved = !!pendingNode?.nodeName; // 保存后的节点会有nodeName属性
+  
+  console.log("节点点击检查:", {
+    nodeId: node.id,
+    isPendingNode,
+    isSaved,
+    pendingNodeName: pendingNode?.nodeName,
+    nodeName: node.nodeName,
+    nodeDescription: node.description
+  });
+  
+  // 如果是新拖拽的未保存节点，置空节点名称和定义描述
+  if (isPendingNode && !isSaved) {
+    nodeName.value = undefined; // 设置为undefined，这样RightPropertyPanel会显示为空
+    entityDescription.value = "";
+    console.log("置空节点名称和描述");
+  } else {
+    // 否则展示实际节点信息
+    nodeName.value = node.nodeName || "";
+    entityDescription.value = node.description || "";
+    console.log("展示实际节点信息:", { nodeName: nodeName.value, entityDescription: entityDescription.value });
+  }
+  
+  entityProperties.value = node.properties || [];
+  backgroundColor.value = node.backgroundColor || "#43D7B5";
+  addToComponentLibrary.value = node.isLibraryFlag === "1";
+  // 设置当前节点的模板ID
+  currentNodeTemplateId.value = node.nodeTemplateId || 0;
+  currentRelationTemplateId.value = 0;
+  // 设置操作来源为画布
+  isFromCanvas.value = true;
+  isFromComponentLibrary.value = false;
+  // 存储当前选中的节点ID
+  selectedNodeId.value = node.id;
+  selectedEdgeId.value = null;
+  
+  // 重置连接状态，退出连线模式
+  isConnecting.value = false;
+  // 清空源节点和目标节点ID
+  sourceNodeId.value = null;
+  targetNodeId.value = null;
+  originalSourceNodeId.value = null;
+  originalTargetNodeId.value = null;
+  // 清除虚线连接
+  if (contentRef.value && contentRef.value.resetConnectionState) {
+    contentRef.value.resetConnectionState();
+  }
+  
+  showPropertyPanel.value = true;
+  console.log("设置showPropertyPanel为true");
+
+  // 同步左侧面板高亮
+  if (sidebarRef.value) {
+    // 清除之前的选中状态
+    sidebarRef.value.handleClearSelections();
+
+    // 检查是否在实体模板列表中
+    if (entityTypes.value.includes(node.name)) {
+      // 设置实体模板选中状态
+      if (sidebarRef.value.setSelectedEntityType) {
+        sidebarRef.value.setSelectedEntityType(node.name);
+      }
+    } else {
+      // 检查是否在组件库中
+      const component = components.value.find(
+        (comp) => comp.nodeTemplateName === node.name,
+      );
+      if (component && sidebarRef.value.setSelectedComponent) {
+        sidebarRef.value.setSelectedComponent(node.name);
+      }
+    }
+  }
+};
+
+// 处理边点击
+const handleEdgeClick = (edge) => {
+  console.log("Home组件接收边点击:", edge);
+  try {
+    // 设置操作来源为画布
+    operationSource.value = "canvas";
+    // 打开属性面板，设置当前操作类型为关系
+    currentOperation.value = "relationship";
+    // 获取关系模板名称
+    let templateName = "";
+    if (edge.relationTemplateId) {
+      const template = components.value.find(comp => comp.relationTemplateId === edge.relationTemplateId);
+      if (template) {
+        templateName = template.relationTemplateName;
+      }
+    }
+    relationshipName.value = edge.relationTemplateName || templateName || edge.relationName || edge.data?.name || "";
+    relationName.value = edge.relationName || edge.data?.name || "";
+    relationshipType.value = edge.data?.type || "定向";
+    relationTrigger.value = edge.relationTrigger || edge.data?.relationTrigger || "";
+    entityProperties.value = edge.data?.properties || [];
+    // 设置是否加入组件库
+    addToComponentLibrary.value = edge.isLibraryFlag === "1";
+    // 设置当前连线的模板ID
+    currentRelationTemplateId.value = edge.relationTemplateId || 0;
+    currentNodeTemplateId.value = 0;
+    // 设置操作来源为画布，不是正在创建连线
+    isFromCanvas.value = true;
+    isFromComponentLibrary.value = false;
+    isCreatingRelationship.value = false;
+    // 存储当前选中的边ID
+    selectedEdgeId.value = edge.id;
+    selectedNodeId.value = null;
+
+    // 获取开始和结束节点
+    const startNode = graphNodes.value.find(
+      (node) => String(node.id) === String(edge.source),
+    );
+    const endNode = graphNodes.value.find(
+      (node) => String(node.id) === String(edge.target),
+    );
+
+    // 同步左侧面板高亮
+    if (sidebarRef.value) {
+      // 清除之前的选中状态
+      sidebarRef.value.handleClearSelections();
+
+      const relationshipName = edge.data?.name || "";
+      // 检查是否在关系模板列表中
+      if (relationshipTypes.value.includes(relationshipName)) {
+        // 设置关系模板选中状态
+        if (sidebarRef.value.setSelectedRelationshipType) {
+          sidebarRef.value.setSelectedRelationshipType(relationshipName);
+        }
+      } else {
+        // 检查是否在组件库中
+        const component = components.value.find(
+          (comp) => comp.relationTemplateName === relationshipName,
+        );
+        if (component && sidebarRef.value.setSelectedComponent) {
+          sidebarRef.value.setSelectedComponent(relationshipName);
+        }
+      }
+    }
+
+    // 设置开始和结束节点名称
+    startNodeName.value = startNode ? startNode.name : "";
+    endNodeName.value = endNode ? endNode.name : "";
+
+    // 设置开始和结束节点模板ID
+    sourceNodeId.value = startNode
+      ? startNode.nodeTemplateId || Number(edge.source)
+      : null;
+    targetNodeId.value = endNode
+      ? endNode.nodeTemplateId || Number(edge.target)
+      : null;
+
+    // 直接设置showPropertyPanel为true，保持面板显示
+    showPropertyPanel.value = true;
+    console.log("设置showPropertyPanel为true");
+  } catch (error) {
+    console.error("处理边点击事件失败:", error);
+    // 即使出错也要显示属性面板
+    showPropertyPanel.value = true;
+  }
+};
+
+// 处理退出
+const handleQuit = () => {
+  console.log("退出编辑器");
+  // 可以在这里添加退出编辑器的处理逻辑
+};
+
+// 处理清除
+const handleClear = () => {
+  console.log("清除画布");
+  
+  // 首先重置连接状态，清除临时边和虚拟节点
+  if (contentRef.value && contentRef.value.resetConnectionState) {
+    contentRef.value.resetConnectionState();
+  }
+  
+  // 清除节点和连线的选中状态
+  if (contentRef.value && contentRef.value.clearNodeSelection) {
+    contentRef.value.clearNodeSelection();
+  }
+  if (contentRef.value && contentRef.value.clearEdgesSelection) {
+    contentRef.value.clearEdgesSelection();
+  }
+  
+  // 只保留接口返回的节点和连线，清除手动添加的
+  // 手动添加的节点和边存储在 pendingGraphNodes 和 pendingGraphEdges 中
+  const pendingNodeIds = new Set(pendingGraphNodes.value.map(node => node.id));
+  const pendingEdgeIds = new Set(pendingGraphEdges.value.map(edge => edge.id));
+  
+  // 过滤掉手动添加的节点（在pendingGraphNodes中的节点）
+  graphNodes.value = graphNodes.value.filter(node => !pendingNodeIds.has(node.id));
+  // 过滤掉手动添加的连线（在pendingGraphEdges中的连线）
+  graphEdges.value = graphEdges.value.filter(edge => !pendingEdgeIds.has(edge.id));
+  
+  // 清除临时存储
+  pendingGraphNodes.value = [];
+  pendingGraphEdges.value = [];
+  
+  // 关闭属性面板
+  showPropertyPanel.value = false;
+  
+  // 清除选中状态
+  selectedNodeId.value = null;
+  selectedEdgeId.value = null;
+  
+  // 退出连线模式
+  isConnecting.value = false;
+  // 清空源节点和目标节点ID
+  sourceNodeId.value = null;
+  targetNodeId.value = null;
+  originalSourceNodeId.value = null;
+  originalTargetNodeId.value = null;
+};
+
+// 处理提交
+const handleSubmit = () => {
+  console.log("提交图谱");
+  handleSaveGraph();
+};
+
+// 处理删除项目
+const handleDeleteItem = () => {
+  if (currentOperation.value === "entity" && selectedNodeId.value) {
+    // 删除选中的节点
+    graphNodes.value = graphNodes.value.filter(node => node.id !== selectedNodeId.value);
+    // 删除与该节点相关的连线
+    graphEdges.value = graphEdges.value.filter(edge => edge.source !== selectedNodeId.value && edge.target !== selectedNodeId.value);
+    // 清空选中状态
+    selectedNodeId.value = null;
+  } else if (currentOperation.value === "relationship" && selectedEdgeId.value) {
+    // 删除选中的连线
+    graphEdges.value = graphEdges.value.filter(edge => edge.id !== selectedEdgeId.value);
+    // 清空选中状态
+    selectedEdgeId.value = null;
+  }
+};
+
+// 处理保存图谱
+const handleSaveGraph = async () => {
+  try {
+    // 检查是否有待提交的数据
+    if (
+      graphNodes.value.length === 0 &&
+      graphEdges.value.length === 0
+    ) {
+      ElMessage.warning("请先创建节点或连线");
+      return;
+    }
+
+    // 构建保存数据
+    const saveData = {
+      articleId: currentGraphId.value || "",
+      sequenceId: currentSequenceId.value || "",
+      sequenceContent: content.value,
+      sequencePositionList: currentSelectedSequence.value && currentSelectedSequence.value.sequencePositionList
+        ? currentSelectedSequence.value.sequencePositionList
+        : [],
+      graphNode: graphNodes.value.map((node) => ({
+        nodeHash: node.nodeHash || generateNodeHash(node),
+        nodeName: node.nodeName || node.name,
+        nodeTemplateId: node.nodeTemplateId || 0,
+        nodeTemplateName: node.nodeTemplateName || node.name,
+        nodeDescription: node.nodeDescription || node.description || "",
+        nodeColor: node.nodeColor || node.backgroundColor || "#43D7B5",
+        properties: node.properties || [],
+      })),
+      graphRelation: graphEdges.value.map((edge) => {
+        // 查找源节点和目标节点
+        const startNode = graphNodes.value.find(
+          (node) => String(node.id) === String(edge.source)
+        );
+        const endNode = graphNodes.value.find(
+          (node) => String(node.id) === String(edge.target)
+        );
+
+        return {
+          relationHash: edge.relationHash || edge.id,
+          relationName: edge.relationName || edge.data?.name || "",
+          relationTemplateId: edge.relationTemplateId || 0,
+          relationTemplateName: edge.relationTemplateName || edge.data?.name || "",
+          relationType: edge.relationType || "1",
+          relationTrigger: edge.relationTrigger || "",
+          startNodeHash: startNode ? (startNode.nodeHash || generateNodeHash(startNode)) : edge.startNodeHash || edge.source,
+          endNodeHash: endNode ? (endNode.nodeHash || generateNodeHash(endNode)) : edge.endNodeHash || edge.target,
+          properties: edge.data?.properties || edge.properties || [],
+        };
+      }),
+    };
+
+    console.log("保存图谱数据:", saveData);
+
+    // 调用保存接口
+    const response = await projectService.saveGraph(saveData);
+
+    if (response && response.resultCode === "0000") {
+      ElMessage.success("图谱保存成功");
+      // 保存成功后，清空临时存储
+      pendingGraphNodes.value = [];
+      pendingGraphEdges.value = [];
+    } else {
+      ElMessage.error("图谱保存失败，请稍后重试");
+    }
+  } catch (error) {
+    console.error("保存图谱失败:", error);
+    ElMessage.error("图谱保存失败，请稍后重试");
+  }
+};
+
+// 处理关闭属性面板
+const handleClosePropertyPanel = () => {
+  showPropertyPanel.value = false;
+
+  // 关闭属性面板后，清除虚线
+  if (currentOperation.value === "relationship" && contentRef.value) {
+    contentRef.value.resetConnectionState();
+    console.log("关闭属性面板后，调用resetConnectionState方法清除虚线和临时连线");
+    // 关闭右键菜单
+    if (contentRef.value.graphContainerRef) {
+      contentRef.value.graphContainerRef.showContextMenu = false;
+      console.log("关闭属性面板后，关闭右键菜单");
+    }
+  }
+  console.log(
+    "关闭属性面板后22222",
+    contentRef.value,
+    contentRef.value?.clearNodeSelection,
+  );
+  // 清除节点选中状态
+  if (contentRef.value && contentRef.value.clearNodeSelection) {
+    contentRef.value.clearNodeSelection();
+    console.log("关闭属性面板后，清除节点选中状态");
+  }
+  // 清除连线选中状态
+  if (contentRef.value && contentRef.value.clearEdgesSelection) {
+    contentRef.value.clearEdgesSelection();
+    console.log("关闭属性面板后，清除连线选中状态");
+  }
+
+  // 清除选中的节点和边ID
+  selectedNodeId.value = null;
+  selectedEdgeId.value = null;
+  // 清除选中的关系模板
+  selectedRelationshipTemplate.value = null;
+  // 重置已点击关系模板的标记
+  hasClickedRelationshipTemplate.value = false;
+  // 重置正在创建连线的标记
+  isCreatingRelationship.value = false;
+
+  // 退出连线模式
+  isConnecting.value = false;
+  // 清空源节点和目标节点ID
+  sourceNodeId.value = null;
+  targetNodeId.value = null;
+  originalSourceNodeId.value = null;
+  originalTargetNodeId.value = null;
+};
+
+// 处理取消属性面板
+const handleCancelPropertyPanel = () => {
+  showPropertyPanel.value = false;
+
+  // 取消属性面板后，清除虚线
+  if (currentOperation.value === "relationship" && contentRef.value) {
+    contentRef.value.resetConnectionState();
+    console.log("取消属性面板后，调用resetConnectionState方法清除虚线和临时连线");
+    // 关闭右键菜单
+    if (contentRef.value.graphContainerRef) {
+      contentRef.value.graphContainerRef.showContextMenu = false;
+      console.log("取消属性面板后，关闭右键菜单");
+    }
+  }
+
+  // 清除节点选中状态
+  if (contentRef.value && contentRef.value.clearNodeSelection) {
+    contentRef.value.clearNodeSelection();
+    console.log("取消属性面板后，清除节点选中状态");
+  }
+  // 清除连线选中状态
+  if (contentRef.value && contentRef.value.clearEdgesSelection) {
+    contentRef.value.clearEdgesSelection();
+    console.log("取消属性面板后，清除连线选中状态");
+  }
+
+  // 清除模型列表选中状态
+  if (sidebarRef.value && sidebarRef.value.handleClearSelections) {
+    sidebarRef.value.handleClearSelections();
+    console.log("取消属性面板后，清除模型列表选中状态");
+  }
+
+  // 清除选中的节点和边ID
+  selectedNodeId.value = null;
+  selectedEdgeId.value = null;
+  // 清除选中的关系模板
+  selectedRelationshipTemplate.value = null;
+  // 重置已点击关系模板的标记
+  hasClickedRelationshipTemplate.value = false;
+
+  // 退出连线模式
+  isConnecting.value = false;
+  // 清空源节点和目标节点ID
+  sourceNodeId.value = null;
+  targetNodeId.value = null;
+  originalSourceNodeId.value = null;
+  originalTargetNodeId.value = null;
+};
+
+// 处理保存属性面板
+const handleSavePropertyPanel = (data) => {
+  showPropertyPanel.value = false;
+  // 保存实体或关系的属性
+  hasData.value = true;
+  savedEntitiesCount.value += 1;
+  // 根据当前操作类型处理
+  if (data.currentOperation === "entity") {
+    // 更新entityProperties变量，这样当用户再次点击同一个实体类型或组件时，属性面板会显示修改后的值
+    entityProperties.value = [...data.entityProperties];
+    console.log(999999999999, data, currentNodeTemplateId.value);
+    if (selectedNodeId.value) {
+      // 更新现有节点
+      const nodeIndex = graphNodes.value.findIndex(node => node.id === selectedNodeId.value);
+      if (nodeIndex !== -1) {
+        // 更新节点信息
+        graphNodes.value[nodeIndex] = {
+          ...graphNodes.value[nodeIndex],
+          name: data.nodeName || data.entityName,
+          description: data.entityDescription || "",
+          properties: data.entityProperties,
+          backgroundColor: data.backgroundColor || "#43D7B5",
+          nodeName: data.nodeName || data.entityName,
+          nodeDescription: data.entityDescription || "",
+          nodeColor: data.backgroundColor || "#43D7B5",
+          nodeTemplateId: data.nodeTemplateId,
+        };
+        
+        // 更新临时存储中的节点
+        const pendingIndex = pendingGraphNodes.value.findIndex(node => node.id === selectedNodeId.value);
+        if (pendingIndex !== -1) {
+          pendingGraphNodes.value[pendingIndex] = {
+            ...pendingGraphNodes.value[pendingIndex],
+            name: data.nodeName || data.entityName,
+            description: data.entityDescription || "",
+            properties: data.entityProperties,
+            backgroundColor: data.backgroundColor || "#43D7B5",
+            nodeName: data.nodeName || data.entityName,
+            nodeDescription: data.entityDescription || "",
+            nodeColor: data.backgroundColor || "#43D7B5",
+            nodeTemplateId: data.nodeTemplateId,
+          };
+        }
+        
+        // 手动触发响应式更新
+        graphNodes.value = [...graphNodes.value];
+        console.log("节点已更新:", graphNodes.value[nodeIndex]);
+      }
+    } else {
+      
+      // 创建新节点并添加到画布和临时存储
+      const newNode = {
+        type: "entity",
+        name: data.nodeName || data.entityName,
+        description: data.entityDescription || "",
+        x: rightClickPosition.value.x,
+        y: rightClickPosition.value.y,
+        properties: data.entityProperties,
+        backgroundColor: data.backgroundColor || "#43D7B5",
+        nodeTemplateId: data.nodeTemplateId,
+        isLibraryFlag: "0",
+        nodeTemplateName: data.entityName,
+        nodeName: data.nodeName || data.entityName,
+        nodeDescription: data.entityDescription || "",
+        nodeColor: data.backgroundColor || "#43D7B5",
+        nodeId: "", // 后端生成
+        nodeHash: "", // 后端生成
+      };
+      
+      // 生成唯一的 id，确保每次创建都创建新节点
+      const uniqueId = Date.now().toString() + Math.floor(Math.random() * 10000).toString();
+      newNode.id = uniqueId;
+      // 节点的哈希值由后端生成，前端不生成
+      // 第一次新增节点时nodeHash为空，当修改或连线时已经查回来了就用接口返回的
+
+      // 添加到画布
+      graphNodes.value.push(newNode);
+      // 添加到临时存储
+      pendingGraphNodes.value.push(newNode);
+
+      console.log("节点已添加到画布:", newNode);
+    }
+  } else if (data.currentOperation === "relationship") {
+
+    // 获取关系类型对应的数值
+    const getRelationTypeValue = (type) => {
+      switch (type) {
+        case "定向":
+          return "1";
+        case "双向":
+          return "2";
+        case "循环":
+          return "3";
+        default:
+          return "1";
+      }
+    };
+
+    if (selectedEdgeId.value) {
+      // 更新现有关系
+      const edgeIndex = graphEdges.value.findIndex(edge => edge.id === selectedEdgeId.value);
+      if (edgeIndex !== -1) {
+        // 更新关系信息
+        graphEdges.value[edgeIndex] = {
+          ...graphEdges.value[edgeIndex],
+          data: {
+            name: data.relationName || data.relationshipName,
+            type: data.relationshipType,
+            properties: data.entityProperties,
+          },
+          relationName: data.relationName || data.relationshipName,
+          relationType: getRelationTypeValue(data.relationshipType),
+          relationTrigger: data.selectedTriggerWord || "",
+          relationTemplateName: data.relationshipName,
+          relationTemplateId: data.relationTemplateId,
+        };
+        
+        // 更新临时存储中的关系
+        const pendingIndex = pendingGraphEdges.value.findIndex(edge => edge.id === selectedEdgeId.value);
+        if (pendingIndex !== -1) {
+          pendingGraphEdges.value[pendingIndex] = {
+            ...pendingGraphEdges.value[pendingIndex],
+            data: {
+              name: data.relationName || data.relationshipName,
+              type: data.relationshipType,
+              properties: data.entityProperties,
+            },
+            relationName: data.relationName || data.relationshipName,
+            relationType: getRelationTypeValue(data.relationshipType),
+            relationTrigger: data.selectedTriggerWord || "",
+            relationTemplateName: data.relationshipName,
+            relationTemplateId: data.relationTemplateId,
+          };
+        }
+        
+        // 手动触发响应式更新
+        graphEdges.value = [...graphEdges.value];
+        console.log("关系已更新:", graphEdges.value[edgeIndex]);
+      }
+    } else {
+      // 新关系已由 handleUpdateNodes 从接口加载，这里不需要再添加
+      // handleUpdateNodes 会在 save 事件之前被触发，已经从接口获取了最新数据
+      console.log('新关系将由 handleUpdateNodes 从接口加载，跳过本地添加');
+
+      // 清空源节点和目标节点ID，准备下一次连线
+      sourceNodeId.value = null;
+      targetNodeId.value = null;
+      originalSourceNodeId.value = null;
+      originalTargetNodeId.value = null;
+      // 退出连线模式
+      isConnecting.value = false;
+    }
+  }
+
+  // 更新当前子领域的数量
+  const currentSubDomainObj = subDomains.value.find(
+    (subDomain) => subDomain.name === currentSubDomain.value,
+  );
+  if (currentSubDomainObj) {
+    currentSubDomainObj.count += 1;
+  }
+
+  // 重置操作来源标记
+  isFromComponentLibrary.value = false;
+  isFromCanvas.value = false;
+  isCreatingRelationship.value = false;
+
+  // 清除节点选中状态
+  if (contentRef.value && contentRef.value.clearNodeSelection) {
+    contentRef.value.clearNodeSelection();
+    console.log("保存属性后，清除节点选中状态");
+  }
+  // 清除连线选中状态
+  if (contentRef.value && contentRef.value.clearEdgesSelection) {
+    contentRef.value.clearEdgesSelection();
+    console.log("保存属性后，清除连线选中状态");
+  }
+  // 清除模型列表选中状态
+  if (sidebarRef.value && sidebarRef.value.handleClearSelections) {
+    sidebarRef.value.handleClearSelections();
+    console.log("保存属性后，清除模型列表选中状态");
+  }
+
+  // 清除选中的关系模板，避免后续连线时仍使用该模板进行校验
+  selectedRelationshipTemplate.value = null;
+  // 重置已点击关系模板的标记
+  hasClickedRelationshipTemplate.value = false;
+  console.log("保存属性后，清除选中的关系模板");
+
+  // 保存关系后，清除虚线
+  if (data.currentOperation === "relationship" && contentRef.value) {
+    contentRef.value.resetConnectionState();
+    console.log("保存关系后，调用resetConnectionState方法清除虚线");
+  }
+};
+
+// 处理添加属性
+const handleAddProperty = () => {
+  // 可以在这里添加添加属性的处理逻辑
+};
+
+// 处理节点数据更新
+const handleUpdateNodes = (templateData) => {
+  console.log("handleUpdateNodes 接收到的数据:", templateData);
+  console.log("templateData.nodes:", templateData.nodes);
+  console.log("templateData.relations:", templateData.relations);
+  
+  // 判断是模板数据还是查询数据
+  const isTemplateData = templateData && templateData.nodeTemplates;
+  const isQueryData = templateData && templateData.nodes;
+  
+  if (!isTemplateData && !isQueryData) {
+    console.log("数据格式不匹配，不更新");
+    return;
+  }
+  
+  // 只清空画布上的节点和关系数据，不清空模板数据
+  graphNodes.value = [];
+  graphEdges.value = [];
+  
+  // 只有当是模板数据时，才更新模板相关数据
+  if (isTemplateData) {
+    entityTypes.value = [];
+    relationshipTypes.value = [];
+  }
+
+  // 计算画布大小，使用实际容器大小
+  const getContainerSize = () => {
+    // 尝试获取内容区域的实际大小
+    if (contentRef.value && contentRef.value.$el) {
+      const contentArea = contentRef.value.$el.querySelector('.content-area');
+      if (contentArea) {
+        return {
+          width: contentArea.clientWidth,
+          height: contentArea.clientHeight
+        };
+      }
+    }
+    // 默认值作为 fallback
+    return {
+      width: 800,
+      height: 600
+    };
+  };
+  const containerSize = getContainerSize();
+  const containerWidth = containerSize.width;
+  const containerHeight = containerSize.height;
+  const padding = 80;
+
+  // 处理节点数据
+  const nodesToProcess = isQueryData ? templateData.nodes : templateData.nodeTemplates;
+  const nodeCount = nodesToProcess.length;
+  
+  nodesToProcess.forEach((nodeOrTemplate, index) => {
+    console.log(`处理第 ${index} 个节点，原始数据:`, nodeOrTemplate);
+    // 计算节点位置
+    let x, y;
+    if (nodeCount === 1) {
+      // 只有一个节点时放在画布上方中心
+      x = containerWidth / 2.3;
+      y = containerHeight / 3;
+    } else {
+      const centerX = containerWidth / 2.3;
+      const centerY = containerHeight / 3;
+      const semiMajorAxis = (containerWidth - 2 * padding * 2) / 2;
+      const semiMinorAxis = (containerHeight - 2 * padding * 1.5) / 2;
+      const angle = (2 * Math.PI * index) / nodeCount;
+      const randomRadiusFactor = 0.5 + Math.random() * 0.5;
+      x = centerX + semiMajorAxis * randomRadiusFactor * Math.cos(angle);
+      y = centerY + semiMinorAxis * randomRadiusFactor * Math.sin(angle);
+      const randomOffset = 60;
+      x += (Math.random() - 0.5) * randomOffset;
+      y += (Math.random() - 0.5) * randomOffset;
+    }
+
+    // 转换节点属性格式
+    const nodeProperties = nodeOrTemplate.properties
+      ? nodeOrTemplate.properties.map((prop) => ({
+          name: prop.propertyKey,
+          type: "string",
+          value: prop.propertyValue || "",
+        }))
+      : [];
+
+    // 构建新节点
+    const newNode = {
+      id: nodeOrTemplate.nodeHash,
+      type: "entity",
+      name: isQueryData ? nodeOrTemplate.nodeName : nodeOrTemplate.nodeTemplateName,
+      description: isQueryData ? (nodeOrTemplate.nodeDescription || "") : (nodeOrTemplate.nodeTemplateDescription || ""),
+      x: x,
+      y: y,
+      properties: nodeProperties,
+      backgroundColor: nodeOrTemplate.nodeColor || "#43D7B5",
+      nodeTemplateId: nodeOrTemplate.nodeTemplateId || 0,
+      isLibraryFlag: "0",
+      nodeHash: nodeOrTemplate.nodeHash,
+      nodeTemplateName: isQueryData ? nodeOrTemplate.nodeTemplateName : nodeOrTemplate.nodeTemplateName,
+      nodeName: isQueryData ? nodeOrTemplate.nodeName : nodeOrTemplate.nodeTemplateName,
+      nodeDescription: isQueryData ? (nodeOrTemplate.nodeDescription || "") : (nodeOrTemplate.nodeTemplateDescription || ""),
+      nodeColor: nodeOrTemplate.nodeColor || "#43D7B5",
+      nodeId: nodeOrTemplate.nodeId,
+    };
+    console.log(`构建的第 ${index} 个新节点:`, newNode);
+
+    if (isTemplateData && nodeOrTemplate.nodeTemplateName) {
+      entityTypes.value.push(nodeOrTemplate.nodeTemplateName);
+    }
+
+    graphNodes.value.push(newNode);
+  });
+
+  // 处理关系数据
+  const relationsToProcess = isQueryData ? templateData.relations : templateData.relationTemplates;
+  if (relationsToProcess && Array.isArray(relationsToProcess)) {
+    // 如果是模板数据，保存关系模板
+    if (isTemplateData) {
+      relationTemplates.value = templateData.relationTemplates;
+    }
+
+    // 创建节点ID集合，用于快速检查节点是否存在
+    const nodeIds = new Set(graphNodes.value.map((node) => node.id));
+
+    relationsToProcess.forEach((relationOrTemplate) => {
+      // 获取起始节点和结束节点的哈希值
+      const startHash = isQueryData ? relationOrTemplate.startNodeHash : relationOrTemplate.startNodeHash;
+      const endHash = isQueryData ? relationOrTemplate.endNodeHash : relationOrTemplate.endNodeHash;
+      
+      // 检查节点是否存在
+      if (!nodeIds.has(startHash) || !nodeIds.has(endHash)) {
+        console.warn(
+          `跳过关系，因为节点 ${startHash} 或 ${endHash} 不存在`,
+        );
+        return;
+      }
+
+      // 转换关系属性格式
+      const edgeProperties = relationOrTemplate.properties
+        ? relationOrTemplate.properties.map((prop) => ({
+            name: prop.propertyKey,
+            type: "string",
+            value: prop.propertyValue || "",
+          }))
+        : [];
+
+      // 获取关系类型对应的显示文本
+      let relationTypeText = "定向";
+      const relationTypeValue = isQueryData ? relationOrTemplate.relationType : relationOrTemplate.relationTemplateType;
+      switch (relationTypeValue) {
+        case "1":
+          relationTypeText = "定向";
+          break;
+        case "2":
+          relationTypeText = "双向";
+          break;
+        case "3":
+          relationTypeText = "循环";
+          break;
+      }
+
+      const newEdge = {
+        id: isQueryData ? relationOrTemplate.relationHash : (relationOrTemplate.relationId || relationOrTemplate.relationHash),
+        source: startHash,
+        target: endHash,
+        data: {
+          name: isQueryData ? relationOrTemplate.relationName : (relationOrTemplate.relationName || relationOrTemplate.relationTemplateName),
+          type: relationTypeText,
+          properties: edgeProperties,
+        },
+        relationTemplateId: relationOrTemplate.relationTemplateId || 0,
+        isLibraryFlag: "0",
+        relationHash: isQueryData ? relationOrTemplate.relationHash : relationOrTemplate.relationHash,
+        relationId: relationOrTemplate.relationId,
+        relationName: isQueryData ? relationOrTemplate.relationName : (relationOrTemplate.relationName || relationOrTemplate.relationTemplateName),
+        relationTemplateName: isQueryData ? relationOrTemplate.relationTemplateName : relationOrTemplate.relationTemplateName,
+        relationTrigger: relationOrTemplate.relationTrigger || "",
+        relationType: relationTypeValue,
+        startNodeHash: startHash,
+        endNodeHash: endHash,
+      };
+
+      if (isTemplateData && relationOrTemplate.relationTemplateName) {
+        relationshipTypes.value.push(relationOrTemplate.relationTemplateName);
+      }
+
+      graphEdges.value.push(newEdge);
+    });
+  }
+  
+  // 设置有数据标志
+  hasData.value = (graphNodes.value.length > 0 || graphEdges.value.length > 0);
+  
+  // 刷新画布
+  if (contentRef.value && contentRef.value.graphContainerRef) {
+    if (contentRef.value.graphContainerRef.forceRedraw) {
+      contentRef.value.graphContainerRef.forceRedraw();
+    } else if (contentRef.value.graphContainerRef.refreshCanvas) {
+      contentRef.value.graphContainerRef.refreshCanvas();
+    }
+  }
+  console.log("节点数据更新完成:", graphNodes.value, graphEdges.value);
+};
+
 // 处理模式变化
 const handleModeChange = (mode) => {
   currentMode.value = mode;
+};
+
+// 处理实体类型点击
+const handleEntityTypeClick = (entityType) => {
+  console.log("点击实体类型:", entityType);
+  console.log("Before setting showPropertyPanel:", showPropertyPanel.value);
+
+  // 设置操作来源为非组件库
+  isFromComponentLibrary.value = false;
+  // 设置操作来源为非画布
+  isFromCanvas.value = false;
+  operationSource.value = "library";
+  // 设置 LeftTemplatePanel 组件中的选中状态
+  if (sidebarRef.value && sidebarRef.value.setSelectedEntityType) {
+    sidebarRef.value.setSelectedEntityType(entityType);
+    console.log("设置实体类型选中状态:", entityType);
+  }
+
+  // 清除之前的选中状态
+  if (contentRef.value) {
+    contentRef.value.clearNodeSelection();
+    contentRef.value.clearEdgesSelection();
+  }
+
+  // 高亮画布中所有对应类型的节点
+  if (contentRef.value && contentRef.value.graphContainerRef) {
+    const graph = contentRef.value.graphContainerRef.graph;
+    if (graph) {
+      const nodes = graph.getData().nodes || [];
+      nodes.forEach((node) => {
+        if (node.data && node.data.name === entityType) {
+          graph.setElementState(node.id, ["selected"]);
+        }
+      });
+    }
+  }
+
+  // 打开属性面板，设置当前操作类型为实体
+  currentOperation.value = "entity";
+  entityName.value = entityType;
+
+  // 从nodeTemplates中查找对应的实体模板信息
+  const entityTemplate = nodeTemplates.value.find(
+    (template) => template.nodeTemplateName === entityType,
+  );
+  if (entityTemplate) {
+    console.log("找到实体模板:", entityTemplate);
+    // 设置实体描述（如果有）
+    entityDescription.value = entityTemplate.nodeTemplateDescription || entityTemplate.description || "";
+    // 设置实体属性
+    if (entityTemplate.properties && Array.isArray(entityTemplate.properties)) {
+      entityProperties.value = entityTemplate.properties.map((prop) => ({
+        name: prop.propertyKey,
+        type: prop.propertyType.toLowerCase(),
+        value: "",
+      }));
+    } else {
+      entityProperties.value = [];
+    }
+    // 设置背景颜色
+    backgroundColor.value = entityTemplate.nodeTemplateColor || entityTemplate.backgroundColor || "#43D7B5";
+    // 设置是否加入组件库
+    addToComponentLibrary.value = entityTemplate.isLibraryFlag === "1";
+    // 设置当前节点的模板ID
+    currentNodeTemplateId.value = entityTemplate.nodeTemplateId || 0;
+    currentRelationTemplateId.value = 0;
+  } else {
+    console.log("未找到实体模板:", entityType);
+    // 如果找不到模板信息，重置默认值
+    entityDescription.value = "";
+    entityProperties.value = [];
+    backgroundColor.value = "#43D7B5";
+    addToComponentLibrary.value = false;
+    currentNodeTemplateId.value = 0;
+    currentRelationTemplateId.value = 0;
+  }
+
+  showPropertyPanel.value = true;
+  console.log("After setting showPropertyPanel:", showPropertyPanel.value);
+};
+
+// 处理关系类型点击
+const handleRelationshipTypeClick = (relationshipTypeName) => {
+  console.log("点击关系类型:", relationshipTypeName);
+  console.log("Before setting showPropertyPanel:", showPropertyPanel.value);
+
+  // 设置操作来源为非组件库
+  isFromComponentLibrary.value = false;
+  // 设置操作来源为非画布
+  isFromCanvas.value = false;
+  operationSource.value = "library";
+  // 设置 LeftTemplatePanel 组件中的选中状态
+  if (sidebarRef.value && sidebarRef.value.setSelectedRelationshipType) {
+    sidebarRef.value.setSelectedRelationshipType(relationshipTypeName);
+    console.log("设置关系类型选中状态:", relationshipTypeName);
+  }
+
+  // 清除之前的选中状态
+  if (contentRef.value) {
+    contentRef.value.clearNodeSelection();
+    contentRef.value.clearEdgesSelection();
+  }
+
+  // 高亮画布中所有对应类型的连线
+  if (contentRef.value && contentRef.value.graphContainerRef) {
+    const graph = contentRef.value.graphContainerRef.graph;
+    if (graph) {
+      const edges = graph.getData().edges || [];
+      edges.forEach((edge) => {
+        if (edge.data && edge.data.name === relationshipTypeName) {
+          graph.setElementState(edge.id, ["selected"]);
+        }
+      });
+    }
+  }
+
+  // 打开属性面板，设置当前操作类型为关系
+  currentOperation.value = "relationship";
+  relationshipName.value = relationshipTypeName;
+
+  // 从relationTemplates中查找对应的关系模板信息
+  const relationshipTemplate = relationTemplates.value.find(
+    (template) => template.relationTemplateName === relationshipTypeName,
+  );
+  if (relationshipTemplate) {
+    // 存储当前选中的关系模板
+    selectedRelationshipTemplate.value = relationshipTemplate;
+    // 标记已点击了关系模板
+    hasClickedRelationshipTemplate.value = true;
+    
+    // 设置关系类型
+    let relationTypeText = "定向";
+    switch (relationshipTemplate.relationTemplateType) {
+      case "1":
+        relationTypeText = "定向";
+        break;
+      case "2":
+        relationTypeText = "双向";
+        break;
+      case "3":
+        relationTypeText = "循环";
+        break;
+    }
+    relationshipType.value = relationTypeText;
+    // 设置关系属性
+    entityProperties.value = relationshipTemplate.properties
+      ? relationshipTemplate.properties.map((prop) => ({
+          name: prop.propertyKey,
+          type: prop.propertyType.toLowerCase(),
+          value: "",
+        }))
+      : [];
+    // 设置是否加入组件库
+    addToComponentLibrary.value = relationshipTemplate.isLibraryFlag === "1";
+    // 设置当前关系的模板ID
+    currentRelationTemplateId.value = relationshipTemplate.relationTemplateId || 0;
+    currentNodeTemplateId.value = 0;
+
+    // 设置开始和结束节点名称
+    const startNode = nodeTemplates.value.find(
+      (node) =>
+        String(node.nodeTemplateId) === String(relationshipTemplate.startNodeTemplateId),
+    );
+    const endNode = nodeTemplates.value.find(
+      (node) =>
+        String(node.nodeTemplateId) === String(relationshipTemplate.endNodeTemplateId),
+    );
+    startNodeName.value = startNode ? startNode.nodeTemplateName : "";
+    endNodeName.value = endNode ? endNode.nodeTemplateName : "";
+  } else {
+    // 如果找不到模板信息，重置默认值
+    selectedRelationshipTemplate.value = null;
+    relationshipType.value = "定向";
+    entityProperties.value = [];
+    addToComponentLibrary.value = false;
+    currentRelationTemplateId.value = 0;
+    currentNodeTemplateId.value = 0;
+    startNodeName.value = "";
+    endNodeName.value = "";
+  }
+
+  showPropertyPanel.value = true;
+  console.log("After setting showPropertyPanel:", showPropertyPanel.value);
+};
+
+// 处理组件点击
+const handleComponentClick = (componentName) => {
+  console.log("点击组件:", componentName);
+  console.log("Before setting showPropertyPanel:", showPropertyPanel.value);
+
+  // 设置操作来源为组件库
+  operationSource.value = "library";
+  isFromComponentLibrary.value = true;
+  // 设置操作来源为非画布
+  isFromCanvas.value = false;
+
+  // 设置 LeftTemplatePanel 组件中的选中状态
+  if (sidebarRef.value && sidebarRef.value.setSelectedComponent) {
+    sidebarRef.value.setSelectedComponent(componentName);
+    console.log("设置组件选中状态:", componentName);
+  }
+
+  // 清除之前的选中状态
+  if (contentRef.value) {
+    contentRef.value.clearNodeSelection();
+    contentRef.value.clearEdgesSelection();
+  }
+
+  // 高亮画布中所有对应组件的元素
+  if (contentRef.value && contentRef.value.graphContainerRef) {
+    const graph = contentRef.value.graphContainerRef.graph;
+    if (graph) {
+      // 检查节点
+      const nodes = graph.getData().nodes || [];
+      nodes.forEach((node) => {
+        if (node.data && node.data.name === componentName) {
+          graph.setElementState(node.id, ["selected"]);
+        }
+      });
+
+      // 检查连线
+      const edges = graph.getData().edges || [];
+      edges.forEach((edge) => {
+        if (edge.data && edge.data.name === componentName) {
+          graph.setElementState(edge.id, ["selected"]);
+        }
+      });
+    }
+  }
+
+  // 从components数组中查找对应的组件信息
+  const component = components.value.find(
+    (comp) =>
+      comp.nodeTemplateName === componentName ||
+      comp.relationTemplateName === componentName,
+  );
+
+  if (component) {
+    // 判断是实体组件还是关系组件
+    const isEntityComponent = component.nodeTemplateId !== undefined;
+    const isRelationshipComponent = component.relationTemplateId !== undefined;
+
+    if (isEntityComponent) {
+      // 实体组件
+      currentOperation.value = "entity";
+      entityName.value = component.nodeTemplateName;
+      // 设置实体描述（如果有）
+      entityDescription.value = component.nodeTemplateDescription || "";
+      // 设置实体属性
+      entityProperties.value = component.properties
+        ? component.properties.map((prop) => ({
+            name: prop.propertyKey,
+            type: prop.propertyType.toLowerCase(),
+            value: "",
+          }))
+        : [];
+      // 设置背景颜色
+      backgroundColor.value = component.nodeTemplateColor || "#43D7B5";
+      // 设置是否加入组件库
+      addToComponentLibrary.value = component.isLibraryFlag === "1";
+      // 设置当前节点的模板ID
+      currentNodeTemplateId.value = component.nodeTemplateId || 0;
+      currentRelationTemplateId.value = 0;
+    } else if (isRelationshipComponent) {
+      // 关系组件
+      currentOperation.value = "relationship";
+      relationshipName.value = component.relationTemplateName;
+      // 设置关系类型
+      relationshipType.value = component.relationTemplateType
+        ? {
+            1: "定向",
+            2: "双向",
+            3: "循环",
+          }[component.relationTemplateType] || "定向"
+        : "定向";
+      // 设置关系属性
+      entityProperties.value = component.properties
+        ? component.properties.map((prop) => ({
+            name: prop.propertyKey,
+            type: prop.propertyType.toLowerCase(),
+            value: "",
+          }))
+        : [];
+      // 设置是否加入组件库
+      addToComponentLibrary.value = component.isLibraryFlag === "1";
+      // 设置当前关系的模板ID
+      currentRelationTemplateId.value = component.relationTemplateId || 0;
+      currentNodeTemplateId.value = 0;
+    }
+  } else {
+    // 如果找不到组件信息，默认按实体处理
+    currentOperation.value = "entity";
+    entityName.value = componentName;
+    entityDescription.value = "";
+    entityProperties.value = [];
+    backgroundColor.value = "#43D7B5";
+    addToComponentLibrary.value = false;
+    currentNodeTemplateId.value = 0;
+    currentRelationTemplateId.value = 0;
+  }
+
+  showPropertyPanel.value = true;
+  console.log("After setting showPropertyPanel:", showPropertyPanel.value);
+};
+
+// 处理清除选中状态
+const handleClearSelections = () => {
+  // 这里不需要做任何操作，因为 LeftTemplatePanel 组件会处理清除选中状态的逻辑
+  console.log("清除模型列表选中状态");
+};
+
+// 处理更新组件库
+const handleUpdateLibrary = (libraryData) => {
+  console.log("更新组件库数据:", libraryData);
+  if (libraryData) {
+    // 合并节点模板和关系模板
+    const allComponents = [];
+    if (libraryData.nodeTemplates && Array.isArray(libraryData.nodeTemplates)) {
+      allComponents.push(...libraryData.nodeTemplates);
+    }
+    if (
+      libraryData.relationTemplates &&
+      Array.isArray(libraryData.relationTemplates)
+    ) {
+      allComponents.push(...libraryData.relationTemplates);
+    }
+    components.value = allComponents;
+    console.log("组件库更新完成，共", allComponents.length, "个组件");
+  } else {
+    components.value = [];
+  }
+};
+
+// 处理添加组件到模型
+const handleAddComponentToModel = async (component) => {
+  console.log("添加组件到模型:", component);
+  // 检查实体类型中是否已存在该组件名称
+  if (component.nodeTemplateId) {
+    // 实体组件
+    if (!entityTypes.value.includes(component.nodeTemplateName)) {
+      // 添加到实体类型中
+      entityTypes.value.push(component.nodeTemplateName);
+    }
+  } else if (component.relationTemplateId) {
+    // 关系组件
+    if (!relationshipTypes.value.includes(component.relationTemplateName)) {
+      // 添加到关系类型中
+      relationshipTypes.value.push(component.relationTemplateName);
+    }
+  }
+};
+
+// 处理组件库搜索
+const handleComponentLibrarySearch = async (keyword) => {
+  try {
+    const response = await projectService.searchComponentLibrary(keyword, currentSubDomainId.value);
+    if (response && response.data) {
+      components.value = response.data;
+    } else {
+      components.value = [];
+    }
+  } catch (error) {
+    console.error("搜索组件库失败:", error);
+    components.value = [];
+  }
+};
+
+// 设置选中节点
+const setSelectedNode = (node) => {
+  selectedNodeId.value = node.id;
+  // 可以在这里添加其他选中节点的处理逻辑
 };
 
 // 编辑器中拖放实体类型添加节点：只写入 editorNodes，按模板颜色渲染
@@ -1667,6 +3468,8 @@ const handleAddNodeConfirm = (payload: {
     properties: [] as NodeProperty[],
     nodeTemplateName: payload.name?.trim(),
     nodeName: payload.name?.trim(),
+    nodeId: "", // 后端生成
+    nodeHash: "", // 后端生成
   };
   editorNodes.value = editorNodes.value.map((n) =>
     String(n.id) === "virtualNode" ? newNode : n,
@@ -1818,19 +3621,173 @@ const hanleRefresh = () => {
 // 处理编辑器提交
 const handleEditorSubmit = async () => {
   console.log('编辑器提交，重新获取图谱数据和段落列表');
-  // 重新获取图谱数据和段落列表
-  if (currentGraphId.value) {
+  
+  // 根据当前层级决定调用哪个接口
+  if (currentLevel.value === 2 && currentSubDomainId.value) {
+    // 专题下(level=2)，调用getGraphByTopicId
+    try {
+      const graphResponse = await projectService.getGraphByTopicId(currentSubDomainId.value);
+
+      // 更新图谱数据
+      if (graphResponse && graphResponse.data) {
+        // 转换节点数据格式，确保每个节点都有 id 字段
+        const rawNodes = graphResponse.data.nodes || [];
+        const rawEdges = graphResponse.data.relations || [];
+
+        // 转换节点数据格式，统一使用 nodeHash 作为 id
+        graphNodes.value = rawNodes.map(node => {
+          const nodeHash = node.nodeHash || node.nodeId || node.id;
+          // 转换属性格式
+          const properties = (node.properties || []).map(prop => ({
+            name: prop.propertyKey || prop.name,
+            type: prop.propertyType || prop.type || 'string',
+            value: prop.propertyValue || prop.value || '',
+          }));
+
+          return {
+            id: nodeHash,
+            nodeId: node.nodeId,
+            nodeHash: nodeHash,
+            name: node.nodeName || node.name,
+            nodeName: node.nodeName,
+            type: node.nodeType || node.type,
+            nodeType: node.nodeType,
+            description: node.nodeDescription || node.description,
+            nodeDescription: node.nodeDescription,
+            backgroundColor: node.nodeColor || node.backgroundColor || '#43D7B5',
+            nodeColor: node.nodeColor,
+            properties: properties,
+            nodeTemplateId: node.nodeTemplateId,
+            nodeTemplateName: node.nodeTemplateName,
+          };
+        });
+
+        // 转换边数据格式，确保 source 和 target 对应节点的 id（nodeHash）
+        graphEdges.value = rawEdges.map(edge => {
+          // 获取边的源和目标标识（使用 nodeHash）
+          const sourceKey = edge.startNodeHash || edge.startNodeId || edge.source;
+          const targetKey = edge.endNodeHash || edge.endNodeId || edge.target;
+
+          // 直接使用 nodeHash 作为 source 和 target
+          const sourceId = sourceKey;
+          const targetId = targetKey;
+
+          // 转换属性格式
+          const edgeProperties = (edge.properties || []).map(prop => ({
+            name: prop.propertyKey || prop.name,
+            type: prop.propertyType || prop.type || 'string',
+            value: prop.propertyValue || prop.value || '',
+          }));
+
+          return {
+            id: edge.relationId || edge.id || edge.relationHash,
+            relationId: edge.relationId,
+            relationHash: edge.relationHash,
+            source: String(sourceId),
+            target: String(targetId),
+            startNodeId: edge.startNodeId,
+            endNodeId: edge.endNodeId,
+            startNodeHash: edge.startNodeHash,
+            endNodeHash: edge.endNodeHash,
+            data: {
+              name: edge.relationName || edge.name,
+              type: edge.relationType || edge.type || '定向',
+              properties: edgeProperties,
+            },
+            relationName: edge.relationName,
+            relationType: edge.relationType,
+            relationTemplateId: edge.relationTemplateId,
+            relationTemplateName: edge.relationTemplateName,
+          };
+        });
+
+        console.log('专题图谱数据更新成功');
+      }
+    } catch (error) {
+      console.error('获取专题图谱数据失败:', error);
+    }
+  } else if (currentGraphId.value) {
+    // 文章下，调用getGraphByArticleId和getSequenceList
     try {
       // 并行调用接口
       const [graphResponse, sequenceResponse] = await Promise.all([
         projectService.getGraphByArticleId(currentGraphId.value),
         projectService.getSequenceList(currentGraphId.value)
       ]);
-      
+
       // 更新图谱数据
       if (graphResponse && graphResponse.data) {
-        graphNodes.value = graphResponse.data.nodes || [];
-        graphEdges.value = graphResponse.data.relations || [];
+        // 转换节点数据格式，确保每个节点都有 id 字段
+        const rawNodes = graphResponse.data.nodes || [];
+        const rawEdges = graphResponse.data.relations || [];
+
+        // 转换节点数据格式，统一使用 nodeHash 作为 id
+        graphNodes.value = rawNodes.map(node => {
+          const nodeHash = node.nodeHash || node.nodeId || node.id;
+          // 转换属性格式
+          const properties = (node.properties || []).map(prop => ({
+            name: prop.propertyKey || prop.name,
+            type: prop.propertyType || prop.type || 'string',
+            value: prop.propertyValue || prop.value || '',
+          }));
+
+          return {
+            id: nodeHash,
+            nodeId: node.nodeId,
+            nodeHash: nodeHash,
+            name: node.nodeName || node.name,
+            nodeName: node.nodeName,
+            type: node.nodeType || node.type,
+            nodeType: node.nodeType,
+            description: node.nodeDescription || node.description,
+            nodeDescription: node.nodeDescription,
+            backgroundColor: node.nodeColor || node.backgroundColor || '#43D7B5',
+            nodeColor: node.nodeColor,
+            properties: properties,
+            nodeTemplateId: node.nodeTemplateId,
+            nodeTemplateName: node.nodeTemplateName,
+          };
+        });
+
+        // 转换边数据格式，确保 source 和 target 对应节点的 id（nodeHash）
+        graphEdges.value = rawEdges.map(edge => {
+          // 获取边的源和目标标识（使用 nodeHash）
+          const sourceKey = edge.startNodeHash || edge.startNodeId || edge.source;
+          const targetKey = edge.endNodeHash || edge.endNodeId || edge.target;
+
+          // 直接使用 nodeHash 作为 source 和 target
+          const sourceId = sourceKey;
+          const targetId = targetKey;
+
+          // 转换属性格式
+          const edgeProperties = (edge.properties || []).map(prop => ({
+            name: prop.propertyKey || prop.name,
+            type: prop.propertyType || prop.type || 'string',
+            value: prop.propertyValue || prop.value || '',
+          }));
+
+          return {
+            id: edge.relationId || edge.id || edge.relationHash,
+            relationId: edge.relationId,
+            relationHash: edge.relationHash,
+            source: String(sourceId),
+            target: String(targetId),
+            startNodeId: edge.startNodeId,
+            endNodeId: edge.endNodeId,
+            startNodeHash: edge.startNodeHash,
+            endNodeHash: edge.endNodeHash,
+            data: {
+              name: edge.relationName || edge.name,
+              type: edge.relationType || edge.type || '定向',
+              properties: edgeProperties,
+            },
+            relationName: edge.relationName,
+            relationType: edge.relationType,
+            relationTemplateId: edge.relationTemplateId,
+            relationTemplateName: edge.relationTemplateName,
+          };
+        });
+        
         console.log('图谱数据更新成功');
       }
       
@@ -1978,6 +3935,29 @@ const handleEditorSubmit = async () => {
   height: 100%;
   top: 0;
   left: 0;
+}
+
+.other-container {
+//  flex: 1;
+  // display: flex;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.other-container :deep(.content-area) {
+  // flex: 1;
+  height: 100%;
+  overflow: hidden;
+}
+
+.other-container :deep(.property-panel) {
+  width: 280px;
+  height: 100%;
+  border-left: 1px solid #eaeaea;
+  background-color: #f9f9f9;
+  overflow-y: auto;
 }
 .tool {
   position: absolute;

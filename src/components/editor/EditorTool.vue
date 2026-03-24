@@ -1,8 +1,8 @@
 <template>
-  <div class="editor-tool">
-    <div class="submit" title="提交" @click="handleSubmitClick" />
+  <div class="editor-tool" :class="{'create-tool': currentGraphCreateMethod == '1'||currentGraphCreateMethod == '2'}">
+    <div class="submit" title="提交" @click="handleSubmitClick" v-if="!(currentGraphCreateMethod == '1'||currentGraphCreateMethod == '2')" />
     <div class="clear" title="清除" @click="handleClearClick" />
-    <div class="quit" title="退出" @click="handleQuitClick" />
+    <div class="quit" title="退出" @click="handleQuitClick" v-if="!(currentGraphCreateMethod == '1'||currentGraphCreateMethod == '2')" />
   </div>
 </template>
 
@@ -13,7 +13,12 @@ import { useTextStore } from "@/store/useTextStore";
 const emit = defineEmits(["submit", "clear", "quit", "save-graph"]);
 const textStore = useTextStore();
 const showJumpPageDialog = ref(false);
-
+const props = defineProps({
+  currentGraphCreateMethod:{
+    type: String,
+    default: "",
+  },
+});
 const handleSubmitClick = () => {
   emit("save-graph");
 };
@@ -46,6 +51,7 @@ const handleSaveGraphClick = () => {
   padding: 10px 15px;
   box-sizing: border-box;
 }
+
 .toolbar {
   flex-shrink: 0;
   display: flex;
@@ -154,5 +160,11 @@ const handleSaveGraphClick = () => {
 .quit:hover {
   cursor: pointer;
   background-image: url("@/assets/images/退出-点击.png");
+}
+.create-tool{
+  width: 70px;
+  .submit,.clear,.quit{
+    width:99%;
+  }
 }
 </style>

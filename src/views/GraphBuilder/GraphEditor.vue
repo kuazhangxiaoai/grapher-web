@@ -12,9 +12,14 @@ import { useTextStore } from "@/store/useTextStore";
 
 const contentRef = ref(null);
 const sidebarRef = ref(null);
+const rightPropertyPanelRef = ref(null);
 
 const dialogClassName2 = "graph-editor-dialog";
 const props = defineProps({
+  currentGraphCreateMethod:{
+    type: String,
+    default: "",
+  },
   visible: {
     type: Boolean,
     default: false,
@@ -70,6 +75,10 @@ const props = defineProps({
   showReferenceText: {
     type: Boolean,
     default: true,
+  },
+  level: {
+    type: Number,
+    default: 0,
   },
 });
 
@@ -398,6 +407,11 @@ watch(
     dialogVisible.value = newValue;
     // 当弹窗打开时，使用props传递的实体和关系类型数据
     if (newValue) {
+      // 重置 RightPropertyPanel 中的 latestSequenceIdFromServer
+      if (rightPropertyPanelRef.value) {
+        rightPropertyPanelRef.value.resetLatestSequenceId();
+      }
+      
       // 首先使用props传递的数据
       entityTypes.value = props.entityTypes || [];
       relationshipTypes.value = props.relationshipTypes || [];
@@ -416,9 +430,13 @@ watch(
       console.log("弹窗打开时从props获取的articleId:", props.articleId);
       console.log("弹窗打开时从props获取的sequenceId:", props.sequenceId);
       console.log("弹窗打开时从props获取的showReferenceText:", props.showReferenceText);
+      console.log("弹窗打开时从props获取的level:", props.level);
       
-      // 根据showReferenceText、sequenceId和articleId决定调用哪个接口
-      if (!props.showReferenceText) {
+      // 根据level、showReferenceText、sequenceId和articleId决定调用哪个接口
+      if (props.level === 2 && props.topicId && !props.showReferenceText) {
+        // 专题下(level=2)且没有参考文本时，调用getGraphByTopicId接口
+        await fetchGraphByTopicId(props.topicId);
+      } else if (!props.showReferenceText) {
         // 没有参考文本显示时，调用getGraphByArticleId接口
         if (props.articleId) {
           await fetchGraphByArticleId(props.articleId);
@@ -432,7 +450,7 @@ watch(
         // 手动选完文本点击编辑按钮进来的，两个接口都不调
       }
     }
-  },
+  }
 );
 
 // 处理取消
@@ -1234,7 +1252,7 @@ const handleCreateRelationship = (sourceId) => {
 
   // 存储原始的源节点ID
   originalSourceNodeId.value = sourceId;
-
+console.log(444444444444444,sourceId)
   // 查找源节点，使用其 nodeTemplateId
   const sourceNode = graphNodes.value.find(
     (node) => String(node.id) === String(sourceId),
@@ -1398,16 +1416,37 @@ const handleConnectionComplete = (targetId) => {
   operationSource.value = "canvas";
   // 存储原始的目标节点ID
   originalTargetNodeId.value = targetId;
-
+console.log(555555555555,targetId)
   // 查找目标节点，使用其 nodeTemplateId
-  const targetNode = graphNodes.value.find(
+  let targetNode = graphNodes.value.find(
     (node) => String(node.id) === String(targetId),
   );
+  console.log('All graph nodes:', graphNodes.value);
+  console.log('Looking for target node with id:', targetId);
+  console.log('Found target node:', targetNode);
 
   // 查找源节点
-  const sourceNode = graphNodes.value.find(
+  let sourceNode = graphNodes.value.find(
     (node) => String(node.id) === String(originalSourceNodeId.value),
   );
+  console.log('Looking for source node with id:', originalSourceNodeId.value);
+  console.log('Found source node:', sourceNode);
+  
+  // 如果通过id找不到节点，尝试通过nodeHash查找
+  if (!sourceNode) {
+    sourceNode = graphNodes.value.find(
+      (node) => String(node.nodeHash) === String(originalSourceNodeId.value),
+    );
+    console.log('Looking for source node by nodeHash:', originalSourceNodeId.value);
+    console.log('Found source node by nodeHash:', sourceNode);
+  }
+  if (!targetNode) {
+    targetNode = graphNodes.value.find(
+      (node) => String(node.nodeHash) === String(targetId),
+    );
+    console.log('Looking for target node by nodeHash:', targetId);
+    console.log('Found target node by nodeHash:', targetNode);
+  }
 
   // 尝试从组件库中查找对应的 nodeTemplateId
   let targetTemplateId =
@@ -1599,14 +1638,15 @@ const handleSavePropertyPanel = (data) => {
         nodeName: data.nodeName || data.entityName,
         nodeDescription: data.entityDescription || "",
         nodeColor: data.backgroundColor || "#43D7B5",
+        nodeId: "", // 后端生成
+        nodeHash: "", // 后端生成
       };
       
       // 生成唯一的 id，确保每次创建都创建新节点
       const uniqueId = Date.now().toString() + Math.floor(Math.random() * 10000).toString();
       newNode.id = uniqueId;
-      // 生成基于节点信息的哈希值用于保存
-      const nodeHash = generateNodeHash(newNode);
-      newNode.nodeHash = nodeHash;
+      // 节点的哈希值由后端生成，前端不生成
+      // 第一次新增节点时nodeHash为空，当修改或连线时已经查回来了就用接口返回的
 
       // 添加到画布
       graphNodes.value.push(newNode);
@@ -1673,34 +1713,9 @@ const handleSavePropertyPanel = (data) => {
         console.log("关系已更新:", graphEdges.value[edgeIndex]);
       }
     } else {
-      // 创建新关系并添加到画布和临时存储
-      const relationHash = Date.now().toString();
-      const newEdge = {
-        id: relationHash,
-        source: originalSourceNodeId.value,
-        target: originalTargetNodeId.value,
-        data: {
-          name: data.relationName || data.relationshipName,
-          type: data.relationshipType,
-          properties: data.entityProperties,
-        },
-        relationTemplateId: data.relationTemplateId,
-        isLibraryFlag: "0",
-        relationHash: relationHash,
-        relationName: data.relationName || data.relationshipName,
-        relationType: getRelationTypeValue(data.relationshipType),
-        relationTrigger: data.selectedTriggerWord || "",
-        startNodeHash: originalSourceNodeId.value,
-        endNodeHash: originalTargetNodeId.value,
-        relationTemplateName: data.relationshipName,
-      };
-
-      // 添加到画布
-      graphEdges.value.push(newEdge);
-      // 添加到临时存储
-      pendingGraphEdges.value.push(newEdge);
-
-      console.log("关系已添加到画布:", newEdge);
+      // 新关系已由 handleUpdateNodes 从接口加载，这里不需要再添加
+      // handleUpdateNodes 会在 save 事件之前被触发，已经从接口获取了最新数据
+      console.log('新关系将由 handleUpdateNodes 从接口加载，跳过本地添加');
 
       // 清空源节点和目标节点ID，准备下一次连线
       sourceNodeId.value = null;
@@ -1820,15 +1835,48 @@ const handleDrop = (event) => {
   // 生成唯一的 id，确保每次拖拽都创建新节点
   const uniqueId = Date.now().toString() + Math.floor(Math.random() * 10000).toString();
   newNode.id = uniqueId;
-  // 生成基于节点信息的哈希值用于保存
-  const nodeHash = generateNodeHash(newNode);
-  newNode.nodeHash = nodeHash;
+  // 节点的哈希值由后端生成，前端不生成
+  // 第一次新增节点时nodeHash为空，当修改或连线时已经查回来了就用接口返回的
 
   // 添加到画布
   graphNodes.value.push(newNode);
   // 添加到临时存储
   pendingGraphNodes.value.push(newNode);
   hasData.value = true;
+  
+  // 选中新创建的节点
+  selectedNodeId.value = uniqueId;
+  selectedEdgeId.value = null;
+  
+  // 设置操作来源为画布
+  isFromCanvas.value = true;
+  isFromComponentLibrary.value = false;
+  operationSource.value = "canvas";
+  
+  // 打开属性面板
+  currentOperation.value = "entity";
+  entityName.value = typeof item === "string" ? item : item.name;
+  nodeName.value = undefined; // 设置为undefined，这样RightPropertyPanel会显示为空
+  entityDescription.value = "";
+  entityProperties.value = entityTemplate && entityTemplate.properties ? entityTemplate.properties.map((prop) => ({
+    name: prop.propertyKey,
+    type: prop.propertyType.toLowerCase(),
+    value: "",
+  })) : [];
+  backgroundColor.value = entityTemplate ? entityTemplate.nodeTemplateColor : backgroundColor.value;
+  addToComponentLibrary.value = entityTemplate ? entityTemplate.isLibraryFlag === "1" : false;
+  currentNodeTemplateId.value = entityTemplate ? entityTemplate.nodeTemplateId : 0;
+  currentRelationTemplateId.value = 0;
+  
+  // 重置连接状态
+  isConnecting.value = false;
+  sourceNodeId.value = null;
+  targetNodeId.value = null;
+  originalSourceNodeId.value = null;
+  originalTargetNodeId.value = null;
+  
+  showPropertyPanel.value = true;
+  console.log("拖拽创建节点完成，打开属性面板:", newNode);
 };
 
 // 处理节点鼠标按下
@@ -2000,8 +2048,6 @@ const fetchGraphBySequenceId = async (sequenceId) => {
       
       // 处理节点数据
       if (nodes && Array.isArray(nodes)) {
-        // 为节点分配位置（均匀分散分布）
-        const nodeCount = nodes.length;
         // 使用实际容器大小来计算节点位置
         const getContainerSize = () => {
           // 尝试获取内容区域的实际大小
@@ -2023,33 +2069,33 @@ const fetchGraphBySequenceId = async (sequenceId) => {
         const containerSize = getContainerSize();
         const containerWidth = containerSize.width;
         const containerHeight = containerSize.height;
-        const padding = 80;
-        
-        nodes.forEach((node, index) => {
-          // 计算节点位置
-          let x, y;
-          if (nodeCount === 1) {
-            // 只有一个节点时放在画布上方中心
-            x = containerWidth / 2.3;
-            y = containerHeight / 3; // 更靠上的位置
-          } else {
-            // 多个节点时使用圆形布局，中心更靠上
-            const centerX = containerWidth / 2.3;
-            const centerY = containerHeight / 3; // 更靠上的中心位置
-            const radius = Math.min((containerWidth - 2 * padding) / 2, (containerHeight - 2 * padding * 1.5) / 2);
-            const angle = (2 * Math.PI * index) / nodeCount;
-            
-            x = centerX + radius * Math.cos(angle);
-            y = centerY + radius * Math.sin(angle);
-          }
-          
+
+        // 预处理关系数据，确保格式正确
+        const processedRelations = relations
+          ? relations.map((relation, index) => ({
+              ...relation,
+              id: relation.relationHash || `edge-${index}`,
+              source: relation.startNodeHash,
+              target: relation.endNodeHash,
+            })).filter(relation => relation.source && relation.target)
+          : [];
+
+        // 使用基于节点关系的智能布局算法计算节点位置
+        const nodePositions = calculateNodePositions(nodes, processedRelations, containerWidth, containerHeight);
+
+        nodes.forEach((node) => {
+          const nodeId = node.nodeHash;
+          const pos = nodePositions.get(nodeId);
+          const x = pos ? pos.x : containerWidth / 2;
+          const y = pos ? pos.y : containerHeight / 2;
+
           // 转换节点属性格式
           const nodeProperties = node.properties ? node.properties.map((prop) => ({
             name: prop.propertyKey,
             type: "string",
             value: prop.propertyValue
           })) : [];
-          
+
           // 创建新节点
           const newNode = {
             id: node.nodeHash,
@@ -2067,8 +2113,9 @@ const fetchGraphBySequenceId = async (sequenceId) => {
             nodeName: node.nodeName,
             nodeDescription: node.nodeDescription || "",
             nodeColor: node.nodeColor || "#43D7B5",
+            nodeId: node.nodeId,
           };
-          
+
           // 添加到节点列表
           graphNodes.value.push(newNode);
         });
@@ -2126,6 +2173,7 @@ const fetchGraphBySequenceId = async (sequenceId) => {
             startNodeHash: relation.startNodeHash,
             endNodeHash: relation.endNodeHash,
             relationTemplateName: relation.relationTemplateName || "",
+            relationId: relation.relationId,
           };
           
           // 添加到关系列表
@@ -2178,8 +2226,6 @@ const fetchGraphByArticleId = async (articleId) => {
       
       // 处理节点数据
       if (nodes && Array.isArray(nodes)) {
-        // 为节点分配位置（均匀分散分布）
-        const nodeCount = nodes.length;
         // 使用实际容器大小来计算节点位置
         const getContainerSize = () => {
           // 尝试获取内容区域的实际大小
@@ -2201,33 +2247,33 @@ const fetchGraphByArticleId = async (articleId) => {
         const containerSize = getContainerSize();
         const containerWidth = containerSize.width;
         const containerHeight = containerSize.height;
-        const padding = 80;
-        
-        nodes.forEach((node, index) => {
-          // 计算节点位置
-          let x, y;
-          if (nodeCount === 1) {
-            // 只有一个节点时放在画布上方中心
-            x = containerWidth / 2.3;
-            y = containerHeight / 3; // 更靠上的位置
-          } else {
-            // 多个节点时使用圆形布局，中心更靠上
-            const centerX = containerWidth / 2.3;
-            const centerY = containerHeight / 3; // 更靠上的中心位置
-            const radius = Math.min((containerWidth - 2 * padding) / 2, (containerHeight - 2 * padding * 1.5) / 2);
-            const angle = (2 * Math.PI * index) / nodeCount;
-            
-            x = centerX + radius * Math.cos(angle);
-            y = centerY + radius * Math.sin(angle);
-          }
-          
+
+        // 预处理关系数据，确保格式正确
+        const processedRelations = relations
+          ? relations.map((relation, index) => ({
+              ...relation,
+              id: relation.relationHash || `edge-${index}`,
+              source: relation.startNodeHash,
+              target: relation.endNodeHash,
+            })).filter(relation => relation.source && relation.target)
+          : [];
+
+        // 使用基于节点关系的智能布局算法计算节点位置
+        const nodePositions = calculateNodePositions(nodes, processedRelations, containerWidth, containerHeight);
+
+        nodes.forEach((node) => {
+          const nodeId = node.nodeHash;
+          const pos = nodePositions.get(nodeId);
+          const x = pos ? pos.x : containerWidth / 2;
+          const y = pos ? pos.y : containerHeight / 2;
+
           // 转换节点属性格式
           const nodeProperties = node.properties ? node.properties.map((prop) => ({
             name: prop.propertyKey,
             type: "string",
             value: prop.propertyValue
           })) : [];
-          
+
           // 创建新节点
           const newNode = {
             id: node.nodeHash,
@@ -2245,8 +2291,454 @@ const fetchGraphByArticleId = async (articleId) => {
             nodeName: node.nodeName,
             nodeDescription: node.nodeDescription || "",
             nodeColor: node.nodeColor || "#43D7B5",
+            nodeId: node.nodeId,
+          };
+
+          // 添加到节点列表
+          graphNodes.value.push(newNode);
+        });
+      }
+
+      // 处理关系数据
+      if (relations && Array.isArray(relations)) {
+        // 创建节点ID集合，用于快速查找
+        const nodeIds = new Set(graphNodes.value.map(node => node.id));
+        
+        relations.forEach((relation) => {
+          // 检查起始节点和结束节点是否存在
+          if (!nodeIds.has(relation.startNodeHash) || !nodeIds.has(relation.endNodeHash)) {
+            // 如果节点不存在，跳过该关系
+            return;
+          }
+          
+          // 转换关系属性格式
+          const edgeProperties = relation.properties ? relation.properties.map((prop) => ({
+            name: prop.propertyKey,
+            type: "string",
+            value: prop.propertyValue
+          })) : [];
+          
+          // 获取关系类型对应的显示文本
+          let relationTypeText = "定向";
+          switch (relation.relationType) {
+            case "1":
+              relationTypeText = "定向";
+              break;
+            case "2":
+              relationTypeText = "双向";
+              break;
+            case "3":
+              relationTypeText = "循环";
+              break;
+          }
+          
+          // 创建新关系
+          const newEdge = {
+            id: relation.relationHash,
+            source: relation.startNodeHash,
+            target: relation.endNodeHash,
+            data: {
+              name: relation.relationName,
+              type: relationTypeText,
+              properties: edgeProperties,
+            },
+            relationTemplateId: relation.relationTemplateId || 0,
+            isLibraryFlag: "0",
+            relationHash: relation.relationHash,
+            relationName: relation.relationName,
+            relationType: relation.relationType,
+            relationTrigger: relation.relationTrigger || "",
+            startNodeHash: relation.startNodeHash,
+            endNodeHash: relation.endNodeHash,
+            relationTemplateName: relation.relationTemplateName || "",
+            relationId: relation.relationId,
           };
           
+          // 添加到关系列表
+          graphEdges.value.push(newEdge);
+        });
+      }
+      
+      // 设置有数据标志
+      hasData.value = (graphNodes.value.length > 0 || graphEdges.value.length > 0);
+    }
+    
+    // 使用从props传递的实体和关系类型数据
+    entityTypes.value = props.entityTypes || [];
+    relationshipTypes.value = props.relationshipTypes || [];
+    relationTemplates.value = props.relationTemplates || [];
+    
+    console.log("从props获取的实体类型数量:", entityTypes.value.length);
+    console.log("从props获取的关系类型数量:", relationshipTypes.value.length);
+    console.log("从props获取的关系模板数量:", relationTemplates.value.length);
+  } catch (error) {
+    console.error("获取数据失败:", error);
+    ElMessage.error("获取数据失败，请稍后重试");
+    
+    // 发生错误时，保持数据为空，显示空状态
+    entityTypes.value = [];
+    relationshipTypes.value = [];
+    relationTemplates.value = [];
+  } finally {
+    // 结束加载状态
+    isLoadingTemplates.value = false;
+  }
+};
+
+// ============ 节点布局算法相关 ============
+// 根据边数计算节点大小
+const calculateNodeSizeByEdges = (nodeId, nodes, edges) => {
+  const edgeCount = edges.filter(edge => edge.source === nodeId || edge.target === nodeId).length;
+  const nodeCount = nodes.length;
+  const minSize = nodeCount > 30 ? 30 : 60;
+  const maxSize = 120;
+  return Math.min(maxSize, minSize + edgeCount * 10);
+};
+
+// 限制节点位置在画布边界内
+const clampNodePosition = (x, y, nodeHalfWidth, nodeHalfHeight, width, height) => {
+  // 如果没有提供宽度和高度，使用默认值
+  let canvasWidth = width || 800;
+  let canvasHeight = height || 600;
+
+  // 确保画布宽度有效
+  canvasWidth = Math.max(100, canvasWidth);
+
+  try {
+    // 计算边界
+    const minX = nodeHalfWidth + 10;
+    const maxX = canvasWidth - nodeHalfWidth - 10;
+    const minY = nodeHalfHeight + 60;
+    const maxY = canvasHeight - nodeHalfHeight - 60;
+
+    // 确保边界有效
+    const validMinX = Math.min(minX, maxX);
+    const validMaxX = Math.max(minX, maxX);
+    const validMinY = Math.min(minY, maxY);
+    const validMaxY = Math.max(minY, maxY);
+
+    // 计算中心位置
+    const centerX = canvasWidth / 2;
+    const centerY = canvasHeight / 2;
+
+    // 处理节点过大的情况
+    if (nodeHalfWidth * 2 > canvasWidth) {
+      return { x: centerX, y: Math.max(validMinY, Math.min(validMaxY, y)) };
+    }
+    if (nodeHalfHeight * 2 > canvasHeight) {
+      return { x: Math.max(validMinX, Math.min(validMaxX, x)), y: centerY };
+    }
+
+    // 限制节点位置在边界内
+    return {
+      x: Math.max(validMinX, Math.min(validMaxX, x)),
+      y: Math.max(validMinY, Math.min(validMaxY, y)),
+    };
+  } catch (error) {
+    console.warn("边界计算失败:", error);
+    return { x, y };
+  }
+};
+
+// 检测节点是否重叠
+const checkNodeOverlap = (x1, y1, size1, x2, y2, size2, margin = 60) => {
+  const distance = Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2));
+  const minDistance = (size1 + size2) / 2 + margin;
+  return distance < minDistance;
+};
+
+// 基于节点关系的布局算法
+const calculateNodePositions = (nodes, edges, width, height) => {
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const positions = new Map();
+  const nodeSizes = new Map();
+  const nodeEdgeCounts = new Map();
+  const nodeConnections = new Map(); // 存储每个节点的连接关系
+
+  // 计算每个节点的大小、边数和连接关系
+  nodes.forEach(node => {
+    const nodeId = node.id ? (typeof node.id === "string" ? node.id : node.id.toString()) :
+                  (node.nodeHash ? (typeof node.nodeHash === "string" ? node.nodeHash : node.nodeHash.toString()) :
+                  `node-${nodes.indexOf(node)}`);
+    const edgeCount = edges.filter(edge => edge.source === nodeId || edge.target === nodeId).length;
+    const size = calculateNodeSizeByEdges(nodeId, nodes, edges);
+    nodeSizes.set(nodeId, size);
+    nodeEdgeCounts.set(nodeId, edgeCount);
+
+    // 存储连接的节点
+    const connected = new Set();
+    edges.forEach(edge => {
+      if (edge.source === nodeId) {
+        connected.add(edge.target);
+      } else if (edge.target === nodeId) {
+        connected.add(edge.source);
+      }
+    });
+    nodeConnections.set(nodeId, connected);
+  });
+
+  // 识别中心节点组
+  const centerNodes = [];
+  const processedNodes = new Set();
+
+  // 找出所有中心节点（边数大于等于1的节点，确保至少有一个中心节点）
+  nodes.forEach(node => {
+    const nodeId = node.id ? (typeof node.id === "string" ? node.id : node.id.toString()) :
+                  (node.nodeHash ? (typeof node.nodeHash === "string" ? node.nodeHash : node.nodeHash.toString()) :
+                  `node-${nodes.indexOf(node)}`);
+    const edgeCount = nodeEdgeCounts.get(nodeId) || 0;
+    if (edgeCount >= 1 && !processedNodes.has(nodeId)) {
+      centerNodes.push(nodeId);
+      processedNodes.add(nodeId);
+    }
+  });
+
+  // 如果没有中心节点（所有节点都没有边），至少选择一个节点作为中心
+  if (centerNodes.length === 0 && nodes.length > 0) {
+    const firstNode = nodes[0];
+    const nodeId = firstNode.id ? (typeof firstNode.id === "string" ? firstNode.id : firstNode.id.toString()) :
+                  (firstNode.nodeHash ? (typeof firstNode.nodeHash === "string" ? firstNode.nodeHash : firstNode.nodeHash.toString()) :
+                  `node-0`);
+    centerNodes.push(nodeId);
+    processedNodes.add(nodeId);
+  }
+
+  // 按边数排序中心节点
+  centerNodes.sort((a, b) => nodeEdgeCounts.get(b) - nodeEdgeCounts.get(a));
+
+  // 布局中心节点
+  centerNodes.forEach((centerNodeId, index) => {
+    const size = nodeSizes.get(centerNodeId) || 60;
+    let nodeX, nodeY;
+
+    if (index === 0) {
+      // 第一个中心节点放在画布中心
+      nodeX = centerX;
+      nodeY = centerY;
+    } else {
+      // 其他中心节点放在画布的不同区域
+      const sectorAngle = (2 * Math.PI * index) / Math.min(6, centerNodes.length);
+      const distance = 250; // 增加中心节点之间的距离
+      nodeX = centerX + distance * Math.cos(sectorAngle);
+      nodeY = centerY + distance * Math.sin(sectorAngle);
+
+      // 调整位置以避免与已有节点重叠
+      let attempts = 0;
+      const maxAttempts = 15;
+      while (attempts < maxAttempts) {
+        let overlap = false;
+        for (const [existingNodeId, pos] of positions) {
+          const existingSize = nodeSizes.get(existingNodeId) || 60;
+          if (checkNodeOverlap(nodeX, nodeY, size, pos.x, pos.y, existingSize)) {
+            overlap = true;
+            // 增加距离
+            const currentDistance = Math.sqrt(Math.pow(nodeX - centerX, 2) + Math.pow(nodeY - centerY, 2));
+            const newDistance = currentDistance + 60;
+            nodeX = centerX + newDistance * Math.cos(sectorAngle);
+            nodeY = centerY + newDistance * Math.sin(sectorAngle);
+            break;
+          }
+        }
+        if (!overlap) break;
+        attempts++;
+      }
+    }
+
+    // 限制在画布边界内
+    const clampedCenter = clampNodePosition(nodeX, nodeY, size / 2, size / 2, width, height);
+    positions.set(centerNodeId, clampedCenter);
+  });
+
+  // 布局与中心节点直接连接的节点
+  centerNodes.forEach(centerNodeId => {
+    const centerPos = positions.get(centerNodeId);
+    if (!centerPos) return;
+
+    const centerSize = nodeSizes.get(centerNodeId) || 60;
+    const connected = nodeConnections.get(centerNodeId) || new Set();
+    const connectedNodeList = Array.from(connected).filter(id => !positions.has(id));
+
+    if (connectedNodeList.length > 0) {
+      const radius = 250; // 增加环绕半径，确保节点不会在连线上
+
+      connectedNodeList.forEach((connectedNodeId, connIndex) => {
+        if (!positions.has(connectedNodeId)) {
+          const angle = (2 * Math.PI * connIndex) / connectedNodeList.length;
+          const connectedSize = nodeSizes.get(connectedNodeId) || 60;
+          const distance = radius + (centerSize + connectedSize) / 2;
+
+          let x = centerPos.x + distance * Math.cos(angle);
+          let y = centerPos.y + distance * Math.sin(angle);
+
+          // 调整位置以避免重叠
+          let overlap = false;
+          let attempts = 0;
+          const maxAttempts = 15;
+
+          while (attempts < maxAttempts) {
+            overlap = false;
+            for (const [existingNodeId, pos] of positions) {
+              const existingSize = nodeSizes.get(existingNodeId) || 60;
+              if (checkNodeOverlap(x, y, connectedSize, pos.x, pos.y, existingSize)) {
+                overlap = true;
+                // 增加距离
+                const currentDistance = Math.sqrt(Math.pow(x - centerPos.x, 2) + Math.pow(y - centerPos.y, 2));
+                const newDistance = currentDistance + 60; // 增加每次调整的距离
+                x = centerPos.x + newDistance * Math.cos(angle);
+                y = centerPos.y + newDistance * Math.sin(angle);
+                break;
+              }
+            }
+            if (!overlap) break;
+            attempts++;
+          }
+
+          // 限制在画布边界内
+          const clamped = clampNodePosition(x, y, connectedSize / 2, connectedSize / 2, width, height);
+          positions.set(connectedNodeId, clamped);
+        }
+      });
+    }
+  });
+
+  // 布局剩余的节点（没有连接或只连接一个节点的节点）
+  const remainingNodes = nodes.filter(node => {
+    const nodeId = node.id ? (typeof node.id === "string" ? node.id : node.id.toString()) :
+                  (node.nodeHash ? (typeof node.nodeHash === "string" ? node.nodeHash : node.nodeHash.toString()) :
+                  `node-${nodes.indexOf(node)}`);
+    return !positions.has(nodeId);
+  });
+
+  remainingNodes.forEach(node => {
+    const nodeId = node.id ? (typeof node.id === "string" ? node.id : node.id.toString()) :
+                  (node.nodeHash ? (typeof node.nodeHash === "string" ? node.nodeHash : node.nodeHash.toString()) :
+                  `node-${nodes.indexOf(node)}`);
+    const size = nodeSizes.get(nodeId) || 60;
+
+    // 在画布中心区域生成位置，避免出现在边缘
+    let attempts = 0;
+    let x, y;
+    let overlap;
+
+    do {
+      overlap = false;
+      // 在画布中心区域生成位置，限制在画布中心的60%范围内
+      const centerAreaWidth = width * 0.6;
+      const centerAreaHeight = height * 0.6;
+      const centerOffsetX = (width - centerAreaWidth) / 2;
+      const centerOffsetY = (height - centerAreaHeight) / 2;
+
+      x = centerOffsetX + Math.random() * (centerAreaWidth - size - 80) + size / 2 + 40;
+      y = centerOffsetY + Math.random() * (centerAreaHeight - size - 80) + size / 2 + 40;
+
+      // 检查是否与已有节点重叠
+      for (const [existingNodeId, pos] of positions) {
+        const existingSize = nodeSizes.get(existingNodeId) || 60;
+        if (checkNodeOverlap(x, y, size, pos.x, pos.y, existingSize)) {
+          overlap = true;
+          break;
+        }
+      }
+      attempts++;
+    } while (overlap && attempts < 30);
+
+    // 限制在画布边界内
+    const clamped = clampNodePosition(x, y, size / 2, size / 2, width, height);
+    positions.set(nodeId, clamped);
+  });
+
+  return positions;
+};
+// ============ 节点布局算法相关结束 ============
+
+// 根据topicId获取图谱数据
+const fetchGraphByTopicId = async (topicId) => {
+  try {
+    // 开始加载状态
+    isLoadingTemplates.value = true;
+    
+    // 只执行图谱数据查询，实体和关系类型数据从props获取
+    const graphResponse = await projectService.getGraphByTopicId(topicId);
+    
+    // 处理图谱数据
+    if (graphResponse && graphResponse.resultCode === "0000" && graphResponse.data) {
+      const { nodes, relations } = graphResponse.data;
+      
+      // 清空现有数据
+      graphNodes.value = [];
+      graphEdges.value = [];
+      
+      // 处理节点数据
+      if (nodes && Array.isArray(nodes)) {
+        // 使用实际容器大小来计算节点位置
+        const getContainerSize = () => {
+          // 尝试获取内容区域的实际大小
+          if (contentRef.value && contentRef.value.$el) {
+            const contentArea = contentRef.value.$el.querySelector('.content-area');
+            if (contentArea) {
+              return {
+                width: contentArea.clientWidth,
+                height: contentArea.clientHeight
+              };
+            }
+          }
+          // 默认值作为 fallback
+          return {
+            width: 800,
+            height: 600
+          };
+        };
+        const containerSize = getContainerSize();
+        const containerWidth = containerSize.width;
+        const containerHeight = containerSize.height;
+
+        // 预处理关系数据，确保格式正确
+        const processedRelations = relations
+          ? relations.map((relation, index) => ({
+              ...relation,
+              id: relation.relationHash || `edge-${index}`,
+              source: relation.startNodeHash,
+              target: relation.endNodeHash,
+            })).filter(relation => relation.source && relation.target)
+          : [];
+
+        // 使用基于节点关系的智能布局算法计算节点位置
+        const nodePositions = calculateNodePositions(nodes, processedRelations, containerWidth, containerHeight);
+
+        nodes.forEach((node) => {
+          const nodeId = node.nodeHash;
+          const pos = nodePositions.get(nodeId);
+          const x = pos ? pos.x : containerWidth / 2;
+          const y = pos ? pos.y : containerHeight / 2;
+
+          // 转换节点属性格式
+          const nodeProperties = node.properties ? node.properties.map((prop) => ({
+            name: prop.propertyKey,
+            type: "string",
+            value: prop.propertyValue
+          })) : [];
+
+          // 创建新节点
+          const newNode = {
+            id: node.nodeHash,
+            type: "entity",
+            name: node.nodeName,
+            description: node.nodeDescription || "",
+            x: x,
+            y: y,
+            properties: nodeProperties,
+            backgroundColor: node.nodeColor || "#43D7B5",
+            nodeTemplateId: node.nodeTemplateId || 0,
+            isLibraryFlag: "0",
+            nodeHash: node.nodeHash,
+            nodeTemplateName: node.nodeTemplateName,
+            nodeName: node.nodeName,
+            nodeDescription: node.nodeDescription || "",
+            nodeColor: node.nodeColor || "#43D7B5",
+            nodeId: node.nodeId,
+          };
+
           // 添加到节点列表
           graphNodes.value.push(newNode);
         });
@@ -2304,6 +2796,7 @@ const fetchGraphByArticleId = async (articleId) => {
             startNodeHash: relation.startNodeHash,
             endNodeHash: relation.endNodeHash,
             relationTemplateName: relation.relationTemplateName || "",
+            relationId: relation.relationId,
           };
           
           // 添加到关系列表
@@ -2788,6 +3281,18 @@ const hasClickedRelationshipTemplate = ref(false);
 // 组件库列表
 const components = ref([]);
 
+// 计算当前选中的节点
+const selectedNode = computed(() => {
+  if (!selectedNodeId.value) return null;
+  return graphNodes.value.find(node => node.id === selectedNodeId.value) || null;
+});
+
+// 计算当前选中的边
+const selectedEdge = computed(() => {
+  if (!selectedEdgeId.value) return null;
+  return graphEdges.value.find(edge => edge.id === selectedEdgeId.value) || null;
+});
+
 // 处理节点点击
 const handleNodeClick = (node) => {
   console.log("Home组件接收节点点击:", node);
@@ -2981,184 +3486,195 @@ const getCanvasSize = () => {
 // 处理节点数据更新
 const handleUpdateNodes = (templateData) => {
   console.log("更新节点数据:", templateData);
-  if (templateData && templateData.nodeTemplates) {
-    // 清空现有节点数据
-    graphNodes.value = [];
-    // // 只有当操作不来自组件库时，才清空和更新实体类型数组
-    // if (!isFromComponentLibrary.value) {
+  
+  // 判断是模板数据还是查询数据
+  const isTemplateData = templateData && templateData.nodeTemplates;
+  const isQueryData = templateData && templateData.nodes;
+  
+  if (!isTemplateData && !isQueryData) {
+    console.log("数据格式不匹配，不更新");
+    return;
+  }
+  
+  // 只清空画布上的节点和关系数据，不清空模板数据
+  graphNodes.value = [];
+  graphEdges.value = [];
+  
+  // 只有当是模板数据时，才更新模板相关数据
+  if (isTemplateData) {
     entityTypes.value = [];
-    // }
+    relationshipTypes.value = [];
+  }
 
-    // 为节点模板分配位置（均匀分散分布）
-    const nodeCount = templateData.nodeTemplates.length;
-    const nodePositions = [];
-
-    // 计算画布大小，使用实际容器大小
-    const getContainerSize = () => {
-      // 尝试获取内容区域的实际大小
-      if (contentRef.value && contentRef.value.$el) {
-        const contentArea = contentRef.value.$el.querySelector('.content-area');
-        if (contentArea) {
-          return {
-            width: contentArea.clientWidth,
-            height: contentArea.clientHeight
-          };
-        }
+  // 计算画布大小，使用实际容器大小
+  const getContainerSize = () => {
+    // 尝试获取内容区域的实际大小
+    if (contentRef.value && contentRef.value.$el) {
+      const contentArea = contentRef.value.$el.querySelector('.content-area');
+      if (contentArea) {
+        return {
+          width: contentArea.clientWidth,
+          height: contentArea.clientHeight
+        };
       }
-      // 默认值作为 fallback
-      return {
-        width: 800,
-        height: 600
-      };
+    }
+    // 默认值作为 fallback
+    return {
+      width: 800,
+      height: 600
     };
-    const containerSize = getContainerSize();
-    const containerWidth = containerSize.width;
-    const containerHeight = containerSize.height;
-    const padding = 80;
+  };
+  const containerSize = getContainerSize();
+  const containerWidth = containerSize.width;
+  const containerHeight = containerSize.height;
 
-    templateData.nodeTemplates.forEach((template, index) => {
-      // 只有当操作不来自组件库时，才添加节点模板名称到实体类型数组
-      // if (!isFromComponentLibrary.value && template.nodeTemplateName) {
-      //   entityTypes.value.push(template.nodeTemplateName);
-      // }
-      if (template.nodeTemplateName) {
-        entityTypes.value.push(template.nodeTemplateName);
+  // 处理节点数据
+  const nodesToProcess = isQueryData ? templateData.nodes : templateData.nodeTemplates;
+
+  // 预处理关系数据，确保格式正确
+  const relationsToProcess = isQueryData ? templateData.relations : templateData.relationTemplates;
+  const processedRelations = relationsToProcess
+    ? relationsToProcess.map((relation, index) => ({
+        ...relation,
+        id: relation.relationHash || relation.relationTemplateId || `edge-${index}`,
+        source: relation.startNodeHash,
+        target: relation.endNodeHash,
+      })).filter(relation => relation.source && relation.target)
+    : [];
+
+  // 使用基于节点关系的智能布局算法计算节点位置
+  const nodePositions = calculateNodePositions(nodesToProcess, processedRelations, containerWidth, containerHeight);
+
+  nodesToProcess.forEach((nodeOrTemplate) => {
+    const nodeId = nodeOrTemplate.nodeHash;
+    const pos = nodePositions.get(nodeId);
+    const x = pos ? pos.x : containerWidth / 2;
+    const y = pos ? pos.y : containerHeight / 2;
+
+    // 转换节点属性格式
+    const nodeProperties = nodeOrTemplate.properties
+      ? nodeOrTemplate.properties.map((prop) => ({
+          name: prop.propertyKey,
+          type: "string",
+          value: prop.propertyValue || "",
+        }))
+      : [];
+
+    // 构建新节点
+    const newNode = {
+      id: nodeOrTemplate.nodeHash,
+      type: "entity",
+      name: isQueryData ? nodeOrTemplate.nodeName : nodeOrTemplate.nodeTemplateName,
+      description: isQueryData ? (nodeOrTemplate.nodeDescription || "") : (nodeOrTemplate.nodeTemplateDescription || ""),
+      x: x,
+      y: y,
+      properties: nodeProperties,
+      backgroundColor: nodeOrTemplate.nodeColor || "#43D7B5",
+      nodeTemplateId: nodeOrTemplate.nodeTemplateId || 0,
+      isLibraryFlag: "0",
+      nodeHash: nodeOrTemplate.nodeHash,
+      nodeTemplateName: isQueryData ? nodeOrTemplate.nodeTemplateName : nodeOrTemplate.nodeTemplateName,
+      nodeName: isQueryData ? nodeOrTemplate.nodeName : nodeOrTemplate.nodeTemplateName,
+      nodeDescription: isQueryData ? (nodeOrTemplate.nodeDescription || "") : (nodeOrTemplate.nodeTemplateDescription || ""),
+      nodeColor: nodeOrTemplate.nodeColor || "#43D7B5",
+      nodeId: nodeOrTemplate.nodeId,
+    };
+
+    if (isTemplateData && nodeOrTemplate.nodeTemplateName) {
+      entityTypes.value.push(nodeOrTemplate.nodeTemplateName);
+    }
+
+    graphNodes.value.push(newNode);
+  });
+
+  // 处理关系数据
+  if (relationsToProcess && Array.isArray(relationsToProcess)) {
+    // 如果是模板数据，保存关系模板
+    if (isTemplateData) {
+      relationTemplates.value = templateData.relationTemplates;
+    }
+
+    // 创建节点ID集合，用于快速检查节点是否存在
+    const nodeIds = new Set(graphNodes.value.map((node) => node.id));
+
+    relationsToProcess.forEach((relationOrTemplate) => {
+      // 获取起始节点和结束节点的哈希值
+      const startHash = isQueryData ? relationOrTemplate.startNodeHash : relationOrTemplate.startNodeHash;
+      const endHash = isQueryData ? relationOrTemplate.endNodeHash : relationOrTemplate.endNodeHash;
+      
+      // 检查节点是否存在
+      if (!nodeIds.has(startHash) || !nodeIds.has(endHash)) {
+        console.warn(
+          `跳过关系，因为节点 ${startHash} 或 ${endHash} 不存在`,
+        );
+        return;
       }
-      // 计算节点位置：如果只有一个节点，放在中心；否则使用圆形布局均匀分布
-      let x, y;
-      if (nodeCount === 1) {
-        // 只有一个节点时放在画布上方中心
-        x = containerWidth / 2.3;
-        y = containerHeight / 3; // 更靠上的位置
-      } else {
-        // 多个节点时使用混合布局，结合椭圆分布和随机分布，避免中间空白
-        const centerX = containerWidth / 2.3;
-        const centerY = containerHeight / 3; // 更靠上的中心位置
-        // 计算椭圆的长轴和短轴，考虑边距
-        const semiMajorAxis = (containerWidth - 2 * padding * 2) / 2; // 长轴半径
-        const semiMinorAxis = (containerHeight - 2 * padding * 1.5) / 2; // 短轴半径
-        // 计算每个节点的角度
-        const angle = (2 * Math.PI * index) / nodeCount;
 
-        // 为了避免中间空白，使用随机半径，让节点分布在不同距离的位置
-        const randomRadiusFactor = 0.5 + Math.random() * 0.5; // 0.5 到 1 之间的随机因子
-        // 计算节点位置（椭圆公式，使用随机半径）
-        x = centerX + semiMajorAxis * randomRadiusFactor * Math.cos(angle);
-        y = centerY + semiMinorAxis * randomRadiusFactor * Math.sin(angle);
-
-        // 添加一些随机偏移，增加分散度
-        const randomOffset = 60; // 偏移量
-        x += (Math.random() - 0.5) * randomOffset;
-        y += (Math.random() - 0.5) * randomOffset;
-      }
-
-      // 保存位置
-      nodePositions.push({ x, y });
-
-      // 将节点模板转换为画布节点
-      const nodeProperties = template.properties
-        ? template.properties.map((prop) => ({
+      // 转换关系属性格式
+      const edgeProperties = relationOrTemplate.properties
+        ? relationOrTemplate.properties.map((prop) => ({
             name: prop.propertyKey,
-            type: prop.propertyType.toLowerCase(),
-            value: "",
+            type: "string",
+            value: prop.propertyValue || "",
           }))
         : [];
 
-      const newNode = {
-        id: template.nodeTemplateId,
-        type: "entity",
-        name: template.nodeTemplateName,
-        description: template.nodeTemplateDescription || "",
-        x: x,
-        y: y,
-        properties: nodeProperties,
-        backgroundColor: template.nodeTemplateColor || "#43D7B5",
-        nodeTemplateId: template.nodeTemplateId,
-        isLibraryFlag: template.isLibraryFlag || "0",
-        nodeTemplateName: template.nodeTemplateName,
-        nodeName: template.nodeTemplateName,
-        nodeDescription: template.nodeTemplateDescription || "",
-        nodeColor: template.nodeTemplateColor || "#43D7B5",
+      // 获取关系类型对应的显示文本
+      let relationTypeText = "定向";
+      const relationTypeValue = isQueryData ? relationOrTemplate.relationType : relationOrTemplate.relationTemplateType;
+      switch (relationTypeValue) {
+        case "1":
+          relationTypeText = "定向";
+          break;
+        case "2":
+          relationTypeText = "双向";
+          break;
+        case "3":
+          relationTypeText = "循环";
+          break;
+      }
+
+      const newEdge = {
+        id: isQueryData ? relationOrTemplate.relationHash : (relationOrTemplate.relationId || relationOrTemplate.relationHash),
+        source: startHash,
+        target: endHash,
+        data: {
+          name: isQueryData ? relationOrTemplate.relationName : (relationOrTemplate.relationName || relationOrTemplate.relationTemplateName),
+          type: relationTypeText,
+          properties: edgeProperties,
+        },
+        relationTemplateId: relationOrTemplate.relationTemplateId || 0,
+        isLibraryFlag: "0",
+        relationHash: isQueryData ? relationOrTemplate.relationHash : relationOrTemplate.relationHash,
+        relationId: relationOrTemplate.relationId,
+        relationName: isQueryData ? relationOrTemplate.relationName : (relationOrTemplate.relationName || relationOrTemplate.relationTemplateName),
+        relationTemplateName: isQueryData ? relationOrTemplate.relationTemplateName : relationOrTemplate.relationTemplateName,
+        relationTrigger: relationOrTemplate.relationTrigger || "",
+        relationType: relationTypeValue,
+        startNodeHash: startHash,
+        endNodeHash: endHash,
       };
 
-      graphNodes.value.push(newNode);
+      if (isTemplateData && relationOrTemplate.relationTemplateName) {
+        relationshipTypes.value.push(relationOrTemplate.relationTemplateName);
+      }
+
+      graphEdges.value.push(newEdge);
     });
-
-    // 更新关系模板
-    if (templateData.relationTemplates) {
-      // 保存关系模板数据
-      relationTemplates.value = templateData.relationTemplates;
-      // 清空现有关系数据
-      graphEdges.value = [];
-      // 清空关系类型数组，准备重新构建
-      relationshipTypes.value = [];
-
-      // 创建节点 ID 集合，用于快速检查节点是否存在
-      const nodeIds = new Set(graphNodes.value.map((node) => node.id));
-
-      templateData.relationTemplates.forEach((template) => {
-        // 添加关系模板名称到关系类型数组
-        if (template.relationTemplateName) {
-          relationshipTypes.value.push(template.relationTemplateName);
-        }
-
-        // 检查 startNodeTemplateId 和 endNodeTemplateId 是否存在于节点模板中
-        if (
-          !nodeIds.has(template.startNodeTemplateId) ||
-          !nodeIds.has(template.endNodeTemplateId)
-        ) {
-          console.warn(
-            `跳过关系模板 ${template.relationTemplateId}，因为节点 ${template.startNodeTemplateId} 或 ${template.endNodeTemplateId} 不存在`,
-          );
-          return;
-        }
-
-        // 将关系模板转换为画布连线
-        const edgeProperties = template.properties
-          ? template.properties.map((prop) => ({
-              name: prop.propertyKey,
-              type: prop.propertyType.toLowerCase(),
-              value: "",
-            }))
-          : [];
-
-        // 获取关系类型对应的显示文本
-        let relationTypeText = "定向";
-        switch (template.relationTemplateType) {
-          case "1":
-            relationTypeText = "定向";
-            break;
-          case "2":
-            relationTypeText = "双向";
-            break;
-          case "3":
-            relationTypeText = "循环";
-            break;
-        }
-
-        const newEdge = {
-          id: template.relationTemplateId.toString(),
-          source: template.startNodeTemplateId.toString(),
-          target: template.endNodeTemplateId.toString(),
-          data: {
-            name: template.relationTemplateName,
-            type: relationTypeText,
-            properties: edgeProperties,
-          },
-          relationTemplateId: template.relationTemplateId,
-          isLibraryFlag: template.isLibraryFlag || "0",
-        };
-
-        graphEdges.value.push(newEdge);
-      });
-    }
-    if (contentRef.value.graphContainerRef) {
+  }
+  
+  // 设置有数据标志
+  hasData.value = (graphNodes.value.length > 0 || graphEdges.value.length > 0);
+  
+  // 刷新画布
+  if (contentRef.value && contentRef.value.graphContainerRef) {
+    if (contentRef.value.graphContainerRef.forceRedraw) {
       contentRef.value.graphContainerRef.forceRedraw();
-      // 或
+    } else if (contentRef.value.graphContainerRef.refreshCanvas) {
       contentRef.value.graphContainerRef.refreshCanvas();
     }
-    console.log("节点数据更新完成22222:", graphNodes.value, graphEdges.value);
   }
+  console.log("节点数据更新完成:", graphNodes.value, graphEdges.value);
 };
 
 // 处理更新组件库数据
@@ -3206,7 +3722,16 @@ const handleQuit = () => {
   pendingGraphEdges.value = [];
   hasData.value = false;
 };
-
+const handleSaveGraph2 = () => {
+  dialogVisible.value = false;
+  emit("update:visible", false);
+  emit("quit");
+  graphNodes.value = [];
+  graphEdges.value = [];
+  pendingGraphNodes.value = [];
+  pendingGraphEdges.value = [];
+  hasData.value = false;
+};
 // 处理提交
 const handleSubmit = () => {
   console.log("GraphEditor组件接收到提交事件");
@@ -3269,19 +3794,43 @@ const textStore = useTextStore();
 // 处理保存图谱
 // 生成基于节点信息的哈希值
 const generateNodeHash = (node) => {
-  const nodeName = node.nodeName || node.name || "";
-  const nodeTemplateName = node.nodeTemplateName || node.name || "";
-  const properties = (node.properties || []).sort((a, b) => a.name.localeCompare(b.name)).map(prop => `${prop.name}:${prop.value || ""}`).join(",");
-  const hashString = `${nodeName}|${nodeTemplateName}|${properties}`;
-  
-  // 简单的哈希算法
-  let hash = 0;
-  for (let i = 0; i < hashString.length; i++) {
-    const char = hashString.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
+  // 节点的哈希值由后端生成，前端不生成
+  return ""
+};
+
+// 根据节点ID获取节点哈希值
+const getNodeHash = (nodeId) => {
+  console.log('getNodeHash called with nodeId:', nodeId);
+  if (!nodeId) return '';
+  const node = graphNodes.value.find(n => String(n.id) === String(nodeId));
+  console.log('Found node:', node);
+  if (!node) {
+    console.error('Node not found for id:', nodeId);
+    console.error('All nodes:', graphNodes.value);
   }
-  return Math.abs(hash).toString();
+  const hash = node ? node.nodeHash : '';
+  console.log('Returning hash:', hash);
+  return hash;
+};
+
+// 根据节点ID查找节点的nodeHash
+const findNodeHashBySource = (sourceId) => {
+  console.log('findNodeHashBySource called with sourceId:', sourceId);
+  if (!sourceId) return '';
+  
+  // 首先尝试通过id查找节点
+  let node = graphNodes.value.find(n => String(n.id) === String(sourceId));
+  console.log('Found node by id:', node);
+  
+  // 如果通过id找不到，尝试通过nodeHash查找
+  if (!node) {
+    node = graphNodes.value.find(n => String(n.nodeHash) === String(sourceId));
+    console.log('Found node by nodeHash:', node);
+  }
+  
+  const hash = node ? node.nodeHash : '';
+  console.log('Returning hash:', hash);
+  return hash;
 };
 
 const handleSaveGraph = async () => {
@@ -3318,7 +3867,7 @@ const handleSaveGraph = async () => {
           )
         : [],
       graphNode: graphNodes.value.map((node) => ({
-        nodeHash: generateNodeHash(node),
+        nodeHash: node.nodeHash || "",
         nodeTemplateName: node.nodeTemplateName || node.name,
         nodeName: node.nodeName || node.name,
         nodeDescription: node.nodeDescription || node.description || "",
@@ -3338,8 +3887,8 @@ const handleSaveGraph = async () => {
           relationName: edge.relationName || edge.data?.name || "",
           relationType: edge.relationType || "1",
           relationTrigger: edge.relationTrigger || "",
-          startNodeHash: startNode ? generateNodeHash(startNode) : edge.startNodeHash || edge.source,
-          endNodeHash: endNode ? generateNodeHash(endNode) : edge.endNodeHash || edge.target,
+          startNodeHash:edge.startNodeHash,
+          endNodeHash:edge.endNodeHash,
           properties: (edge.data?.properties || []).map((prop) => ({
             propertyKey: prop.name,
             propertyValue: prop.value || "",
@@ -3478,6 +4027,7 @@ const handleDeleteItem = () => {
           :graph-nodes="graphNodes"
           :graph-edges="graphEdges"
           :entity-properties="entityProperties"
+          :currentGraphCreateMethod="props.currentGraphCreateMethod"
           @add-entity="handleAddEntity"
           :is-connecting="isConnecting"
           :has-clicked-relationship-template="hasClickedRelationshipTemplate"
@@ -3492,7 +4042,7 @@ const handleDeleteItem = () => {
           @edge-click="handleEdgeClick"
           @quit="handleQuit"
           @clear="handleClear"
-          @save-graph="handleSaveGraph"
+          @save-graph="handleSaveGraph2"
         />
         <div class="content-wrapper" v-show="content != '' && showReferenceText">
           参考文本:
@@ -3502,6 +4052,7 @@ const handleDeleteItem = () => {
 
       <!-- 右侧属性面板 -->
       <RightPropertyPanel
+        ref="rightPropertyPanelRef"
         :show-property-panel="showPropertyPanel"
         :current-operation="currentOperation"
         :entity-name="entityName"
@@ -3515,7 +4066,7 @@ const handleDeleteItem = () => {
         :end-node-name="endNodeName"
         :add-to-component-library="addToComponentLibrary"
         :background-color="backgroundColor"
-        :topic-id="currentTopicId"
+        :topic-id="props.topicId"
         :start-node-template-id="sourceNodeId"
         :end-node-template-id="targetNodeId"
         :node-template-id="currentNodeTemplateId"
@@ -3524,9 +4075,23 @@ const handleDeleteItem = () => {
         :is-from-canvas="isFromCanvas"
         :is-creating-relationship="isCreatingRelationship"
         :reference-content="content"
+        :show-reference-text="props.showReferenceText"
         :operation-source="operationSource"
         :relation-trigger="relationTrigger"
-        :article-id="articleId"
+        :article-id="props.articleId"
+        :sequence-id="props.sequenceId"
+        :currentGraphCreateMethod="props.currentGraphCreateMethod"
+        :node-id="selectedNode ? selectedNode.nodeId : ''"
+        :node-hash="selectedNode ? selectedNode.nodeHash : ''"
+        :relation-id="selectedEdge ? selectedEdge.relationId : ''"
+        :relation-hash="selectedEdge ? selectedEdge.relationHash : ''"
+        :start-node-hash="selectedEdge ? (selectedEdge.startNodeHash || findNodeHashBySource(selectedEdge.source)) : (originalSourceNodeId ? findNodeHashBySource(originalSourceNodeId) : '')"
+        :end-node-hash="selectedEdge ? (selectedEdge.endNodeHash || findNodeHashBySource(selectedEdge.target)) : (originalTargetNodeId ? findNodeHashBySource(originalTargetNodeId) : '')"
+        :start-node-id="selectedEdge ? selectedEdge.startNodeId : ''"
+        :end-node-id="selectedEdge ? selectedEdge.endNodeId : ''"
+        :selected-sequence="props.selectedSequence"
+        :marks="props.marks"
+        :currentLevel="props.level"
         @close="handleClosePropertyPanel"
         @save="handleSavePropertyPanel"
         @add-property="handleAddProperty"

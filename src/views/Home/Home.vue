@@ -316,6 +316,8 @@ onMounted(async () => {
   subSubDomains.value = savedState.subSubDomains;
   hasData.value = savedState.hasData;
   graphs.value = savedState.graphs;
+  // 暂时保存从localStorage加载的节点和连线数据
+  // 注意：这些数据可能是旧的，后续会根据服务器数据更新
   graphNodes.value = savedState.graphNodes || [];
   graphEdges.value = savedState.graphEdges || [];
 
@@ -373,6 +375,9 @@ onMounted(async () => {
                 // 清空现有数据
                 entityTypes.value = [];
                 relationshipTypes.value = [];
+                // 清空现有节点和连线数据，准备根据最新模板数据重新创建
+                graphNodes.value = [];
+                graphEdges.value = [];
 
                 // 处理节点模板
                 if (
@@ -382,13 +387,77 @@ onMounted(async () => {
                   // 保存节点模板数据
                   nodeTemplates.value = response.data.nodeTemplates;
                   
-                  response.data.nodeTemplates.forEach((template) => {
+                  // 为节点模板分配位置（均匀分散分布）
+                  const nodeCount = response.data.nodeTemplates.length;
+                  const nodePositions = [];
+
+                  // 计算画布大小，使用容器大小
+                  const { width: canvasWidth, height: canvasHeight } = getCanvasSize();
+                  const padding = 20; // 减小边距，让节点更靠近画布边缘
+
+                  // 生成均匀分散的位置
+                  response.data.nodeTemplates.forEach((template, index) => {
                     if (
                       template.nodeTemplateName &&
                       !entityTypes.value.includes(template.nodeTemplateName)
                     ) {
                       entityTypes.value.push(template.nodeTemplateName);
                     }
+
+                    // 计算节点位置：如果只有一个节点，放在中心；否则使用圆形布局均匀分布
+                    let x, y;
+                    if (nodeCount === 1) {
+                      // 只有一个节点时放在画布中心
+                      x = canvasWidth / 2;
+                      y = canvasHeight / 2;
+                    } else {
+                      // 多个节点时使用混合布局，结合椭圆分布和随机分布，避免中间空白
+                      const centerX = canvasWidth / 2;
+                      const centerY = canvasHeight / 2;
+                      // 计算椭圆的长轴和短轴，考虑边距
+                      const semiMajorAxis = (canvasWidth - 2 * padding * 4) / 2; // 长轴半径
+                      const semiMinorAxis = (canvasHeight - 2 * padding) / 2; // 短轴半径
+                      // 计算每个节点的角度
+                      const angle = (2 * Math.PI * index) / nodeCount;
+
+                      // 为了避免中间空白，使用随机半径，让节点分布在不同距离的位置
+                      const randomRadiusFactor = 0.5 + Math.random() * 0.5; // 0.5 到 1 之间的随机因子
+                      // 计算节点位置（椭圆公式，使用随机半径）
+                      x = centerX + semiMajorAxis * randomRadiusFactor * Math.cos(angle);
+                      y = centerY + semiMinorAxis * randomRadiusFactor * Math.sin(angle);
+
+                      // 添加一些随机偏移，增加分散度
+                      const randomOffset = 60; // 偏移量
+                      x += (Math.random() - 0.5) * randomOffset;
+                      y += (Math.random() - 0.5) * randomOffset;
+                    }
+
+                    // 保存位置
+                    nodePositions.push({ x, y });
+
+                    // 将节点模板转换为画布节点
+                    const nodeProperties = template.properties
+                      ? template.properties.map((prop) => ({
+                          name: prop.propertyKey,
+                          type: prop.propertyType.toLowerCase(),
+                          value: "",
+                        }))
+                      : [];
+
+                    const newNode = {
+                      id: template.nodeTemplateId,
+                      type: "entity",
+                      name: template.nodeTemplateName,
+                      description: template.nodeTemplateDescription || "",
+                      x: x,
+                      y: y,
+                      properties: nodeProperties,
+                      backgroundColor: template.nodeTemplateColor || "#43D7B5",
+                      nodeTemplateId: template.nodeTemplateId,
+                      isLibraryFlag: template.isLibraryFlag || "0",
+                    };
+
+                    graphNodes.value.push(newNode);
                   });
                 }
 
@@ -399,17 +468,65 @@ onMounted(async () => {
                 ) {
                   // 保存关系模板数据
                   relationTemplates.value = response.data.relationTemplates;
+                  // 创建节点 ID 集合，用于快速检查节点是否存在
+                  const nodeIds = new Set(graphNodes.value.map((node) => node.id));
+
                   response.data.relationTemplates.forEach((template) => {
                     if (
                       template.relationTemplateName &&
-                      !relationshipTypes.value.includes(
-                        template.relationTemplateName,
-                      )
+                      !relationshipTypes.value.includes(template.relationTemplateName)
                     ) {
-                      relationshipTypes.value.push(
-                        template.relationTemplateName,
-                      );
+                      relationshipTypes.value.push(template.relationTemplateName);
                     }
+
+                    // 检查 startNodeTemplateId 和 endNodeTemplateId 是否存在于节点模板中
+                    if (
+                      !nodeIds.has(template.startNodeTemplateId) ||
+                      !nodeIds.has(template.endNodeTemplateId)
+                    ) {
+                      console.warn(
+                        `跳过关系模板 ${template.relationTemplateId}，因为节点 ${template.startNodeTemplateId} 或 ${template.endNodeTemplateId} 不存在`,
+                      );
+                      return;
+                    }
+
+                    // 将关系模板转换为画布连线
+                    const edgeProperties = template.properties
+                      ? template.properties.map((prop) => ({
+                          name: prop.propertyKey,
+                          type: prop.propertyType.toLowerCase(),
+                          value: "",
+                        }))
+                      : [];
+
+                    // 获取关系类型对应的显示文本
+                    let relationTypeText = "定向";
+                    switch (template.relationTemplateType) {
+                      case "1":
+                        relationTypeText = "定向";
+                        break;
+                      case "2":
+                        relationTypeText = "双向";
+                        break;
+                      case "3":
+                        relationTypeText = "循环";
+                        break;
+                    }
+
+                    const newEdge = {
+                      id: template.relationTemplateId.toString(),
+                      source: template.startNodeTemplateId.toString(),
+                      target: template.endNodeTemplateId.toString(),
+                      data: {
+                        name: template.relationTemplateName,
+                        type: relationTypeText,
+                        properties: edgeProperties,
+                      },
+                      relationTemplateId: template.relationTemplateId,
+                      isLibraryFlag: template.isLibraryFlag || "0",
+                    };
+
+                    graphEdges.value.push(newEdge);
                   });
                 }
               }
@@ -1801,18 +1918,12 @@ const handleEntityTypeClick = (entityType) => {
 };
 
 // 处理关系类型点击
-const handleRelationshipTypeClick = (relationshipTypeName) => {
-  console.log("点击关系类型:", relationshipTypeName);
+const handleRelationshipTypeClick = (template) => {
+  console.log("点击关系类型:", template);
   console.log("Before setting showPropertyPanel:", showPropertyPanel.value);
 
   // 设置操作来源为非组件库
   isFromComponentLibrary.value = false;
-
-  // 设置 Sidebar 组件中的选中状态
-  if (sidebarRef.value && sidebarRef.value.setSelectedRelationshipType) {
-    sidebarRef.value.setSelectedRelationshipType(relationshipTypeName);
-    console.log("设置关系类型选中状态:", relationshipTypeName);
-  }
 
   // 清除之前的选中状态
   if (contentRef.value) {
@@ -1820,77 +1931,162 @@ const handleRelationshipTypeClick = (relationshipTypeName) => {
     contentRef.value.clearEdgesSelection();
   }
 
-  // 高亮画布中所有对应类型的连线
-  if (contentRef.value && contentRef.value.graphContainerRef) {
-    const graph = contentRef.value.graphContainerRef.graph;
-    if (graph) {
-      const edges = graph.getData().edges || [];
-      edges.forEach((edge) => {
-        if (edge.data && edge.data.name === relationshipTypeName) {
-          graph.setElementState(edge.id, ["selected"]);
-        }
-      });
+  // 兼容图谱构建模式（传入字符串）和本体设计模式（传入对象）
+  if (typeof template === 'string') {
+    // 图谱构建模式：传入的是关系模板名称
+    // 设置 Sidebar 组件中的选中状态
+    if (sidebarRef.value && sidebarRef.value.setSelectedRelationshipType) {
+      sidebarRef.value.setSelectedRelationshipType(template);
+      console.log("设置关系类型选中状态:", template);
     }
-  }
 
-  // 打开属性面板，设置当前操作类型为关系
-  currentOperation.value = "relationship";
-  relationshipName.value = relationshipTypeName;
-
-  // 从relationTemplates中查找对应的关系模板信息
-  const relationshipTemplate = relationTemplates.value.find(
-    (template) => template.relationTemplateName === relationshipTypeName,
-  );
-  if (relationshipTemplate) {
-    // 设置关系类型
-    let relationTypeText = "定向";
-    switch (relationshipTemplate.relationTemplateType) {
-      case "1":
-        relationTypeText = "定向";
-        break;
-      case "2":
-        relationTypeText = "双向";
-        break;
-      case "3":
-        relationTypeText = "循环";
-        break;
+    // 高亮画布中所有对应类型的连线（使用名称来匹配）
+    if (contentRef.value && contentRef.value.graphContainerRef) {
+      const graph = contentRef.value.graphContainerRef.graph;
+      if (graph) {
+        const edges = graph.getData().edges || [];
+        edges.forEach((edge) => {
+          if (edge.data && edge.data.name === template) {
+            graph.setElementState(edge.id, ["selected"]);
+          }
+        });
+      }
     }
-    relationshipType.value = relationTypeText;
-    // 设置关系属性
-    entityProperties.value = relationshipTemplate.properties
-      ? relationshipTemplate.properties.map((prop) => ({
-          name: prop.propertyKey,
-          type: prop.propertyType.toLowerCase(),
-          value: "",
-        }))
-      : [];
-    // 设置是否加入组件库
-    addToComponentLibrary.value = relationshipTemplate.isLibraryFlag === "1";
-    // 设置当前关系的模板ID
-    currentRelationTemplateId.value =
-      relationshipTemplate.relationTemplateId || 0;
-    currentNodeTemplateId.value = 0;
 
-    // 设置开始和结束节点名称
-    const startNode = graphNodes.value.find(
-      (node) =>
-        String(node.id) === String(relationshipTemplate.startNodeTemplateId),
+    // 打开属性面板，设置当前操作类型为关系
+    currentOperation.value = "relationship";
+    relationshipName.value = template;
+
+    // 从relationTemplates中查找对应的关系模板信息
+    const relationshipTemplate = relationTemplates.value.find(
+      (t) => t.relationTemplateName === template,
     );
-    const endNode = graphNodes.value.find(
-      (node) =>
-        String(node.id) === String(relationshipTemplate.endNodeTemplateId),
-    );
-    startNodeName.value = startNode ? startNode.name : "";
-    endNodeName.value = endNode ? endNode.name : "";
+    if (relationshipTemplate) {
+      // 设置关系类型
+      let relationTypeText = "定向";
+      switch (relationshipTemplate.relationTemplateType) {
+        case "1":
+          relationTypeText = "定向";
+          break;
+        case "2":
+          relationTypeText = "双向";
+          break;
+        case "3":
+          relationTypeText = "循环";
+          break;
+      }
+      relationshipType.value = relationTypeText;
+      // 设置关系属性
+      entityProperties.value = relationshipTemplate.properties
+        ? relationshipTemplate.properties.map((prop) => ({
+            name: prop.propertyKey,
+            type: prop.propertyType.toLowerCase(),
+            value: "",
+          }))
+        : [];
+      // 设置是否加入组件库
+      addToComponentLibrary.value = relationshipTemplate.isLibraryFlag === "1";
+      // 设置当前关系的模板ID
+      currentRelationTemplateId.value = relationshipTemplate.relationTemplateId || 0;
+      currentNodeTemplateId.value = 0;
+
+      // 设置开始和结束节点名称
+      const startNode = graphNodes.value.find(
+        (node) =>
+          String(node.id) === String(relationshipTemplate.startNodeTemplateId),
+      );
+      const endNode = graphNodes.value.find(
+        (node) =>
+          String(node.id) === String(relationshipTemplate.endNodeTemplateId),
+      );
+      startNodeName.value = startNode ? startNode.name : "";
+      endNodeName.value = endNode ? endNode.name : "";
+    } else {
+      // 如果找不到模板信息，重置默认值
+      relationshipType.value = "定向";
+      entityProperties.value = [];
+      addToComponentLibrary.value = false;
+      currentRelationTemplateId.value = 0;
+      currentNodeTemplateId.value = 0;
+      startNodeName.value = "";
+      endNodeName.value = "";
+    }
   } else {
-    // 如果找不到模板信息，重置默认值
-    relationshipType.value = "定向";
-    entityProperties.value = [];
-    addToComponentLibrary.value = false;
-    currentRelationTemplateId.value = 0;
-    currentNodeTemplateId.value = 0;
-    startNodeName.value = "";
-    endNodeName.value = "";
+    // 本体设计模式：传入的是关系模板对象，使用ID进行高亮
+    // 设置 Sidebar 组件中的选中状态
+    if (sidebarRef.value && sidebarRef.value.setSelectedRelationshipType) {
+      sidebarRef.value.setSelectedRelationshipType(template.relationTemplateId);
+      console.log("设置关系类型选中状态:", template.relationTemplateId);
+    }
+
+    // 高亮画布中所有对应类型的连线（使用 relationTemplateId 来匹配）
+    if (contentRef.value && contentRef.value.graphContainerRef) {
+      const graph = contentRef.value.graphContainerRef.graph;
+      if (graph) {
+        const edges = graph.getData().edges || [];
+        edges.forEach((edge) => {
+          if (edge.relationTemplateId === template.relationTemplateId) {
+            graph.setElementState(edge.id, ["selected"]);
+          }
+        });
+      }
+    }
+
+    // 打开属性面板，设置当前操作类型为关系
+    currentOperation.value = "relationship";
+    relationshipName.value = template.relationTemplateName;
+
+    // 使用传入的 template 信息
+    if (template) {
+      // 设置关系类型
+      let relationTypeText = "定向";
+      switch (template.relationTemplateType) {
+        case "1":
+          relationTypeText = "定向";
+          break;
+        case "2":
+          relationTypeText = "双向";
+          break;
+        case "3":
+          relationTypeText = "循环";
+          break;
+      }
+      relationshipType.value = relationTypeText;
+      // 设置关系属性
+      entityProperties.value = template.properties
+        ? template.properties.map((prop) => ({
+            name: prop.propertyKey,
+            type: prop.propertyType.toLowerCase(),
+            value: "",
+          }))
+        : [];
+      // 设置是否加入组件库
+      addToComponentLibrary.value = template.isLibraryFlag === "1";
+      // 设置当前关系的模板ID
+      currentRelationTemplateId.value = template.relationTemplateId || 0;
+      currentNodeTemplateId.value = 0;
+
+      // 设置开始和结束节点名称
+      const startNode = graphNodes.value.find(
+        (node) =>
+          String(node.id) === String(template.startNodeTemplateId),
+      );
+      const endNode = graphNodes.value.find(
+        (node) =>
+          String(node.id) === String(template.endNodeTemplateId),
+      );
+      startNodeName.value = startNode ? startNode.name : "";
+      endNodeName.value = endNode ? endNode.name : "";
+    } else {
+      // 如果找不到模板信息，重置默认值
+      relationshipType.value = "定向";
+      entityProperties.value = [];
+      addToComponentLibrary.value = false;
+      currentRelationTemplateId.value = 0;
+      currentNodeTemplateId.value = 0;
+      startNodeName.value = "";
+      endNodeName.value = "";
+    }
   }
 
   showPropertyPanel.value = true;
@@ -2154,15 +2350,15 @@ const handleEdgeClick = (edge) => {
       // 清除之前的选中状态
       sidebarRef.value.handleClearSelections();
 
-      const relationshipName = edge.data?.name || "";
-      // 检查是否在关系模板列表中
-      if (relationshipTypes.value.includes(relationshipName)) {
-        // 设置关系模板选中状态
+      // 使用 relationTemplateId 来匹配关系模板
+      if (edge.relationTemplateId) {
+        // 设置关系模板选中状态（使用ID）
         if (sidebarRef.value.setSelectedRelationshipType) {
-          sidebarRef.value.setSelectedRelationshipType(relationshipName);
+          sidebarRef.value.setSelectedRelationshipType(edge.relationTemplateId);
         }
       } else {
-        // 检查是否在组件库中
+        // 如果没有 relationTemplateId，检查是否在组件库中
+        const relationshipName = edge.data?.name || "";
         const component = components.value.find(
           (comp) => comp.relationTemplateName === relationshipName,
         );

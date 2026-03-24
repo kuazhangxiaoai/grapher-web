@@ -274,7 +274,7 @@
     :close-on-click-modal="false"
     :close-on-press-escape="false"
   >
-    <el-form :model="newProperty" label-width="80px">
+    <el-form :model="newProperty" label-width="100px">
       <el-form-item label="属性名称" required>
         <el-input
           v-model="newProperty.name"

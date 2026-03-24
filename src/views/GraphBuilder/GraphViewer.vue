@@ -1,6 +1,8 @@
 <template>
   <div class="graph-container">
     <div ref="graphRef" class="graph-canvas"></div>
+    <!-- 编辑按钮 - 仅在专题下(level=2)显示 -->
+    <div v-if="props.level === 2" class="edit-btn" title="编辑图谱" @click="handleEditClick"></div>
     <div class="zoom-controls">
       <button class="zoom-btn" @click="zoomIn">
         <img src="@/assets/images/放大.png" alt="放大" class="zoom-icon" />
@@ -71,6 +73,8 @@ const props = defineProps({
     default: false,
   },
 });
+
+const emit = defineEmits(["edit-graph"]);
 
 const graphRef = ref(null);
 const graph = shallowRef(null);
@@ -656,6 +660,53 @@ const applySavedNodePositions = () => {
   return true;
 };
 
+// 计算节点对之间的边信息（同时考虑同向和反向的边）
+const getEdgeInfo = (edgeId, source, target, edges) => {
+  const sourceStr = String(source);
+  const targetStr = String(target);
+
+  // 获取同方向的边（处理 source/target 或 startNodeHash/endNodeHash）
+  const sameDirectionEdges = edges.filter(edge => {
+    const edgeSource = edge.source || edge.startNodeHash;
+    const edgeTarget = edge.target || edge.endNodeHash;
+    return String(edgeSource) === sourceStr && String(edgeTarget) === targetStr;
+  });
+
+  // 获取反向的边
+  const reverseDirectionEdges = edges.filter(edge => {
+    const edgeSource = edge.source || edge.startNodeHash;
+    const edgeTarget = edge.target || edge.endNodeHash;
+    return String(edgeSource) === targetStr && String(edgeTarget) === sourceStr;
+  });
+
+  // 查找当前边的索引，考虑多种可能的 ID 字段
+  const currentIndex = sameDirectionEdges.findIndex(edge => {
+    const edgeIdStr = String(edgeId);
+    const edgeIdValue = edge.id || edge.relationHash || edge.edgeId;
+    return String(edgeIdValue) === edgeIdStr;
+  });
+
+  return {
+    count: sameDirectionEdges.length,
+    index: currentIndex !== -1 ? currentIndex : 0,
+    hasReverse: reverseDirectionEdges.length > 0,
+    reverseCount: reverseDirectionEdges.length
+  };
+};
+
+// 计算节点对之间的总边数（包括双向）
+const getTotalEdgeCountBetweenNodes = (source, target, edges) => {
+  const sourceStr = String(source);
+  const targetStr = String(target);
+
+  return edges.filter(edge => {
+    const edgeSource = edge.source || edge.startNodeHash;
+    const edgeTarget = edge.target || edge.endNodeHash;
+    return (String(edgeSource) === sourceStr && String(edgeTarget) === targetStr) ||
+           (String(edgeSource) === targetStr && String(edgeTarget) === sourceStr);
+  }).length;
+};
+
 // 初始化G6图谱
 const initGraph = () => {
   if (!graphRef.value) {
@@ -844,28 +895,33 @@ const initGraph = () => {
           if (String(source) === String(target)) {
             return "cubic";
           }
-          const hasReverseEdge = edges.value.some(
-            (edge) => edge.source === target && edge.target === source,
-          );
-          // 对于连接不同中心节点的边，使用二次贝塞尔曲线
-          const sourceNode = nodes.value.find(n => String(n.id) === String(source));
-          const targetNode = nodes.value.find(n => String(n.id) === String(target));
-          if (sourceNode && targetNode) {
-            const sourceEdgeCount = edges.value.filter(e => e.source === source || e.target === source).length;
-            const targetEdgeCount = edges.value.filter(e => e.source === target || e.target === target).length;
-            if (sourceEdgeCount >= 3 && targetEdgeCount >= 3) {
-              return "line";
-            }
-          }
-          return hasReverseEdge ? "quadratic" : "line";
+          // 使用 graph 当前数据中的边来计算边数，确保与 G6 内部数据一致
+          const currentEdges = graph.value?.getData()?.edges || [];
+          // 过滤掉当前边本身，计算其他边的数量
+          const otherEdges = currentEdges.filter(edge => {
+            const edgeIdValue = edge.id || edge.relationHash || edge.edgeId;
+            return String(edgeIdValue) !== String(data.id);
+          });
+          const totalEdgeCount = getTotalEdgeCountBetweenNodes(source, target, otherEdges);
+          const sameDirectionEdgeInfo = getEdgeInfo(data.id, source, target, otherEdges);
+          // 只有当存在其他边时，才使用曲线
+          return (totalEdgeCount >= 1 || sameDirectionEdgeInfo.count >= 1) ? "quadratic" : "line";
         },
         style: (data) => {
           const relationshipType = data.data?.type || "定向";
           const source = data.source;
           const target = data.target;
-          const hasReverseEdge = edges.value.some(
-            (edge) => edge.source === target && edge.target === source,
-          );
+          // 使用 graph 当前数据中的边来计算边数，确保与 G6 内部数据一致
+          const currentEdges = graph.value?.getData()?.edges || [];
+          // 使用未过滤的边数组计算索引（用于确定当前边在同向边中的位置）
+          const sameDirectionEdgeInfoWithCurrent = getEdgeInfo(data.id, source, target, currentEdges);
+          // 过滤掉当前边本身，计算其他边的数量
+          const otherEdges = currentEdges.filter(edge => {
+            const edgeIdValue = edge.id || edge.relationHash || edge.edgeId;
+            return String(edgeIdValue) !== String(data.id);
+          });
+          const sameDirectionEdgeInfo = getEdgeInfo(data.id, source, target, otherEdges);
+          const totalEdgeCount = getTotalEdgeCountBetweenNodes(source, target, otherEdges);
 
           const style = {
             lineWidth: 2,
@@ -876,7 +932,6 @@ const initGraph = () => {
             labelBackground: false,
             labelFontSize: 14,
             cursor: "pointer",
-            // 优化连线平滑度
             lineCap: "round",
             lineJoin: "round",
           };
@@ -892,97 +947,62 @@ const initGraph = () => {
             style.endArrow = true;
           }
 
-          // 计算节点位置
-          const sourceNode = nodes.value.find(n => String(n.id) === String(source));
-          const targetNode = nodes.value.find(n => String(n.id) === String(target));
-          
-          if (sourceNode && targetNode) {
-            const sourceX = sourceNode.x || 0;
-            const sourceY = sourceNode.y || 0;
-            const targetX = targetNode.x || 0;
-            const targetY = targetNode.y || 0;
-            const centerX = (sourceX + targetX) / 2;
-            const centerY = (sourceY + targetY) / 2;
-            
-            // 检查是否是连接不同中心节点的边
-            const sourceEdgeCount = edges.value.filter(e => e.source === source || e.target === source).length;
-            const targetEdgeCount = edges.value.filter(e => e.source === target || e.target === target).length;
-            
-            if (hasReverseEdge) {
-              // 双向边的处理，使用更大的偏移避免交叉
-              if (source < target) {
-                style.controlPoints = [{ x: centerX, y: centerY - 120 }];
-              } else {
-                style.controlPoints = [{ x: centerX, y: centerY + 120 }];
-              }
-            } else if (sourceEdgeCount >= 3 && targetEdgeCount >= 3) {
-              // 连接两个中心节点的边，使用更明显的曲线
-              const dx = targetX - sourceX;
-              const dy = targetY - sourceY;
-              const distance = Math.sqrt(dx * dx + dy * dy);
-              const offset = Math.min(150, distance / 2);
-              
-              // 计算垂直于连线的方向
-              const normalX = -dy / distance;
-              const normalY = dx / distance;
-              
-              style.controlPoints = [{
-                x: centerX + normalX * offset,
-                y: centerY + normalY * offset
-              }];
-            } else if (sourceEdgeCount >= 3 || targetEdgeCount >= 3) {
-              // 连接中心节点和普通节点的边，使用更平滑的曲线
-              const isSourceCenter = sourceEdgeCount >= 3;
-              const centerNode = isSourceCenter ? sourceNode : targetNode;
-              const otherNode = isSourceCenter ? targetNode : sourceNode;
-              
-              const centerPosX = centerNode.x || 0;
-              const centerPosY = centerNode.y || 0;
-              const otherPosX = otherNode.x || 0;
-              const otherPosY = otherNode.y || 0;
-              
-              // 计算从中心节点到其他节点的向量
-              const cx = otherPosX - centerPosX;
-              const cy = otherPosY - centerPosY;
-              const dist = Math.sqrt(cx * cx + cy * cy);
-              
-              // 使用两个控制点创建更平滑的曲线
-              const controlDist1 = dist / 3;
-              const controlDist2 = dist * 2 / 3;
-              const controlX1 = centerPosX + (cx / dist) * controlDist1;
-              const controlY1 = centerPosY + (cy / dist) * controlDist1;
-              const controlX2 = centerPosX + (cx / dist) * controlDist2;
-              const controlY2 = centerPosY + (cy / dist) * controlDist2;
-              
-              style.controlPoints = [
-                { x: controlX1, y: controlY1 },
-                { x: controlX2, y: controlY2 }
-              ];
+          // 从图表的当前数据中获取节点
+          const currentData = graph.value.getData();
+          const currentNodes = currentData.nodes || [];
+          const sourceNode = currentNodes.find(n => String(n.id) === String(source));
+          const targetNode = currentNodes.find(n => String(n.id) === String(target));
+
+          // 判断是否有多条边（包括同向和反向）
+          // 注意：totalEdgeCount 和 sameDirectionEdgeInfo.count 计算的是其他边的数量
+          // 所以当它们 >= 1 时，表示加上当前边后有多条边
+          const hasMultipleEdges = totalEdgeCount >= 1 || sameDirectionEdgeInfo.count >= 1;
+
+          if (sourceNode && targetNode && hasMultipleEdges) {
+            const sourceX = sourceNode.style?.x || 0;
+            const sourceY = sourceNode.style?.y || 0;
+            const targetX = targetNode.style?.x || 0;
+            const targetY = targetNode.style?.y || 0;
+
+            const dx = targetX - sourceX;
+            const dy = targetY - sourceY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            // 计算基础偏移量
+            const baseOffset = 60;
+
+            let curveOffset;
+
+            // 注意：sameDirectionEdgeInfo.count 计算的是其他同向边的数量
+            // 所以当它 >= 1 时，表示加上当前边后同方向有多条边
+            if (sameDirectionEdgeInfo.count >= 1) {
+              // 同方向有多条边，按索引均匀分布
+              // 总边数 = 其他边数 + 当前边(1)
+              const totalSameDirectionEdges = sameDirectionEdgeInfo.count + 1;
+              const totalOffset = baseOffset * (totalSameDirectionEdges - 1);
+              const startOffset = -totalOffset / 2;
+              // 使用包含当前边的索引信息来计算位置
+              curveOffset = startOffset + sameDirectionEdgeInfoWithCurrent.index * baseOffset;
+            } else if (sameDirectionEdgeInfo.hasReverse) {
+              // 只有一条同向边，但有反向边
+              // 同向边向上弯曲，反向边向下弯曲（或相反）
+              curveOffset = baseOffset;
             } else {
-              // 普通边，使用简单的曲线避免交叉
-              const dx = targetX - sourceX;
-              const dy = targetY - sourceY;
-              const distance = Math.sqrt(dx * dx + dy * dy);
-              const offset = Math.min(80, distance / 3);
-              
-              // 计算垂直于连线的方向
-              const normalX = -dy / distance;
-              const normalY = dx / distance;
-              
-              style.controlPoints = [{
-                x: centerX + normalX * offset,
-                y: centerY + normalY * offset
-              }];
+              // 默认情况
+              curveOffset = 0;
             }
+
+            // 对于 quadratic 类型的边，使用 curveOffset 来控制弯曲
+            style.curveOffset = curveOffset;
           }
 
           if (String(source) === String(target)) {
-            const sourceNode = nodes.value.find(
+            const selfNode = nodes.value.find(
               (node) => String(node.id) === String(source),
             );
-            if (sourceNode) {
-              const nodeX = sourceNode.x;
-              const nodeY = sourceNode.y;
+            if (selfNode) {
+              const nodeX = selfNode.x;
+              const nodeY = selfNode.y;
               style.controlPoints = [
                 { x: nodeX + 150, y: nodeY - 300 },
                 { x: nodeX - 150, y: nodeY - 300 },
@@ -1101,7 +1121,7 @@ const fetchGraphData = async () => {
       response = await projectService.getGraphByTopicId(props.topicId);
     } else if (props.level === 1 && props.domainId && props.domainId !== '') {
       console.log('开始获取领域图谱数据，domainId:', props.domainId, 'level:', props.level);
-      response = await projectService.getGraphByFieldId(props.domainId);
+      // response = await projectService.getGraphByFieldId(props.domainId);
     } else if (props.level === 0) {
       console.log('初始状态，不获取图谱数据', {
         level: props.level,
@@ -1686,6 +1706,11 @@ const renderGraph = () => {
   }
 };
 
+// 处理编辑按钮点击
+const handleEditClick = () => {
+  emit("edit-graph");
+};
+
 // 处理放大
 const zoomIn = () => {
   if (!graph.value) return;
@@ -1916,44 +1941,69 @@ defineExpose({
 
 .zoom-controls {
   position: absolute;
-  bottom: 20px;
-  right: 20px;
+  bottom: 25px;
+  right: 28px;
   display: flex;
   align-items: center;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  padding: 4px;
-  z-index: 10;
+  border-radius: 40px;
+  padding: 1px;
+  background: #ffffff;
+  border: 0.5px solid rgba(226, 226, 226, 1);
+  box-shadow: 0px 8px 10px 0px rgba(78, 89, 105, 0.18);
 }
 
 .zoom-btn {
   width: 36px;
   height: 36px;
   border: none;
-  background: white;
-  border-radius: 4px;
+  background: none;
+  font-size: 14px;
+  font-weight: bold;
   cursor: pointer;
+  margin: 0 2px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.zoom-btn:hover {
-  background: #f5f7fa;
+  position: relative;
 }
 
 .zoom-icon {
+  position: relative;
+  z-index: 1;
   width: 18px;
   height: 18px;
 }
 
 .zoom-level {
-  margin: 0 12px;
+  width: 50px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 14px;
-  color: #606266;
+  color: #333;
+  font-weight: bold;
+  margin: 0 2px;
   min-width: 50px;
-  text-align: center;
+}
+
+.edit-btn {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-image: url("@/assets/images/编辑1.png");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  cursor: pointer;
+  z-index: 100;
+  transition: all 0.2s ease;
+}
+
+.edit-btn:hover {
+  background-image: url("@/assets/images/编辑2.png");
 }
 </style>

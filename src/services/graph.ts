@@ -182,4 +182,20 @@ export default {
       }
     );
   },
+   /** 节点保存提交接口 */
+  saveNode(data: Object): Promise<any> {
+    return axios.post(`/sequence/saveNode`, data);
+  },
+   /** 节点删除接口 */
+  deleteNode(data: Object): Promise<any> {
+    return axios.post(`/sequence/deleteNode`, data);
+  },
+   /** 关系保存接口 */
+  saveRelation(data: Object): Promise<any> {
+    return axios.post(`/sequence/saveRelation`, data);
+  },
+   /** 关系删除接口 */
+  deleteRelation(data: Object): Promise<any> {
+    return axios.post(`/sequence/deleteRelation`, data);
+  },
 };

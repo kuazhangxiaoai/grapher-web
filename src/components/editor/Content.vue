@@ -15,6 +15,7 @@
             :edges="props.graphEdges"
             :is-connecting="props.isConnecting"
             :has-clicked-relationship-template="props.hasClickedRelationshipTemplate"
+            :currentGraphCreateMethod="props.currentGraphCreateMethod"
             @add-entity="handleAddEntity"
             @create-relationship="
               (sourceId) => handleCreateRelationship(sourceId)
@@ -44,6 +45,10 @@ import EditorContainer from "./EditorContainer.vue";
 const graphContainerRef = ref(null);
 
 const props = defineProps({
+  currentGraphCreateMethod: {
+    type: String,
+    default: "",
+  },
   currentSubDomain: {
     type: String,
     default: "",
@@ -274,6 +279,7 @@ const handleConfirmCreateGraph = () => {
   /* padding: 20px; */
   overflow: auto;
   background-color: #f5f7fa;
+  height:100%;
 }
 
 .content-area {

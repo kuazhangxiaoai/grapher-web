@@ -504,10 +504,10 @@
                 </el-tooltip>
               </div>
             </div>
-            <!-- <div class="graphMessage">
+            <div class="graphMessage" v-show="currentGraphCreateMethod=='1'||currentGraphCreateMethod=='2'">
               <div>提示：</div>
               <div>可通过拖拽形式创建节点</div>
-            </div> -->
+            </div>
           </div>
         </div>
       </div>
@@ -592,19 +592,19 @@
                     class="relationship-type-item"
                     :class="{
                       'relationship-type-item-selected':
-                        selectedRelationshipType === template.relationTemplateName,
+                        selectedRelationshipType === template.relationTemplateId,
                     }"
                     draggable="true"
                     @dragstart="
                       handleDragStart(
                         $event,
                         'relationship',
-                        template.relationTemplateName,
+                        template,
                       )
                     "
                     @dragend="handleDragEnd"
                     @click="
-                      handleRelationshipTypeClick(template.relationTemplateName)
+                      handleRelationshipTypeClick(template)
                     "
                   >
                     <div class="relationship-info">
@@ -881,6 +881,10 @@ const props = defineProps({
     default: () => [],
   },
   activeGraphItem: {
+    type: String,
+    default: "",
+  },
+  currentGraphCreateMethod: {
     type: String,
     default: "",
   },
@@ -1245,11 +1249,21 @@ const handleEntityTypeClick = (entityType) => {
 };
 
 // 处理关系模板点击
-const handleRelationshipTypeClick = (relationshipType) => {
-  selectedRelationshipType.value = relationshipType;
-  selectedEntityType.value = "";
-  selectedComponent.value = null;
-  emit("relationship-type-click", relationshipType);
+const handleRelationshipTypeClick = (template) => {
+  // 兼容图谱构建模式（传入字符串）和本体设计模式（传入对象）
+  if (typeof template === 'string') {
+    // 图谱构建模式：传入的是关系模板名称
+    selectedRelationshipType.value = template;
+    selectedEntityType.value = "";
+    selectedComponent.value = null;
+    emit("relationship-type-click", template);
+  } else {
+    // 本体设计模式：传入的是关系模板对象，使用ID进行高亮
+    selectedRelationshipType.value = template.relationTemplateId;
+    selectedEntityType.value = "";
+    selectedComponent.value = null;
+    emit("relationship-type-click", template);
+  }
 };
 
 // 处理组件点击
@@ -1307,11 +1321,11 @@ defineExpose({
     selectedComponent.value = null;
     console.log("设置实体模板选中状态:", entityType);
   },
-  setSelectedRelationshipType: (relationshipType) => {
-    selectedRelationshipType.value = relationshipType;
+  setSelectedRelationshipType: (relationshipId) => {
+    selectedRelationshipType.value = relationshipId;
     selectedEntityType.value = "";
     selectedComponent.value = null;
-    console.log("设置关系模板选中状态:", relationshipType);
+    console.log("设置关系模板选中状态:", relationshipId);
   },
   setSelectedComponent: (componentName) => {
     selectedComponent.value = componentName;
@@ -1697,7 +1711,7 @@ defineExpose({
   gap: 12px;
   margin-bottom: 16px;
   overflow-y: auto;
-  max-height: 290px;
+  max-height: 260px;
   padding-right: 8px;
 }
 .empty-data {
@@ -1740,7 +1754,7 @@ defineExpose({
   flex-direction: column;
   gap: 12px;
   overflow-y: auto;
-  max-height: 290px;
+  max-height: 260px;
   padding-right: 8px;
 }
 
