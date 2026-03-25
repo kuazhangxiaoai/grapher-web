@@ -746,7 +746,7 @@ const initGraph = () => {
         const targetStr = target ? (typeof target === "string" ? target : target.toString()) : null;
         return {
           ...edge,
-          id: edge.id || edge.relationHash || `edge-${index}`,
+          id: String(edge.id || edge.relationHash || `edge-${index}`),
           source: sourceStr,
           target: targetStr,
         };
@@ -828,7 +828,7 @@ const initGraph = () => {
         
         return {
           ...edge,
-          id: edge.id || edge.relationHash || `edge-${index}`,
+          id: String(edge.id || edge.relationHash || `edge-${index}`),
           source: sourceStr,
           target: targetStr,
           data: edge.data || {
@@ -1543,13 +1543,13 @@ const renderGraph = () => {
         const targetStr = target ? (typeof target === "string" ? target : target.toString()) : null;
         return {
           ...edge,
-          id: edge.id || edge.relationHash || `edge-${index}`,
+          id: String(edge.id || edge.relationHash || `edge-${index}`),
           source: sourceStr,
           target: targetStr,
         };
       })
       .filter(edge => edge.source && edge.target);
-    
+
     // 计算节点位置
     const calculatedPositions = calculateNodePositions(nodes.value, processedEdges, width, height);
 
@@ -1666,7 +1666,7 @@ const renderGraph = () => {
         
         return {
           ...edge,
-          id: edge.id || edge.relationHash || `edge-${index}`,
+          id: String(edge.id || edge.relationHash || `edge-${index}`),
           source: sourceStr,
           target: targetStr,
           data: edge.data || {
@@ -1768,66 +1768,7 @@ const zoomOut = () => {
   }
 };
 
-// 监听articleId变化
-watch(
-  () => props.articleId,
-  (newArticleId) => {
-    console.log('articleId 变化:', newArticleId);
-    // 清除保存的节点位置，确保新数据使用新布局
-    nodePositions.clear();
-    if (newArticleId && props.level >= 3) {
-      setTimeout(() => {
-        fetchGraphData();
-      }, 500);
-    }
-  },
-  { immediate: true }
-);
-
-// 监听topicId变化
-watch(
-  () => props.topicId,
-  (newTopicId) => {
-    console.log('topicId 变化:', newTopicId);
-    // 清除保存的节点位置，确保新数据使用新布局
-    nodePositions.clear();
-    if (newTopicId && props.level >= 2) {
-      fetchGraphData();
-    }
-  },
-  { immediate: true }
-);
-
-// 监听domainId变化
-watch(
-  () => props.domainId,
-  (newDomainId) => {
-    console.log('domainId 变化:', newDomainId);
-    // 清除保存的节点位置，确保新数据使用新布局
-    nodePositions.clear();
-    if (newDomainId && props.level >= 1) {
-      fetchGraphData();
-    }
-  },
-  { immediate: true }
-);
-
-// 监听level变化
-watch(
-  () => props.level,
-  (newLevel) => {
-    console.log('level 变化:', newLevel);
-    // 清除保存的节点位置，确保新数据使用新布局
-    nodePositions.clear();
-    // 当level变化时，根据新的level和相应的ID调用fetchGraphData
-    setTimeout(() => {
-        fetchGraphData();
-      }, 500);
-  },
-  { immediate: true }
-);
-
-// 监听nodes和edges变化
+// 监听nodes和edges变化，只用于重新渲染，不调用接口
 watch(
   [() => props.nodes, () => props.edges],
   ([newNodes, newEdges]) => {
@@ -1851,59 +1792,20 @@ watch(
     console.log('pdfLoaded 变化:', newPdfLoaded);
     // 清除保存的节点位置，确保新数据使用新布局
     nodePositions.clear();
-    // 无论PDF加载还是卸载，都需要重新调整画布大小和渲染图谱
+    // 无论PDF加载还是卸载，都需要重新调整画布大小并渲染图谱
     setTimeout(() => {
-      // if (!graphInitialized.value) {
-        // initGraph();
-        // graphInitialized.value = true;
-      // } else {
-        handleResize();
-      // }
+      handleResize();
     }, 500);
   }
 );
 
-// 监听props变化，确保当组件切换页面时能够重新渲染图谱
-watch(
-  () => props,
-  () => {
-    console.log('Props变化，重新渲染图谱');
-    nodePositions.clear();
-    // 延迟渲染，确保画布大小已经更新
-    setTimeout(() => {
-      // 先检查画布大小是否有效
-      if (graphRef.value) {
-        const width = graphRef.value.clientWidth;
-        const height = graphRef.value.clientHeight;
-        console.log('Props变化时的画布大小:', width, height);
-        // 如果画布大小有效，渲染图谱
-        if (width > 0 && height > 0) {
-          renderGraph();
-        } else {
-          // 画布大小无效，延迟重试
-          setTimeout(() => {
-            renderGraph();
-          }, 200);
-        }
-      } else {
-        // 画布元素不存在，延迟重试
-        setTimeout(() => {
-          renderGraph();
-        }, 200);
-      }
-    }, 100);
-  },
-  { deep: true }
-);
-
 onMounted(() => {
-  // 检查PDF是否已经加载
-  if (props.pdfLoaded) {
-    // PDF已加载，初始化图谱
-    setTimeout(() => {
-      initGraph();
-    }, 200);
-  }
+  // 初始化图谱
+  setTimeout(() => {
+    initGraph();
+    // 组件挂载时获取一次数据
+    fetchGraphData();
+  }, 200);
 });
 
 onUnmounted(() => {

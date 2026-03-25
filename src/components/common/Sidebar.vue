@@ -351,13 +351,13 @@
                 <span>{{ graph.name }}</span>
               </div>
               <div class="graph-actions">
-                <img
+                <!-- <img
                   src="@/assets/images/编辑.png"
                   alt="arrow"
                   class="arrow-icon"
                   @click.stop="handleEditGraph(graph)"
                   title="编辑"
-                />
+                /> -->
                 <button
                   class="delete-btn"
                   @click.stop="handleDeleteGraph(graph)"
@@ -414,30 +414,33 @@
               <h3>实体模板</h3>
               <div
                 class="entity-types2"
-                :class="{ 'empty-data': entityTypes.length === 0 }"
+                :class="{ 'empty-data': nodeTemplates.length === 0 }"
               >
-                <span class="empty-data-msg" v-if="entityTypes.length === 0"
+                <span class="empty-data-msg" v-if="nodeTemplates.length === 0"
                   >暂无实体模板</span
                 >
-                <div
-                  v-for="(type, index) in entityTypes"
-                  :key="index"
-                  class="entity-type-item"
-                  :class="{
-                    'entity-type-item-selected': selectedEntityType === type,
-                  }"
-                  draggable="true"
-                  @dragstart="
-                    handleDragStart($event, 'entity', {
-                      name: type,
-                      nodeTemplateId: 0,
-                    })
-                  "
-                  @dragend="handleDragEnd"
-                  @click="handleEntityTypeClick(type)"
+                <el-tooltip
+                  v-for="template in nodeTemplates"
+                  :key="template.nodeTemplateId"
+                  :content="template.nodeTemplateName"
+                  placement="right"
+                  effect="dark"
                 >
-                  {{ type }}
-                </div>
+                  <div
+                    class="entity-type-item"
+                    :class="{
+                      'entity-type-item-selected': selectedEntityType === template.nodeTemplateId,
+                    }"
+                    draggable="true"
+                    @dragstart="
+                      handleDragStart($event, 'entity', template)
+                    "
+                    @dragend="handleDragEnd"
+                    @click="handleEntityTypeClick(template)"
+                  >
+                    {{ template.nodeTemplateName }}
+                  </div>
+                </el-tooltip>
               </div>
             </div>
 
@@ -462,19 +465,19 @@
                     :class="{
                       'relationship-type-item-selected':
                         selectedRelationshipType ===
-                        template.relationTemplateName,
+                        template.relationTemplateId,
                     }"
-                    draggable="true"
+                    draggable="false"
                     @dragstart="
                       handleDragStart(
                         $event,
                         'relationship',
-                        template.relationTemplateName,
+                        template,
                       )
                     "
                     @dragend="handleDragEnd"
                     @click="
-                      handleRelationshipTypeClick(template.relationTemplateName)
+                      handleRelationshipTypeClick(template)
                     "
                   >
                     <div class="relationship-info">
@@ -559,7 +562,7 @@
                 :class="{
                   'entity-type-item-selected': selectedEntityType === type,
                 }"
-                draggable="true"
+                draggable="false"
                 @dragstart="
                   handleDragStart($event, 'entity', {
                     name: type,
@@ -594,7 +597,7 @@
                       'relationship-type-item-selected':
                         selectedRelationshipType === template.relationTemplateId,
                     }"
-                    draggable="true"
+                    draggable="false"
                     @dragstart="
                       handleDragStart(
                         $event,
@@ -691,7 +694,7 @@
                     component.relationTemplateName),
                 'component-item-relationship': !component.nodeTemplateId,
               }"
-              draggable="true"
+              draggable="false"
               @dragstart="
                 handleDragStart(
                   $event,
@@ -880,6 +883,10 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  graphNodes: {
+    type: Array,
+    default: () => [],
+  },
   activeGraphItem: {
     type: String,
     default: "",
@@ -893,18 +900,36 @@ const props = defineProps({
 // 计算关系模板的开始和结束节点名称
 const getStartNodeName = (template) => {
   if (!template.startNodeTemplateId) return "";
+  // 优先从 nodeTemplates 中查找
   const nodeTemplate = props.nodeTemplates.find(
     node => String(node.nodeTemplateId) === String(template.startNodeTemplateId)
   );
-  return nodeTemplate ? nodeTemplate.nodeTemplateName : "无";
+  if (nodeTemplate) {
+    return nodeTemplate.nodeTemplateName;
+  }
+  // 如果找不到，从 graphNodes 中查找（用于画布上新增的节点）
+  const graphNode = props.graphNodes.find(
+    node => String(node.id) === String(template.startNodeTemplateId) ||
+            String(node.nodeTemplateId) === String(template.startNodeTemplateId)
+  );
+  return graphNode ? graphNode.name : "无";
 };
 
 const getEndNodeName = (template) => {
   if (!template.endNodeTemplateId) return "";
+  // 优先从 nodeTemplates 中查找
   const nodeTemplate = props.nodeTemplates.find(
     node => String(node.nodeTemplateId) === String(template.endNodeTemplateId)
   );
-  return nodeTemplate ? nodeTemplate.nodeTemplateName : "无";
+  if (nodeTemplate) {
+    return nodeTemplate.nodeTemplateName;
+  }
+  // 如果找不到，从 graphNodes 中查找（用于画布上新增的节点）
+  const graphNode = props.graphNodes.find(
+    node => String(node.id) === String(template.endNodeTemplateId) ||
+            String(node.nodeTemplateId) === String(template.endNodeTemplateId)
+  );
+  return graphNode ? graphNode.name : "无";
 };
 
 // Use components from props directly
@@ -1175,6 +1200,11 @@ const handleAddComponentToEntityType = (component) => {
 };
 
 const handleDragStart = (event, type, item) => {
+  if(type=="entity"&&item.nodeTemplateId){
+    selectedEntityType.value = item.nodeTemplateId;
+  }else if(type=="relationship"&&item.relationTemplateId){
+    selectedRelationshipType.value = item.relationTemplateId;
+  }
   emit("drag-start", event, type, item);
 };
 
@@ -1189,6 +1219,10 @@ const handleCreateGraphClick = () => {
 
 // 处理图谱点击
 const handleGraphClick = (graph) => {
+  // 清除实体模板和关系模板的选中高亮状态
+  selectedEntityType.value = "";
+  selectedRelationshipType.value = "";
+  selectedComponent.value = null;
   emit("graph-click", graph);
 };
 
@@ -1241,11 +1275,21 @@ const handleTopicSearchClear = () => {
 };
 
 // 处理实体模板点击
-const handleEntityTypeClick = (entityType) => {
-  selectedEntityType.value = entityType;
-  selectedRelationshipType.value = "";
-  selectedComponent.value = null;
-  emit("entity-type-click", entityType);
+const handleEntityTypeClick = (template) => {
+  // 兼容图谱构建模式（传入字符串）和本体设计模式（传入对象）
+  if (typeof template === 'string') {
+    // 图谱构建模式：传入的是实体模板名称
+    selectedEntityType.value = template;
+    // selectedRelationshipType.value = "";
+    // selectedComponent.value = null;
+    emit("entity-type-click", template);
+  } else {
+    // 本体设计模式：传入的是实体模板对象，使用ID进行高亮
+    selectedEntityType.value = template.nodeTemplateId;
+    // selectedRelationshipType.value = "";
+    // selectedComponent.value = null;
+    emit("entity-type-click", template);
+  }
 };
 
 // 处理关系模板点击
@@ -1254,14 +1298,14 @@ const handleRelationshipTypeClick = (template) => {
   if (typeof template === 'string') {
     // 图谱构建模式：传入的是关系模板名称
     selectedRelationshipType.value = template;
-    selectedEntityType.value = "";
-    selectedComponent.value = null;
+    // selectedEntityType.value = "";
+    // selectedComponent.value = null;
     emit("relationship-type-click", template);
   } else {
     // 本体设计模式：传入的是关系模板对象，使用ID进行高亮
     selectedRelationshipType.value = template.relationTemplateId;
-    selectedEntityType.value = "";
-    selectedComponent.value = null;
+    // selectedEntityType.value = "";
+    // selectedComponent.value = null;
     emit("relationship-type-click", template);
   }
 };
@@ -1269,8 +1313,8 @@ const handleRelationshipTypeClick = (template) => {
 // 处理组件点击
 const handleComponentClick = (componentName) => {
   selectedComponent.value = componentName;
-  selectedEntityType.value = "";
-  selectedRelationshipType.value = "";
+  // selectedEntityType.value = "";
+  // selectedRelationshipType.value = "";
   emit("component-click", componentName);
 };
 
@@ -1317,20 +1361,20 @@ defineExpose({
   handleClearSelections,
   setSelectedEntityType: (entityType) => {
     selectedEntityType.value = entityType;
-    selectedRelationshipType.value = "";
-    selectedComponent.value = null;
+    // selectedRelationshipType.value = "";
+    // selectedComponent.value = null;
     console.log("设置实体模板选中状态:", entityType);
   },
   setSelectedRelationshipType: (relationshipId) => {
     selectedRelationshipType.value = relationshipId;
-    selectedEntityType.value = "";
-    selectedComponent.value = null;
+    // selectedEntityType.value = "";
+    // selectedComponent.value = null;
     console.log("设置关系模板选中状态:", relationshipId);
   },
   setSelectedComponent: (componentName) => {
     selectedComponent.value = componentName;
-    selectedEntityType.value = "";
-    selectedRelationshipType.value = "";
+    // selectedEntityType.value = "";
+    // selectedRelationshipType.value = "";
     console.log("设置组件选中状态:", componentName);
   },
 });

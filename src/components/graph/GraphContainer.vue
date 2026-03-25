@@ -621,6 +621,8 @@ const initGraph = () => {
           ],
           backgroundColor: node.backgroundColor || "#43D7B5",
         },
+        // 添加 nodeTemplateId 用于模板高亮匹配
+        nodeTemplateId: node.nodeTemplateId,
         style: {
           x: nodeX,
           y: nodeY,
@@ -1300,7 +1302,7 @@ const bindEvents = () => {
     } else if (!props.isConnecting) {
       if (nodeId) {
         clearNodeSelection();
-        clearEdgesSelection();
+        // clearEdgesSelection();
         graph.value.setElementState(nodeId, ["selected"]);
 
         if (!nodeData) {
@@ -1347,17 +1349,16 @@ const bindEvents = () => {
     }
 
     if (edgeId) {
-      clearNodeSelection();
+      // clearNodeSelection();
       clearEdgesSelection();
       graph.value.setElementState(edgeId, ["selected"]);
 
-      if (!edgeData) {
-        const clickedEdge = props.edges.find(
-          (e) => String(e.id) === String(edgeId),
-        );
-        if (clickedEdge) {
-          edgeData = clickedEdge;
-        }
+      // 从 props.edges 中获取完整的边数据（包含 relationTemplateId）
+      const clickedEdge = props.edges.find(
+        (e) => String(e.id) === String(edgeId),
+      );
+      if (clickedEdge) {
+        edgeData = clickedEdge;
       }
 
       emit("edge-click", edgeData || { id: edgeId });
@@ -1742,6 +1743,8 @@ const renderGraph = () => {
           ],
           backgroundColor: node.backgroundColor || "#43D7B5",
         },
+        // 添加 nodeTemplateId 用于模板高亮匹配
+        nodeTemplateId: node.nodeTemplateId,
         style: {
           x: nodeX,
           y: nodeY,

@@ -1,6 +1,6 @@
 <template>
   <div class="editor-tool" :class="{'create-tool': currentGraphCreateMethod == '1'||currentGraphCreateMethod == '2'}">
-    <div class="submit" title="提交" @click="handleSubmitClick" v-if="!(currentGraphCreateMethod == '1'||currentGraphCreateMethod == '2')" />
+    <!-- <div class="submit" title="提交" @click="handleSubmitClick" v-if="!(currentGraphCreateMethod == '1'||currentGraphCreateMethod == '2')" /> -->
     <div class="clear" title="清除" @click="handleClearClick" />
     <div class="quit" title="退出" @click="handleQuitClick" v-if="!(currentGraphCreateMethod == '1'||currentGraphCreateMethod == '2')" />
   </div>
@@ -43,7 +43,7 @@ const handleSaveGraphClick = () => {
   left: 50%;
   transform: translateX(-50%);
   height: 60px;
-  width: 200px;
+  width: 140px;
   background: #ffffff;
   border: 0.5px solid rgba(226, 226, 226, 1);
   box-shadow: 0px 8px 10px 0px rgba(78, 89, 105, 0.18);
@@ -79,7 +79,7 @@ const handleSaveGraphClick = () => {
 .submit {
   position: relative;
   display: flex;
-  width: 30%;
+  width: 50%;
   height: 100%;
   place-content: center;
   align-items: center;
@@ -96,7 +96,7 @@ const handleSaveGraphClick = () => {
 .clear {
   position: relative;
   display: flex;
-  width: 30%;
+  width: 50%;
   height: 100%;
   place-content: center;
   align-items: center;
@@ -113,7 +113,7 @@ const handleSaveGraphClick = () => {
 .zoom-in {
   position: relative;
   display: flex;
-  width: 30%;
+  width: 50%;
   height: 100%;
   place-content: center;
   align-items: center;
@@ -130,7 +130,7 @@ const handleSaveGraphClick = () => {
 .zoom-out {
   position: relative;
   display: flex;
-  width: 30%;
+  width: 50%;
   height: 100%;
   place-content: center;
   align-items: center;
@@ -147,7 +147,7 @@ const handleSaveGraphClick = () => {
 .quit {
   position: relative;
   display: flex;
-  width: 30%;
+  width: 50%;
   height: 100%;
   place-content: center;
   align-items: center;

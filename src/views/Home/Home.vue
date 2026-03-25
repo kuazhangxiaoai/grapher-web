@@ -1867,7 +1867,7 @@ const handleEntityTypeClick = (entityType) => {
   // 清除之前的选中状态
   if (contentRef.value) {
     contentRef.value.clearNodeSelection();
-    contentRef.value.clearEdgesSelection();
+    // contentRef.value.clearEdgesSelection();
   }
 
   // 高亮画布中所有对应类型的节点
@@ -1927,7 +1927,7 @@ const handleRelationshipTypeClick = (template) => {
 
   // 清除之前的选中状态
   if (contentRef.value) {
-    contentRef.value.clearNodeSelection();
+    // contentRef.value.clearNodeSelection();
     contentRef.value.clearEdgesSelection();
   }
 
@@ -2108,10 +2108,10 @@ const handleComponentClick = (componentName) => {
   }
 
   // 清除之前的选中状态
-  if (contentRef.value) {
-    contentRef.value.clearNodeSelection();
-    contentRef.value.clearEdgesSelection();
-  }
+  // if (contentRef.value) {
+  //   contentRef.value.clearNodeSelection();
+  //   contentRef.value.clearEdgesSelection();
+  // }
 
   // 高亮画布中所有对应组件的元素
   if (contentRef.value && contentRef.value.graphContainerRef) {
@@ -2302,7 +2302,7 @@ const handleNodeClick = (node) => {
   // 同步左侧面板高亮
   if (sidebarRef.value) {
     // 清除之前的选中状态
-    sidebarRef.value.handleClearSelections();
+    // sidebarRef.value.handleClearSelections();
 
     // 检查是否在实体模板列表中
     if (entityTypes.value.includes(node.name)) {
@@ -2348,7 +2348,7 @@ const handleEdgeClick = (edge) => {
     // 同步左侧面板高亮
     if (sidebarRef.value) {
       // 清除之前的选中状态
-      sidebarRef.value.handleClearSelections();
+      // sidebarRef.value.handleClearSelections();
 
       // 使用 relationTemplateId 来匹配关系模板
       if (edge.relationTemplateId) {
@@ -2623,6 +2623,7 @@ const handleClearSelections = () => {
         :relation-templates="relationTemplates"
         :components="components"
         :node-templates="nodeTemplates"
+        :graph-nodes="graphNodes"
         @delete-domain="handleDeleteDomain"
         @open-add-dialog="openAddDialog"
         @open-add-topic-dialog="openAddTopicDialog"

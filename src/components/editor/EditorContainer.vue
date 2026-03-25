@@ -788,9 +788,11 @@ const initGraph = () => {
         const sourceStr = source ? (typeof source === "string" ? source : source.toString()) : null;
         const targetStr = target ? (typeof target === "string" ? target : target.toString()) : null;
         const relationshipType = edge.data?.type || edge.relationType || edge.type || "定向";
+        // 使用与 GraphBuilder/index.vue 一致的 ID 生成逻辑，并确保转换为字符串
+        const edgeId = String(edge.id || edge.relationId || edge.relationHash || `edge-${index}`);
         return {
           ...edge,
-          id: edge.id || `edge-${index}`,
+          id: edgeId,
           source: sourceStr,
           target: targetStr,
           // 预先设置边的样式，确保箭头在初始化时就能显示
@@ -842,6 +844,8 @@ const initGraph = () => {
           ],
           backgroundColor: node.backgroundColor || "#43D7B5",
         },
+        // 添加 nodeTemplateId 用于模板高亮匹配
+        nodeTemplateId: node.nodeTemplateId,
         style: {
           x: nodeX,
           y: nodeY,
@@ -1526,8 +1530,9 @@ const bindEvents = () => {
       if (nodeId) {
         // 确保节点ID是字符串类型
         const nodeIdStr = String(nodeId);
+        // 只清除节点选中状态，保留连线选中状态
         clearNodeSelection();
-        clearEdgesSelection();
+        // clearEdgesSelection();
         graph.value.setElementState(nodeIdStr, ["selected"]);
 
         if (!nodeData) {
@@ -1574,17 +1579,19 @@ const bindEvents = () => {
     }
 
     if (edgeId) {
-      clearNodeSelection();
+      // clearNodeSelection();
       clearEdgesSelection();
       graph.value.setElementState(edgeId, ["selected"]);
 
-      if (!edgeData) {
-        const clickedEdge = props.edges.find(
-          (e) => String(e.id) === String(edgeId),
-        );
-        if (clickedEdge) {
-          edgeData = clickedEdge;
-        }
+      // 从 props.edges 中获取完整的边数据（包含 relationTemplateId）
+      // 同时检查 id、relationId、relationHash 字段
+      const clickedEdge = props.edges.find(
+        (e) => String(e.id) === String(edgeId) ||
+               String(e.relationId) === String(edgeId) ||
+               String(e.relationHash) === String(edgeId),
+      );
+      if (clickedEdge) {
+        edgeData = clickedEdge;
       }
 
       emit("edge-click", edgeData || { id: edgeId });
@@ -1975,9 +1982,11 @@ const renderGraph = () => {
         const sourceStr = source ? (typeof source === "string" ? source : source.toString()) : null;
         const targetStr = target ? (typeof target === "string" ? target : target.toString()) : null;
         const relationshipType = edge.data?.type || edge.relationType || edge.type || "定向";
+        // 使用与 GraphBuilder/index.vue 一致的 ID 生成逻辑，并确保转换为字符串
+        const edgeId = String(edge.id || edge.relationId || edge.relationHash || `edge-${index}`);
         return {
           ...edge,
-          id: edge.id || `edge-${index}`,
+          id: edgeId,
           source: sourceStr,
           target: targetStr,
           // 预先设置边的样式，确保箭头在初始化时就能显示
@@ -2049,6 +2058,8 @@ const renderGraph = () => {
           ],
           backgroundColor: node.backgroundColor || "#43D7B5",
         },
+        // 添加 nodeTemplateId 用于模板高亮匹配
+        nodeTemplateId: node.nodeTemplateId,
         style: {
           x: nodeX,
           y: nodeY,
@@ -2243,10 +2254,10 @@ onMounted(() => {
 // 重置连线状态
 const resetConnectionState = () => {
   cancelConnect();
-  // 清除节点选中状态
+  // 不清除节点和连线的选中状态，保留画布中的高亮
   // clearNodeSelection();
   // 清除连线选中状态
-  clearEdgesSelection();
+  // clearEdgesSelection();
 };
 
 // 组件卸载时清理资源

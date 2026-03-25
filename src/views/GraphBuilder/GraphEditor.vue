@@ -1751,15 +1751,15 @@ const handleSavePropertyPanel = (data) => {
     console.log("保存属性后，清除连线选中状态");
   }
   // 清除模型列表选中状态
-  if (sidebarRef.value && sidebarRef.value.handleClearSelections) {
-    sidebarRef.value.handleClearSelections();
-    console.log("保存属性后，清除模型列表选中状态");
-  }
+  // if (sidebarRef.value && sidebarRef.value.handleClearSelections) {
+  //   sidebarRef.value.handleClearSelections();
+  //   console.log("保存属性后，清除模型列表选中状态");
+  // }
 
   // 清除选中的关系模板，避免后续连线时仍使用该模板进行校验
-  selectedRelationshipTemplate.value = null;
+  // selectedRelationshipTemplate.value = null;
   // 重置已点击关系模板的标记
-  hasClickedRelationshipTemplate.value = false;
+  // hasClickedRelationshipTemplate.value = false;
   console.log("保存属性后，清除选中的关系模板");
 
   // 保存关系后，清除虚线
@@ -1799,15 +1799,21 @@ const handleDrop = (event) => {
   const x = event.clientX - rect.left;
   const y = event.clientY - rect.top;
 
+  // 获取模板名称（兼容字符串和对象）
+  const templateName = typeof item === "string" ? item : (item.nodeTemplateName || item.name);
+  
+  // 获取 nodeTemplateId（如果是对象且包含 nodeTemplateId）
+  const templateId = typeof item === "object" ? (item.nodeTemplateId || 0) : 0;
+
   // 查找对应的实体模板信息
   const entityTemplate = nodeTemplates.value.find(
-    (template) => template.nodeTemplateName === (typeof item === "string" ? item : item.name)
+    (template) => template.nodeTemplateName === templateName
   );
 
   // 创建新的图谱节点
   const newNode = {
     type: type,
-    name: typeof item === "string" ? item : item.name,
+    name: templateName,
     x: x,
     y: y,
     // 新拖拽的节点不设置description，保存后才设置
@@ -1818,14 +1824,14 @@ const handleDrop = (event) => {
       type: prop.propertyType.toLowerCase(),
       value: "",
     })) : [],
-    // 添加节点模板ID
-    nodeTemplateId: entityTemplate ? entityTemplate.nodeTemplateId : 0,
+    // 添加节点模板ID（优先使用查找到的模板ID，其次是拖拽传递的ID）
+    nodeTemplateId: entityTemplate ? entityTemplate.nodeTemplateId : templateId,
     // 添加背景颜色
     backgroundColor: entityTemplate ? entityTemplate.nodeTemplateColor : backgroundColor.value,
     // 添加库标记
     isLibraryFlag: entityTemplate ? entityTemplate.isLibraryFlag : "0",
     // 添加必要的字段
-    nodeTemplateName: typeof item === "string" ? item : item.name,
+    nodeTemplateName: templateName,
     // 新拖拽的节点不设置nodeName和nodeDescription，保存后才设置
     // nodeName: typeof item === "string" ? item : item.name,
     // nodeDescription: entityTemplate ? entityTemplate.nodeTemplateDescription : "",
@@ -1855,7 +1861,7 @@ const handleDrop = (event) => {
   
   // 打开属性面板
   currentOperation.value = "entity";
-  entityName.value = typeof item === "string" ? item : item.name;
+  entityName.value = templateName;
   nodeName.value = undefined; // 设置为undefined，这样RightPropertyPanel会显示为空
   entityDescription.value = "";
   entityProperties.value = entityTemplate && entityTemplate.properties ? entityTemplate.properties.map((prop) => ({
@@ -1865,7 +1871,7 @@ const handleDrop = (event) => {
   })) : [];
   backgroundColor.value = entityTemplate ? entityTemplate.nodeTemplateColor : backgroundColor.value;
   addToComponentLibrary.value = entityTemplate ? entityTemplate.isLibraryFlag === "1" : false;
-  currentNodeTemplateId.value = entityTemplate ? entityTemplate.nodeTemplateId : 0;
+  currentNodeTemplateId.value = entityTemplate ? entityTemplate.nodeTemplateId : templateId;
   currentRelationTemplateId.value = 0;
   
   // 重置连接状态
@@ -2074,7 +2080,7 @@ const fetchGraphBySequenceId = async (sequenceId) => {
         const processedRelations = relations
           ? relations.map((relation, index) => ({
               ...relation,
-              id: relation.relationHash || `edge-${index}`,
+              id: String(relation.relationHash || `edge-${index}`),
               source: relation.startNodeHash,
               target: relation.endNodeHash,
             })).filter(relation => relation.source && relation.target)
@@ -2156,7 +2162,7 @@ const fetchGraphBySequenceId = async (sequenceId) => {
           
           // 创建新关系
           const newEdge = {
-            id: relation.relationHash,
+            id: String(relation.relationHash),
             source: relation.startNodeHash,
             target: relation.endNodeHash,
             data: {
@@ -2252,7 +2258,7 @@ const fetchGraphByArticleId = async (articleId) => {
         const processedRelations = relations
           ? relations.map((relation, index) => ({
               ...relation,
-              id: relation.relationHash || `edge-${index}`,
+              id: String(relation.relationHash || `edge-${index}`),
               source: relation.startNodeHash,
               target: relation.endNodeHash,
             })).filter(relation => relation.source && relation.target)
@@ -2334,7 +2340,7 @@ const fetchGraphByArticleId = async (articleId) => {
           
           // 创建新关系
           const newEdge = {
-            id: relation.relationHash,
+            id: String(relation.relationHash),
             source: relation.startNodeHash,
             target: relation.endNodeHash,
             data: {
@@ -2697,7 +2703,7 @@ const fetchGraphByTopicId = async (topicId) => {
         const processedRelations = relations
           ? relations.map((relation, index) => ({
               ...relation,
-              id: relation.relationHash || `edge-${index}`,
+              id: String(relation.relationHash || `edge-${index}`),
               source: relation.startNodeHash,
               target: relation.endNodeHash,
             })).filter(relation => relation.source && relation.target)
@@ -2779,7 +2785,7 @@ const fetchGraphByTopicId = async (topicId) => {
           
           // 创建新关系
           const newEdge = {
-            id: relation.relationHash,
+            id: String(relation.relationHash),
             source: relation.startNodeHash,
             target: relation.endNodeHash,
             data: {
@@ -2894,8 +2900,8 @@ const handleModeChange = (mode) => {
 };
 
 // 处理实体类型点击
-const handleEntityTypeClick = (entityType) => {
-  console.log("点击实体类型:", entityType);
+const handleEntityTypeClick = (template) => {
+  console.log("点击实体类型:", template);
   console.log("Before setting showPropertyPanel:", showPropertyPanel.value);
 
   // 设置操作来源为非组件库
@@ -2905,23 +2911,23 @@ const handleEntityTypeClick = (entityType) => {
   operationSource.value = "library";
   // 设置 LeftTemplatePanel 组件中的选中状态
   if (sidebarRef.value && sidebarRef.value.setSelectedEntityType) {
-    sidebarRef.value.setSelectedEntityType(entityType);
-    console.log("设置实体类型选中状态:", entityType);
+    sidebarRef.value.setSelectedEntityType(template.nodeTemplateId);
+    console.log("设置实体类型选中状态:", template.nodeTemplateId);
   }
 
   // 清除之前的选中状态
   if (contentRef.value) {
     contentRef.value.clearNodeSelection();
-    contentRef.value.clearEdgesSelection();
+    // contentRef.value.clearEdgesSelection();
   }
 
-  // 高亮画布中所有对应类型的节点
+  // 高亮画布中所有使用此模板创建的节点（通过 nodeTemplateId 匹配）
   if (contentRef.value && contentRef.value.graphContainerRef) {
     const graph = contentRef.value.graphContainerRef.graph;
     if (graph) {
       const nodes = graph.getData().nodes || [];
       nodes.forEach((node) => {
-        if (node.data && node.data.name === entityType) {
+        if (node.nodeTemplateId === template.nodeTemplateId) {
           graph.setElementState(node.id, ["selected"]);
         }
       });
@@ -2930,19 +2936,16 @@ const handleEntityTypeClick = (entityType) => {
 
   // 打开属性面板，设置当前操作类型为实体
   currentOperation.value = "entity";
-  entityName.value = entityType;
+  entityName.value = template.nodeTemplateName;
 
-  // 从nodeTemplates中查找对应的实体模板信息
-  const entityTemplate = nodeTemplates.value.find(
-    (template) => template.nodeTemplateName === entityType,
-  );
-  if (entityTemplate) {
-    console.log("找到实体模板:", entityTemplate);
+  // 使用传入的模板信息
+  if (template) {
+    console.log("找到实体模板:", template);
     // 设置实体描述（如果有）
-    entityDescription.value = entityTemplate.nodeTemplateDescription || entityTemplate.description || "";
+    entityDescription.value = template.nodeTemplateDescription || template.description || "";
     // 设置实体属性
-    if (entityTemplate.properties && Array.isArray(entityTemplate.properties)) {
-      entityProperties.value = entityTemplate.properties.map((prop) => ({
+    if (template.properties && Array.isArray(template.properties)) {
+      entityProperties.value = template.properties.map((prop) => ({
         name: prop.propertyKey,
         type: prop.propertyType.toLowerCase(),
         value: "",
@@ -2951,14 +2954,14 @@ const handleEntityTypeClick = (entityType) => {
       entityProperties.value = [];
     }
     // 设置背景颜色
-    backgroundColor.value = entityTemplate.nodeTemplateColor || entityTemplate.backgroundColor || "#43D7B5";
+    backgroundColor.value = template.nodeTemplateColor || template.backgroundColor || "#43D7B5";
     // 设置是否加入组件库
-    addToComponentLibrary.value = entityTemplate.isLibraryFlag === "1";
+    addToComponentLibrary.value = template.isLibraryFlag === "1";
     // 设置当前节点的模板ID
-    currentNodeTemplateId.value = entityTemplate.nodeTemplateId || 0;
+    currentNodeTemplateId.value = template.nodeTemplateId || 0;
     currentRelationTemplateId.value = 0;
   } else {
-    console.log("未找到实体模板:", entityType);
+    console.log("未找到实体模板");
     // 如果找不到模板信息，重置默认值
     entityDescription.value = "";
     entityProperties.value = [];
@@ -2973,34 +2976,34 @@ const handleEntityTypeClick = (entityType) => {
 };
 
 // 处理关系类型点击
-const handleRelationshipTypeClick = (relationshipTypeName) => {
-  console.log("点击关系类型:", relationshipTypeName);
+const handleRelationshipTypeClick = (template) => {
+  console.log("点击关系类型:", template);
   console.log("Before setting showPropertyPanel:", showPropertyPanel.value);
 
   // 设置操作来源为非组件库
   isFromComponentLibrary.value = false;
   // 设置操作来源为非画布
   isFromCanvas.value = false;
-operationSource.value = "library";
+  operationSource.value = "library";
   // 设置 LeftTemplatePanel 组件中的选中状态
   if (sidebarRef.value && sidebarRef.value.setSelectedRelationshipType) {
-    sidebarRef.value.setSelectedRelationshipType(relationshipTypeName);
-    console.log("设置关系类型选中状态:", relationshipTypeName);
+    sidebarRef.value.setSelectedRelationshipType(template.relationTemplateId);
+    console.log("设置关系类型选中状态:", template.relationTemplateId);
   }
 
   // 清除之前的选中状态
   if (contentRef.value) {
-    contentRef.value.clearNodeSelection();
+    // contentRef.value.clearNodeSelection();
     contentRef.value.clearEdgesSelection();
   }
 
-  // 高亮画布中所有对应类型的连线
+  // 高亮画布中所有使用此模板创建的连线（通过 relationTemplateId 匹配）
   if (contentRef.value && contentRef.value.graphContainerRef) {
     const graph = contentRef.value.graphContainerRef.graph;
     if (graph) {
       const edges = graph.getData().edges || [];
       edges.forEach((edge) => {
-        if (edge.data && edge.data.name === relationshipTypeName) {
+        if (edge.relationTemplateId === template.relationTemplateId) {
           graph.setElementState(edge.id, ["selected"]);
         }
       });
@@ -3009,21 +3012,18 @@ operationSource.value = "library";
 
   // 打开属性面板，设置当前操作类型为关系
   currentOperation.value = "relationship";
-  relationshipName.value = relationshipTypeName;
+  relationshipName.value = template.relationTemplateName;
 
-  // 从relationTemplates中查找对应的关系模板信息
-  const relationshipTemplate = relationTemplates.value.find(
-    (template) => template.relationTemplateName === relationshipTypeName,
-  );
-  if (relationshipTemplate) {
+  // 使用传入的模板信息
+  if (template) {
     // 存储当前选中的关系模板
-    selectedRelationshipTemplate.value = relationshipTemplate;
+    selectedRelationshipTemplate.value = template;
     // 标记已点击了关系模板
     hasClickedRelationshipTemplate.value = true;
     
     // 设置关系类型
     let relationTypeText = "定向";
-    switch (relationshipTemplate.relationTemplateType) {
+    switch (template.relationTemplateType) {
       case "1":
         relationTypeText = "定向";
         break;
@@ -3036,27 +3036,27 @@ operationSource.value = "library";
     }
     relationshipType.value = relationTypeText;
     // 设置关系属性
-    entityProperties.value = relationshipTemplate.properties
-      ? relationshipTemplate.properties.map((prop) => ({
+    entityProperties.value = template.properties
+      ? template.properties.map((prop) => ({
           name: prop.propertyKey,
           type: prop.propertyType.toLowerCase(),
           value: "",
         }))
       : [];
     // 设置是否加入组件库
-    addToComponentLibrary.value = relationshipTemplate.isLibraryFlag === "1";
+    addToComponentLibrary.value = template.isLibraryFlag === "1";
     // 设置当前关系的模板ID
-    currentRelationTemplateId.value = relationshipTemplate.relationTemplateId || 0;
+    currentRelationTemplateId.value = template.relationTemplateId || 0;
     currentNodeTemplateId.value = 0;
 
     // 设置开始和结束节点名称
     const startNode = nodeTemplates.value.find(
       (node) =>
-        String(node.nodeTemplateId) === String(relationshipTemplate.startNodeTemplateId),
+        String(node.nodeTemplateId) === String(template.startNodeTemplateId),
     );
     const endNode = nodeTemplates.value.find(
       (node) =>
-        String(node.nodeTemplateId) === String(relationshipTemplate.endNodeTemplateId),
+        String(node.nodeTemplateId) === String(template.endNodeTemplateId),
     );
     startNodeName.value = startNode ? startNode.nodeTemplateName : "";
     endNodeName.value = endNode ? endNode.nodeTemplateName : "";
@@ -3094,10 +3094,10 @@ const handleComponentClick = (componentName) => {
   }
 
   // 清除之前的选中状态
-  if (contentRef.value) {
-    contentRef.value.clearNodeSelection();
-    contentRef.value.clearEdgesSelection();
-  }
+  // if (contentRef.value) {
+  //   contentRef.value.clearNodeSelection();
+  //   contentRef.value.clearEdgesSelection();
+  // }
 
   // 高亮画布中所有对应组件的元素
   if (contentRef.value && contentRef.value.graphContainerRef) {
@@ -3357,19 +3357,19 @@ const handleNodeClick = (node) => {
   showPropertyPanel.value = true;
   console.log("设置showPropertyPanel为true");
 
-  // 同步左侧面板高亮
+  // 同步左侧面板高亮，保留之前的选中状态
   if (sidebarRef.value) {
     // 清除之前的选中状态
-    sidebarRef.value.handleClearSelections();
+    // sidebarRef.value.handleClearSelections();
 
-    // 检查是否在实体模板列表中
-    if (entityTypes.value.includes(node.name)) {
-      // 设置实体模板选中状态
+    // 使用 nodeTemplateId 来匹配实体模板
+    if (node.nodeTemplateId) {
+      // 设置实体模板选中状态（使用ID）
       if (sidebarRef.value.setSelectedEntityType) {
-        sidebarRef.value.setSelectedEntityType(node.name);
+        sidebarRef.value.setSelectedEntityType(node.nodeTemplateId);
       }
     } else {
-      // 检查是否在组件库中
+      // 如果没有 nodeTemplateId，检查是否在组件库中
       const component = components.value.find(
         (comp) => comp.nodeTemplateName === node.name,
       );
@@ -3422,20 +3422,20 @@ const handleEdgeClick = (edge) => {
       (node) => String(node.id) === String(edge.target),
     );
 
-    // 同步左侧面板高亮
+    // 同步左侧面板高亮，保留之前的选中状态
     if (sidebarRef.value) {
       // 清除之前的选中状态
-      sidebarRef.value.handleClearSelections();
+      // sidebarRef.value.handleClearSelections();
 
-      const relationshipName = edge.data?.name || "";
-      // 检查是否在关系模板列表中
-      if (relationshipTypes.value.includes(relationshipName)) {
-        // 设置关系模板选中状态
+      // 使用 relationTemplateId 来匹配关系模板
+      if (edge.relationTemplateId) {
+        // 设置关系模板选中状态（使用ID）
         if (sidebarRef.value.setSelectedRelationshipType) {
-          sidebarRef.value.setSelectedRelationshipType(relationshipName);
+          sidebarRef.value.setSelectedRelationshipType(edge.relationTemplateId);
         }
       } else {
-        // 检查是否在组件库中
+        // 如果没有 relationTemplateId，检查是否在组件库中
+        const relationshipName = edge.data?.name || "";
         const component = components.value.find(
           (comp) => comp.relationTemplateName === relationshipName,
         );
@@ -3536,7 +3536,7 @@ const handleUpdateNodes = (templateData) => {
   const processedRelations = relationsToProcess
     ? relationsToProcess.map((relation, index) => ({
         ...relation,
-        id: relation.relationHash || relation.relationTemplateId || `edge-${index}`,
+        id: String(relation.relationHash || relation.relationTemplateId || `edge-${index}`),
         source: relation.startNodeHash,
         target: relation.endNodeHash,
       })).filter(relation => relation.source && relation.target)
@@ -3635,7 +3635,7 @@ const handleUpdateNodes = (templateData) => {
       }
 
       const newEdge = {
-        id: isQueryData ? relationOrTemplate.relationHash : (relationOrTemplate.relationId || relationOrTemplate.relationHash),
+        id: String(isQueryData ? relationOrTemplate.relationHash : (relationOrTemplate.relationId || relationOrTemplate.relationHash)),
         source: startHash,
         target: endHash,
         data: {
@@ -3721,6 +3721,14 @@ const handleQuit = () => {
   pendingGraphNodes.value = [];
   pendingGraphEdges.value = [];
   hasData.value = false;
+  // 清除左侧模板面板的选中状态
+  if (sidebarRef.value && sidebarRef.value.handleClearSelections) {
+    sidebarRef.value.handleClearSelections();
+  }
+  // 清除选中的关系模板，避免后续连线时仍使用该模板进行校验
+  selectedRelationshipTemplate.value = null;
+  // 重置已点击关系模板的标记
+  hasClickedRelationshipTemplate.value = false;
 };
 const handleSaveGraph2 = () => {
   dialogVisible.value = false;

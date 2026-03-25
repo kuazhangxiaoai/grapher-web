@@ -41,28 +41,25 @@
                 >暂无实体模板</span
               >
               <el-tooltip
-                v-for="(type, index) in entityTypes"
-                :key="index"
-                :content="type"
+                v-for="template in nodeTemplates"
+                :key="template.nodeTemplateId"
+                :content="template.nodeTemplateName"
                 placement="right"
                 effect="dark"
               >
                 <div
                   class="entity-type-item"
                   :class="{
-                    'entity-type-item-selected': selectedEntityType === type,
+                    'entity-type-item-selected': selectedEntityType === template.nodeTemplateId,
                   }"
                   draggable="true"
                   @dragstart="
-                    handleDragStart($event, 'entity', {
-                      name: type,
-                      nodeTemplateId: 0,
-                    })
+                    handleDragStart($event, 'entity', template)
                   "
                   @dragend="handleDragEnd"
-                  @click="handleEntityTypeClick(type)"
+                  @click="handleEntityTypeClick(template)"
                 >
-                  {{ type }}
+                  {{ template.nodeTemplateName }}
                 </div>
               </el-tooltip>
             </div>
@@ -86,10 +83,15 @@
                   class="relationship-type-item"
                   :class="{
                     'relationship-type-item-selected':
-                      selectedRelationshipType === template.relationTemplateName,
+                      selectedRelationshipType === template.relationTemplateId,
                   }"
+                  draggable="false"
+                  @dragstart="
+                    handleDragStart($event, 'relationship', template)
+                  "
+                  @dragend="handleDragEnd"
                   @click="
-                    handleRelationshipTypeClick(template.relationTemplateName)
+                    handleRelationshipTypeClick(template)
                   "
                 >
                   <div class="relationship-info">
@@ -191,6 +193,11 @@ const getEndNodeName = (template) => {
 };
 
 const handleDragStart = (event, type, item) => {
+  if(type=="entity"&&item.nodeTemplateId){
+    selectedEntityType.value = item.nodeTemplateId;
+  }else if(type=="relationship"&&item.relationTemplateId){
+    selectedRelationshipType.value = item.relationTemplateId;
+  }
   emit("drag-start", event, type, item);
 };
 
@@ -199,19 +206,19 @@ const handleDragEnd = (event) => {
 };
 
 // 处理实体类型点击
-const handleEntityTypeClick = (entityType) => {
-  selectedEntityType.value = entityType;
-  selectedRelationshipType.value = "";
-  selectedComponent.value = null;
-  emit("entity-type-click", entityType);
+const handleEntityTypeClick = (template) => {
+  selectedEntityType.value = template.nodeTemplateId;
+  // selectedRelationshipType.value = "";
+  // selectedComponent.value = null;
+  emit("entity-type-click", template);
 };
 
 // 处理关系类型点击
-const handleRelationshipTypeClick = (relationshipType) => {
-  selectedRelationshipType.value = relationshipType;
-  selectedEntityType.value = "";
-  selectedComponent.value = null;
-  emit("relationship-type-click", relationshipType);
+const handleRelationshipTypeClick = (template) => {
+  selectedRelationshipType.value = template.relationTemplateId;
+  // selectedEntityType.value = "";
+  // selectedComponent.value = null;
+  emit("relationship-type-click", template);
 };
 
 // 监听清除选中状态事件
@@ -224,22 +231,22 @@ const handleClearSelections = () => {
 
 defineExpose({
   handleClearSelections,
-  setSelectedEntityType: (entityType) => {
-    selectedEntityType.value = entityType;
-    selectedRelationshipType.value = "";
-    selectedComponent.value = null;
-    console.log("设置实体类型选中状态:", entityType);
+  setSelectedEntityType: (nodeTemplateId) => {
+    selectedEntityType.value = nodeTemplateId;
+    // selectedRelationshipType.value = "";
+    // selectedComponent.value = null;
+    console.log("设置实体类型选中状态:", nodeTemplateId);
   },
-  setSelectedRelationshipType: (relationshipType) => {
-    selectedRelationshipType.value = relationshipType;
-    selectedEntityType.value = "";
-    selectedComponent.value = null;
-    console.log("设置关系类型选中状态:", relationshipType);
+  setSelectedRelationshipType: (relationTemplateId) => {
+    selectedRelationshipType.value = relationTemplateId;
+    // selectedEntityType.value = "";
+    // selectedComponent.value = null;
+    console.log("设置关系类型选中状态:", relationTemplateId);
   },
   setSelectedComponent: (componentName) => {
     selectedComponent.value = componentName;
-    selectedEntityType.value = "";
-    selectedRelationshipType.value = "";
+    // selectedEntityType.value = "";
+    // selectedRelationshipType.value = "";
     console.log("设置组件选中状态:", componentName);
   },
 });
