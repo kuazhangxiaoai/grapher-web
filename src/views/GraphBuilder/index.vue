@@ -2576,11 +2576,6 @@ const handleClosePropertyPanel = () => {
       console.log("关闭属性面板后，关闭右键菜单");
     }
   }
-  console.log(
-    "关闭属性面板后22222",
-    contentRef.value,
-    contentRef.value?.clearNodeSelection,
-  );
   // 清除节点选中状态
   if (contentRef.value && contentRef.value.clearNodeSelection) {
     contentRef.value.clearNodeSelection();
@@ -2596,9 +2591,9 @@ const handleClosePropertyPanel = () => {
   selectedNodeId.value = null;
   selectedEdgeId.value = null;
   // 清除选中的关系模板
-  selectedRelationshipTemplate.value = null;
+  // selectedRelationshipTemplate.value = null;
   // 重置已点击关系模板的标记
-  hasClickedRelationshipTemplate.value = false;
+  // hasClickedRelationshipTemplate.value = false;
   // 重置正在创建连线的标记
   isCreatingRelationship.value = false;
 
