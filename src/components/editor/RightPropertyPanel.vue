@@ -984,8 +984,9 @@ const handleSavePropertyPanel = async () => {
     nodeName: localNodeName.value,
     entityDescription: localEntityDescription.value,
     entityProperties: localEntityProperties.value.map((prop) => ({
-      propertyKey: prop.name,
-      propertyValue: prop.value
+      name: prop.name,
+      type: prop.type,
+      value: prop.value
     })),
     relationshipName: localRelationshipName.value,
     relationName: localRelationName.value,

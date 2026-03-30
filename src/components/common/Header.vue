@@ -70,6 +70,15 @@ const loginOut = async () => {
       localStorage.removeItem("token");
       localStorage.removeItem("homePageState");
       sessionStorage.removeItem("token");
+      // 清除 markInfo 缓存
+      localStorage.removeItem("markInfo");
+      // 清除图谱构建页面状态
+      localStorage.removeItem("GrapherPageState");
+      localStorage.removeItem("GraphEditorPageState");
+      // 清除搜索历史
+      // localStorage.removeItem("domainSearchHistory");
+      // localStorage.removeItem("topicSearchHistory");
+      // localStorage.removeItem("graphSearchHistory");
       // 强制刷新路由，确保token已清除
       setTimeout(() => {
         router.push("/login");

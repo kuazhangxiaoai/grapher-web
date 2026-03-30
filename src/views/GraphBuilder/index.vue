@@ -15,8 +15,11 @@
       :search-options="searchOptions"
       :topic-search-options="topicSearchOptions"
       :graph-search-options="graphSearchOptions"
+      :is-loading-domains="isLoadingDomains"
       :is-loading-topics="isLoadingTopics"
       :is-loading-graphs="isLoadingGraphs"
+      :is-loading-templates="isLoadingTemplates"
+      :is-loading-components="isLoadingComponents"
       :has-data="hasData"
       :entity-types="entityTypes"
       :relationship-types="relationshipTypes"
@@ -679,9 +682,19 @@ onMounted(async () => {
   graphNodes.value = savedState.graphNodes || [];
   currentLevel.value = savedState.currentLevel;
 
-  // 如果当前有选中的专题，立即设置加载状态，确保一进来就显示加载中
+  // 立即设置领域加载状态，避免显示空状态
+  isLoadingDomains.value = true;
+  // 如果当前有选中的领域，立即设置专题加载状态
+  if (currentDomain.value) {
+    isLoadingTopics.value = true;
+  }
+  // 如果当前有选中的专题，立即设置图谱加载状态
   if (currentSubDomain.value) {
     isLoadingGraphs.value = true;
+  }
+  // 如果当前有选中的图谱，立即设置模板加载状态
+  if (currentGraphId.value) {
+    isLoadingTemplates.value = true;
   }
 
   // 加载历史搜索记录
@@ -701,7 +714,11 @@ onMounted(async () => {
       (domain) => domain.name === currentDomain.value,
     );
     if (currentDomainObj) {
-      await fetchTopics(currentDomainObj.id);
+      try {
+        await fetchTopics(currentDomainObj.id);
+      } finally {
+        isLoadingTopics.value = false;
+      }
 
       // 如果当前有选中的专题，获取对应的图谱列表
       if (currentSubDomain.value) {
@@ -723,7 +740,7 @@ onMounted(async () => {
               textUrl.value = response.data;
               currentPage.value = 0;
               hasData.value = true;
-              
+
               // 调用段落列表查询接口
               await getSequenceList(currentGraphId.value);
             } else if (currentGraphCreateMethod.value === '1' || currentGraphCreateMethod.value === '2') {
@@ -1324,6 +1341,7 @@ const handleTopicClick = async (subDomain) => {
 // 获取实体和关系类型列表
 const fetchEntityAndRelationTypes = async (topicId) => {
   try {
+    isLoadingTemplates.value = true;
     const response = await projectService.queryTemplate(topicId);
     if (response && response.data) {
       // 处理实体类型
@@ -1334,7 +1352,7 @@ const fetchEntityAndRelationTypes = async (topicId) => {
         entityTypes.value = [];
         nodeTemplates.value = [];
       }
-      
+
       // 处理关系类型
       if (response.data.relationTemplates && Array.isArray(response.data.relationTemplates)) {
         relationTemplates.value = response.data.relationTemplates;
@@ -1351,6 +1369,8 @@ const fetchEntityAndRelationTypes = async (topicId) => {
     entityTypes.value = [];
     nodeTemplates.value = [];
     relationTemplates.value = [];
+  } finally {
+    isLoadingTemplates.value = false;
   }
 };
 

@@ -407,8 +407,31 @@
               <img src="@/assets/images/返回.png" alt="返回" />
             </button>
           </div>
+          <!-- 加载状态 -->
+          <div class="graph-list" v-if="isLoadingTemplates">
+            <div class="loading-container">
+              <div class="loading-icon"></div>
+              <span class="loadings">加载中...</span>
+            </div>
+          </div>
+          <!-- 空状态 -->
+          <div
+            class="graph-list"
+            v-else-if="nodeTemplates.length === 0 && relationTemplates.length === 0"
+          >
+            <div class="empty-list">
+              <div class="list-placeholder">
+                <img
+                  src="@/assets/images/Frame.png"
+                  alt="empty"
+                  class="empty-icon"
+                />
+                <span>白板中暂无容器</span>
+              </div>
+            </div>
+          </div>
           <!-- 数据列表 -->
-          <div class="data-list-container">
+          <div v-else class="data-list-container">
             <!-- 实体模板 -->
             <div class="data-section">
               <h3>实体模板</h3>
@@ -1731,6 +1754,10 @@ defineExpose({
 /* 数据列表 */
 .data-section {
   margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .data-section h3 {
@@ -1744,19 +1771,17 @@ defineExpose({
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
-  margin-bottom: 16px;
   overflow-y: auto;
-  max-height: 200px;
   padding-right: 8px;
+  max-height: 35vh;
 }
 .entity-types2 {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
-  margin-bottom: 16px;
   overflow-y: auto;
-  max-height: 260px;
   padding-right: 8px;
+  max-height: 35vh;
 }
 .empty-data {
   grid-template-columns: none;
@@ -1775,6 +1800,8 @@ defineExpose({
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  height:40px;
+  box-sizing: border-box;
 }
 
 .entity-type-item:hover,
@@ -1790,16 +1817,16 @@ defineExpose({
   flex-direction: column;
   gap: 12px;
   overflow-y: auto;
-  max-height: 200px;
   padding-right: 8px;
+  max-height: 35vh;
 }
 .relationship-types2 {
   display: flex;
   flex-direction: column;
   gap: 12px;
   overflow-y: auto;
-  max-height: 260px;
   padding-right: 8px;
+  max-height: 35vh;
 }
 
 .relationship-type-item {
@@ -2230,6 +2257,10 @@ defineExpose({
 }
 .data-list-container {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
   .empty-data-msg {
     font-size: 12px;
     color: #999999;
