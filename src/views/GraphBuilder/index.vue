@@ -613,6 +613,7 @@ const saveState = () => {
     hasData: hasData.value,
     graphs: graphs.value,
     currentLevel: currentLevel.value,
+    topics: topics.value,
     currentGraphCreateMethod:currentGraphCreateMethod.value,
   };
   localStorage.setItem("GrapherPageState", JSON.stringify(state));
@@ -677,6 +678,8 @@ onMounted(async () => {
   subDomains.value = savedState.subDomains;
   subSubDomains.value = savedState.subSubDomains;
   hasData.value = savedState.hasData;
+  domains.value = savedState.domains;
+  topics.value= savedState.topics;
   // 不直接从localStorage加载graphs，避免显示旧数据
   graphs.value = [];
   graphNodes.value = savedState.graphNodes || [];
@@ -704,9 +707,17 @@ onMounted(async () => {
   updateDomainSearchOptions();
   updateTopicSearchOptions();
   updateGraphSearchOptions();
-
-  // 调用接口获取所有领域列表
-  await fetchAllDomains();
+  if(currentLevel.value==0){
+    // 调用接口获取所有领域列表
+    try {
+      await fetchAllDomains();
+    } finally {
+      isLoadingDomains.value = false;
+    }
+  } else {
+    // 如果不是领域列表页，取消领域加载状态
+    isLoadingDomains.value = false;
+  }
 
   // 如果当前有选中的领域，获取对应的专题列表
   if (currentDomain.value) {
@@ -714,12 +725,16 @@ onMounted(async () => {
       (domain) => domain.name === currentDomain.value,
     );
     if (currentDomainObj) {
-      try {
-        await fetchTopics(currentDomainObj.id);
-      } finally {
+      if(currentLevel.value==1){
+        try {
+          await fetchTopics(currentDomainObj.id);
+        } finally {
+          isLoadingTopics.value = false;
+        }
+      } else {
+        // 如果不是专题列表页，取消专题加载状态
         isLoadingTopics.value = false;
-      }
-
+      } 
       // 如果当前有选中的专题，获取对应的图谱列表
       if (currentSubDomain.value) {
         const currentSubDomainObj = topics.value.find(
@@ -727,11 +742,16 @@ onMounted(async () => {
         );
         if (currentSubDomainObj) {
           console.log("onmounted",currentSubDomainObj.id)
-          await fetchGraph(currentSubDomainObj.id);
-          await fetchEntityAndRelationTypes(currentSubDomainObj.id);
+           if(currentLevel.value==2){
+              await fetchGraph(currentSubDomainObj.id);
+           }
+          // await fetchEntityAndRelationTypes(currentSubDomainObj.id);
 
           // 如果当前有选中的图谱，获取对应的数据
           if (currentGraphId.value) {
+            if(currentLevel.value==3){
+              await fetchEntityAndRelationTypes(currentSubDomainObj.id);
+            }
             if (currentGraphCreateMethod.value === '0') {
               // 文本创建方式，获取文章URL和段落列表
               const response = await projectService.getArticleUrl(
@@ -1056,7 +1076,7 @@ const handleGraphSearchIconClick = async (query) => {
   }
 };
 
-const handleBackToDomains = () => {
+const handleBackToDomains = async() => {
   currentDomain.value = "";
   currentSubDomain.value = "";
   currentGraphId.value = "";
@@ -1070,6 +1090,13 @@ const handleBackToDomains = () => {
   graphEdges.value = [];
   // 清空文本URL，隐藏文本区域
   textUrl.value = "";
+  // 重新获取领域列表数据
+  isLoadingDomains.value = true;
+  try {
+    await fetchAllDomains();
+  } finally {
+    isLoadingDomains.value = false;
+  }
   // 更新时间戳，强制重新创建 GraphViewer 组件
   graphViewerKey.value = Date.now();
   // 切换回领域页面，更新下拉框显示领域搜索历史
@@ -1077,7 +1104,7 @@ const handleBackToDomains = () => {
   saveState();
 };
 
-const handleBackToSubDomains = () => {
+const handleBackToSubDomains = async() => {
   // 保存当前子领域名称，用于显示数量
   const previousSubDomain = currentSubDomain.value;
   currentSubDomain.value = "";
@@ -1092,13 +1119,25 @@ const handleBackToSubDomains = () => {
   graphEdges.value = [];
   // 清空文本URL，隐藏文本区域
   textUrl.value = "";
+  // 重新获取专题列表数据
+  const currentDomainObj = domains.value.find(
+    (domain) => domain.name === currentDomain.value,
+  );
+  if (currentDomainObj) {
+    isLoadingTopics.value = true;
+    try {
+      await fetchTopics(currentDomainObj.id);
+    } finally {
+      isLoadingTopics.value = false;
+    }
+  }
   // 更新时间戳，强制重新创建 GraphViewer 组件
   graphViewerKey.value = Date.now();
   // 可以在这里更新子领域的数量
   // 例如：subDomains中找到对应的子领域并更新其数量
   saveState();
 };
-const backToSubGraphList = () => {
+const backToSubGraphList = async() => {
   // 从图谱详情页面返回时，保持子领域名称不变，只清空图谱相关信息
   // 这样就会回到图谱列表页面，而不是专题列表页面
   currentGraphId.value = "";
@@ -1112,8 +1151,9 @@ const backToSubGraphList = () => {
   // 清空文本URL，隐藏文本区域
   textUrl.value = "";
   subSubDomains.value = [];
+  await fetchGraph(currentSubDomainId.value);
   // 更新时间戳，强制重新创建 GraphViewer 组件
-  graphViewerKey.value = Date.now();
+  // graphViewerKey.value = Date.now();
   // 可以在这里更新子领域的数量
   // 例如：subDomains中找到对应的子领域并更新其数量
   saveState();
@@ -1334,7 +1374,7 @@ const handleTopicClick = async (subDomain) => {
   graphViewerKey.value = Date.now();
   console.log("处理专题点击handleTopicClick",subDomain.id)
   await fetchGraph(subDomain.id);
-  await fetchEntityAndRelationTypes(subDomain.id);
+  // await fetchEntityAndRelationTypes(subDomain.id);
   saveState();
 };
 
@@ -1505,7 +1545,7 @@ const handleGraphClick = async (graph) => {
   
   // 点击图谱时隐藏属性面板
   showPropertyPanel.value = false;
-  
+  fetchEntityAndRelationTypes(graph.topicId);
   if(currentGraphCreateMethod.value === '0'){
     // 设置 hasData 为 true，显示关系图（文本创建方式在获取PDF URL后显示）
     hasData.value = true;
@@ -3747,6 +3787,10 @@ const handleEditorQuit = () => {
 };
 
 const openGraphEditor = () => {
+  //  const currentTopicObj = topics.value.find((topic) => topic.id === topicId);
+  if( currentLevel.value == 2){
+     fetchEntityAndRelationTypes(currentSubDomainId.value);
+  }
   showEditor.value = !showEditor.value;
   if (showEditor.value) {
     editorNodes.value = JSON.parse(JSON.stringify(graphNodes.value));

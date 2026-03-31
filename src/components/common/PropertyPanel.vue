@@ -245,8 +245,6 @@
           size="small"
           class="delete-btn"
           @click="handleDeletePropertyPanel"
-          :loading="isLoading"
-          :disabled="isLoading"
           v-if="
             (currentOperation === 'entity' && nodeTemplateId > 0) ||
             (currentOperation === 'relationship' && relationTemplateId > 0)

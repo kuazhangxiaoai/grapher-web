@@ -32,6 +32,7 @@ const loadState = () => {
     graphs: [],
     graphNodes: [],
     graphEdges: [],
+    currentLevel: 0,
   };
 };
 
@@ -39,6 +40,7 @@ const allOption = ref("全部");
 const currentDomain = ref("");
 const currentSubDomain = ref("");
 const currentTopicId = ref("");
+const currentLevel = ref(0);
 const domains = ref([]);
 const subDomains = ref([]);
 const subSubDomains = ref([]);
@@ -279,6 +281,7 @@ const saveState = () => {
     graphs: graphs.value,
     graphNodes: graphNodes.value,
     graphEdges: graphEdges.value,
+    currentLevel: currentLevel.value,
   };
   localStorage.setItem("homePageState", JSON.stringify(state));
 };
@@ -296,6 +299,7 @@ watch(
     graphs,
     graphNodes,
     graphEdges,
+    currentLevel,
   ],
   () => {
     saveState();
@@ -312,7 +316,9 @@ onMounted(async () => {
   currentDomain.value = savedState.currentDomain;
   currentSubDomain.value = savedState.currentSubDomain;
   currentTopicId.value = savedState.currentTopicId || "";
+  currentLevel.value = savedState.currentLevel || 0;
   subDomains.value = savedState.subDomains;
+  domains.value = savedState.domains;
   subSubDomains.value = savedState.subSubDomains;
   hasData.value = savedState.hasData;
   graphs.value = savedState.graphs;
@@ -342,11 +348,15 @@ onMounted(async () => {
   updateDomainSearchOptions();
   updateTopicSearchOptions();
   updateGraphSearchOptions();
-
-  // 调用接口获取所有领域列表
-  try {
-    await fetchAllDomains();
-  } finally {
+  if(currentLevel.value==0){
+    // 调用接口获取所有领域列表
+    try {
+      await fetchAllDomains();
+    } finally {
+      isLoadingDomains.value = false;
+    }
+  } else {
+    // 如果不是领域列表页，取消领域加载状态
     isLoadingDomains.value = false;
   }
 
@@ -356,14 +366,19 @@ onMounted(async () => {
       (domain) => domain.name === currentDomain.value,
     );
     if (currentDomainObj) {
-      try {
-        await fetchTopics(currentDomainObj.id);
-      } finally {
+      if(currentLevel.value==1){
+        try {
+          await fetchTopics(currentDomainObj.id);
+        } finally {
+          isLoadingTopics.value = false;
+        }
+      } else {
+        // 如果不是专题列表页，取消专题加载状态
         isLoadingTopics.value = false;
       }
-
+      
       // 如果当前有选中的专题，同时获取模板数据和组件库数据
-      if (currentTopicId.value) {
+      if (currentTopicId.value&&currentLevel.value==2) {
         try {
           // 并行执行模板数据查询和组件库查询
           await Promise.all([
@@ -807,7 +822,7 @@ const handleGraphSearchIconClick = async (query) => {
   updateGraphSearchOptions();
 };
 
-const handleBackToDomains = () => {
+const handleBackToDomains = async () => {
   currentDomain.value = "";
   currentSubDomain.value = "";
   subDomains.value = [];
@@ -819,9 +834,19 @@ const handleBackToDomains = () => {
   showPropertyPanel.value = false;
   // 切换回领域页面，更新下拉框显示领域搜索历史
   updateDomainSearchOptions();
+  // 设置当前层级为0（领域列表）
+  currentLevel.value = 0;
+
+  // 重新获取领域列表数据
+  isLoadingDomains.value = true;
+  try {
+    await fetchAllDomains();
+  } finally {
+    isLoadingDomains.value = false;
+  }
 };
 
-const handleBackToSubDomains = () => {
+const handleBackToSubDomains = async () => {
   // 保存当前子领域名称，用于显示数量
   const previousSubDomain = currentSubDomain.value;
   currentSubDomain.value = "";
@@ -833,6 +858,20 @@ const handleBackToSubDomains = () => {
   showPropertyPanel.value = false;
   // 可以在这里更新子领域的数量
   // 例如：subDomains中找到对应的子领域并更新其数量
+  currentLevel.value = 1;
+
+  // 重新获取专题列表数据
+  const currentDomainObj = domains.value.find(
+    (domain) => domain.name === currentDomain.value,
+  );
+  if (currentDomainObj) {
+    isLoadingTopics.value = true;
+    try {
+      await fetchTopics(currentDomainObj.id);
+    } finally {
+      isLoadingTopics.value = false;
+    }
+  }
 };
 
 // 存储专题列表
@@ -849,6 +888,8 @@ const handleDomainClick = async (domain) => {
   // 清空画布数据
   graphNodes.value = [];
   graphEdges.value = [];
+  // 设置当前层级为1（专题列表）
+  currentLevel.value = 1;
 
   // 立即清空topics列表，避免显示上一个领域的专题数据
   topics.value = [];
@@ -863,38 +904,8 @@ const handleDomainClick = async (domain) => {
   // 切换到专题页面，更新下拉框显示专题搜索历史
   updateTopicSearchOptions();
 
-  // 根据选择的领域设置子领域
-  if (domain.name === "服务") {
-    subDomains.value = [
-      { name: "政务服务", count: 0 },
-      { name: "会议", count: 0 },
-      { name: "工作总线", count: 0 },
-      { name: "规划编制", count: 0 },
-    ];
-  } else if (domain.name === "名城") {
-    subDomains.value = [
-      { name: "历史文化", count: 0 },
-      { name: "城市规划", count: 0 },
-      { name: "基础设施", count: 0 },
-      { name: "公共服务", count: 0 },
-    ];
-  } else if (domain.name === "规划知识") {
-    subDomains.value = [
-      { name: "规划理论", count: 0 },
-      { name: "规划法规", count: 0 },
-      { name: "规划案例", count: 0 },
-      { name: "规划技术", count: 0 },
-    ];
-  } else if (domain.name === "空间通讯") {
-    subDomains.value = [
-      { name: "空间数据", count: 0 },
-      { name: "通讯网络", count: 0 },
-      { name: "空间分析", count: 0 },
-      { name: "通讯技术", count: 0 },
-    ];
-  } else {
+  
     subDomains.value = [];
-  }
 };
 
 // 获取专题列表
@@ -1014,38 +1025,8 @@ const handleTopicSearch = (query) => {
 
 const handleSubDomainClick = (subDomain) => {
   currentSubDomain.value = subDomain.name;
-  // 根据选择的子领域设置子子领域
-  if (subDomain.name === "规划理论") {
-    subSubDomains.value = [
-      { name: "城市规划理论" },
-      { name: "区域规划理论" },
-      { name: "可持续发展理论" },
-      { name: "智能城市理论" },
-    ];
-  } else if (subDomain.name === "规划法规") {
-    subSubDomains.value = [
-      { name: "城市规划法" },
-      { name: "土地管理法" },
-      { name: "环境保护法" },
-      { name: "建筑法" },
-    ];
-  } else if (subDomain.name === "规划案例") {
-    subSubDomains.value = [
-      { name: "国内案例" },
-      { name: "国际案例" },
-      { name: "成功案例" },
-      { name: "失败案例" },
-    ];
-  } else if (subDomain.name === "规划技术") {
-    subSubDomains.value = [
-      { name: "GIS技术" },
-      { name: "遥感技术" },
-      { name: "大数据分析" },
-      { name: "人工智能" },
-    ];
-  } else {
+  
     subSubDomains.value = [];
-  }
 };
 
 // 处理专题点击，设置当前子领域为专题名称
@@ -1056,6 +1037,8 @@ const handleTopicClick = async (topic, skipComponentLibrarySearch = false) => {
   showPropertyPanel.value = false;
   // 清空子子领域，因为专题是子领域的一种
   subSubDomains.value = [];
+  // 设置当前层级为2（本体设计/图谱页面）
+  currentLevel.value = 2;
 
   // 开始加载模板数据和组件库数据
   isLoadingTemplates.value = true;
