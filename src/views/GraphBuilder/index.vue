@@ -3786,10 +3786,10 @@ const handleEditorQuit = () => {
   hanleRefresh();
 };
 
-const openGraphEditor = () => {
+const openGraphEditor = async() => {
   //  const currentTopicObj = topics.value.find((topic) => topic.id === topicId);
   if( currentLevel.value == 2){
-     fetchEntityAndRelationTypes(currentSubDomainId.value);
+    await fetchEntityAndRelationTypes(currentSubDomainId.value);
   }
   showEditor.value = !showEditor.value;
   if (showEditor.value) {
