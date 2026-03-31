@@ -826,15 +826,24 @@ const initGraph = () => {
         const sourceStr = source ? (typeof source === "string" ? source : source.toString()) : null;
         const targetStr = target ? (typeof target === "string" ? target : target.toString()) : null;
         
+        // 处理关系类型，确保转换为中文格式
+        const relationType = edge.data?.type || edge.relationType || edge.type || "定向";
+        const typeMap = {
+          "1": "定向",
+          "2": "双向",
+          "3": "循环",
+        };
+        const normalizedType = typeMap[relationType] || relationType;
+        
         return {
           ...edge,
           id: String(edge.id || edge.relationHash || `edge-${index}`),
           source: sourceStr,
           target: targetStr,
-          data: edge.data || {
-            name: edge.relationName || "关系",
-            type: edge.relationType === "1" ? "定向" : edge.relationType === "2" ? "双向" : "循环",
-            properties: edge.properties || [],
+          data: {
+            name: edge.data?.name || edge.relationName || "关系",
+            type: normalizedType,
+            properties: edge.data?.properties || edge.properties || [],
           },
         };
       })
@@ -1664,15 +1673,24 @@ const renderGraph = () => {
         const sourceStr = source ? (typeof source === "string" ? source : source.toString()) : null;
         const targetStr = target ? (typeof target === "string" ? target : target.toString()) : null;
         
+        // 处理关系类型，确保转换为中文格式
+        const relationType = edge.data?.type || edge.relationType || edge.type || "定向";
+        const typeMap = {
+          "1": "定向",
+          "2": "双向",
+          "3": "循环",
+        };
+        const normalizedType = typeMap[relationType] || relationType;
+        
         return {
           ...edge,
           id: String(edge.id || edge.relationHash || `edge-${index}`),
           source: sourceStr,
           target: targetStr,
-          data: edge.data || {
-            name: edge.relationName || "关系",
-            type: edge.relationType === "1" ? "定向" : edge.relationType === "2" ? "双向" : "循环",
-            properties: edge.properties || [],
+          data: {
+            name: edge.data?.name || edge.relationName || "关系",
+            type: normalizedType,
+            properties: edge.data?.properties || edge.properties || [],
           },
         };
       })
