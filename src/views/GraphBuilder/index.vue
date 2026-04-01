@@ -4127,6 +4127,11 @@ const handleEditorSubmit = async () => {
   // 清空选中的序列和PDF选择标记，避免下次打开编辑器时显示旧的参考文本
   currentSelectedSequence.value = null;
   pdfSelectionMark.value = null;
+  
+  // 清除 GraphViewer 中的选中状态，避免选中样式影响节点显示
+  nextTick(() => {
+    graphViewer.value?.clearSelection?.();
+  });
 };
 </script>
 

@@ -234,25 +234,25 @@ const createCustomNode = (model) => {
           // 节点内部不再显示文本
         ),
         // 节点下方显示文本
-        h(
-          "div",
-          {
-            style: {
-              fontSize: "13px",
-              fontWeight: "500",
-              color: "#000",
-              marginTop: "8px",
-              textAlign: "center",
-              lineHeight: "1.3",
-              whiteSpace: "nowrap",
-              // 关键：添加抗锯齿样式
-              WebkitFontSmoothing: "antialiased",
-              MozOsxFontSmoothing: "grayscale",
-              textRendering: "optimizeLegibility",
-            },
-          },
-          label,
-        ),
+        // h(
+        //   "div",
+        //   {
+        //     style: {
+        //       fontSize: "13px",
+        //       fontWeight: "500",
+        //       color: "#000",
+        //       marginTop: "8px",
+        //       textAlign: "center",
+        //       lineHeight: "1.3",
+        //       whiteSpace: "nowrap",
+        //       // 关键：添加抗锯齿样式
+        //       WebkitFontSmoothing: "antialiased",
+        //       MozOsxFontSmoothing: "grayscale",
+        //       textRendering: "optimizeLegibility",
+        //     },
+        //   },
+        //   label,
+        // ),
       ],
     );
   };
@@ -896,6 +896,15 @@ const initGraph = () => {
             fill: "transparent",
           },
           cursor: "pointer",
+          // 使用 Canvas 渲染节点标签
+          label: true,
+          labelText: (d) => d.data?.name || "未命名",
+          labelFontSize: 13,
+          labelFontWeight: "500",
+          labelFill: "#000",
+          labelPlacement: "bottom",
+          labelOffsetY: 8,
+          labelBackground: false,
         },
         state: {
           selected: {
@@ -977,7 +986,7 @@ const initGraph = () => {
             labelText: data.data?.name || "",
             labelPlacement: "center",
             labelBackground: false,
-            labelFontSize: 14,
+            labelFontSize: 13,
             cursor: "pointer",
             lineCap: "round",
             lineJoin: "round",
@@ -1988,6 +1997,10 @@ const renderGraph = () => {
   isRendering = true;
 
   try {
+    // 清除所有选中状态，避免选中样式影响节点渲染
+    clearNodeSelection();
+    clearEdgesSelection();
+    
     saveViewState();
 
     const width = graphRef.value.clientWidth;

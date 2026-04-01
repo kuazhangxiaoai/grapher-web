@@ -1377,6 +1377,12 @@ const bindEvents = () => {
     if (isConnectingMode.value || pendingConnection.value) {
       cancelConnect();
     }
+
+    // 点击画布空白处关闭右键菜单
+    if (showContextMenu.value) {
+      showContextMenu.value = false;
+    }
+
     emit("graph-click");
   });
 
