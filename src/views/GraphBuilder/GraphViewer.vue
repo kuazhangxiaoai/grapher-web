@@ -3,7 +3,7 @@
     <div ref="graphRef" class="graph-canvas"></div>
     <!-- 编辑按钮 - 仅在专题下(level=2)显示 -->
     <div v-if="props.level === 2" class="edit-btn" title="编辑图谱" @click="handleEditClick"></div>
-    <div class="zoom-controls">
+    <div class="zoom-controls" v-if="props.level === 2">
       <button class="zoom-btn" @click="zoomIn">
         <img src="@/assets/images/放大.png" alt="放大" class="zoom-icon" />
       </button>
@@ -1054,7 +1054,12 @@ const initGraph = () => {
         },
       ],
       behaviors: [
-        "zoom-canvas",
+        {
+          type: "zoom-canvas",
+          sensitivity: 0.1,
+          minZoom: 0.3,
+          maxZoom: 3,
+        },
         {
           type: "drag-canvas",
         },
@@ -1425,23 +1430,24 @@ const bindEvents = () => {
     }
   });
 
-  // 画布缩放事件
-  graph.value.on("canvas:zoom", () => {
-    if (graph.value) {
-      const currentZoom = graph.value.getZoom();
-      zoomLevel.value = Math.round(currentZoom * 100);
-      savedZoom.value = currentZoom;
-
-      if (!isApplyingSavedPositions.value) {
-        validateAllNodePositions();
-      }
-    }
-  });
-
   // 画布拖拽结束事件
   graph.value.on("canvas:dragend", () => {
     saveViewState();
   });
+
+  // 监听鼠标滚轮事件，使用 setTimeout 确保获取到最新的缩放值
+  const canvas = graphRef.value;
+  if (canvas) {
+    canvas.addEventListener("wheel", () => {
+      setTimeout(() => {
+        if (graph.value) {
+          const currentZoom = graph.value.getZoom();
+          zoomLevel.value = Math.round(currentZoom * 100);
+          savedZoom.value = currentZoom;
+        }
+      }, 50);
+    }, { passive: true });
+  }
 };
 
 // 处理窗口大小变化
@@ -1729,13 +1735,13 @@ const handleEditClick = () => {
   emit("edit-graph");
 };
 
-// 处理放大
+// 处理放大 - 每次增加 10%
 const zoomIn = () => {
   if (!graph.value) return;
 
   try {
     const currentZoom = graph.value.getZoom ? graph.value.getZoom() : 1;
-    const newZoom = Math.min(currentZoom * 1.2, 3);
+    const newZoom = Math.min(currentZoom * 1.1, 3);
 
     if (graph.value.zoomTo) {
       const center = [
@@ -1762,13 +1768,13 @@ const zoomIn = () => {
   }
 };
 
-// 处理缩小
+// 处理缩小 - 每次减少 10%
 const zoomOut = () => {
   if (!graph.value) return;
 
   try {
     const currentZoom = graph.value.getZoom ? graph.value.getZoom() : 1;
-    const newZoom = Math.max(currentZoom / 1.2, 0.3);
+    const newZoom = Math.max(currentZoom / 1.1, 0.3);
 
     if (graph.value.zoomTo) {
       const center = [

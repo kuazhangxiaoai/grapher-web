@@ -1110,7 +1110,12 @@ const initGraph = () => {
         },
       ],
       behaviors: [
-        "zoom-canvas",
+        {
+          type: "zoom-canvas",
+          sensitivity: 0.1,
+          minZoom: 0.3,
+          maxZoom: 3,
+        },
         {
           type: "drag-canvas",
         },
@@ -1796,6 +1801,20 @@ const bindEvents = () => {
     saveViewState();
   });
 
+  // 监听鼠标滚轮事件，使用 setTimeout 确保获取到最新的缩放值
+  const canvas = graphRef.value;
+  if (canvas) {
+    canvas.addEventListener("wheel", () => {
+      setTimeout(() => {
+        if (graph.value) {
+          const currentZoom = graph.value.getZoom();
+          zoomLevel.value = Math.round(currentZoom * 100);
+          savedZoom.value = currentZoom;
+        }
+      }, 50);
+    }, { passive: true });
+  }
+
   // 节点右键菜单
   graph.value.on("node:contextmenu", (evt) => {
     evt.preventDefault();
@@ -2144,13 +2163,13 @@ const handleCreateRelationship = () => {
   showContextMenu.value = false;
 };
 
-// 处理放大
+// 处理放大 - 每次增加 10%
 const zoomIn = () => {
   if (!graph.value) return;
 
   try {
     const currentZoom = graph.value.getZoom ? graph.value.getZoom() : 1;
-    const newZoom = Math.min(currentZoom * 1.2, 3);
+    const newZoom = Math.min(currentZoom * 1.1, 3);
 
     if (graph.value.zoomTo) {
       const center = [
@@ -2177,13 +2196,13 @@ const zoomIn = () => {
   }
 };
 
-// 处理缩小
+// 处理缩小 - 每次减少 10%
 const zoomOut = () => {
   if (!graph.value) return;
 
   try {
     const currentZoom = graph.value.getZoom ? graph.value.getZoom() : 1;
-    const newZoom = Math.max(currentZoom / 1.2, 0.3);
+    const newZoom = Math.max(currentZoom / 1.1, 0.3);
 
     if (graph.value.zoomTo) {
       const center = [
