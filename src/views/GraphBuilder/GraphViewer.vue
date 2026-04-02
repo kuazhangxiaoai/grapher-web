@@ -205,7 +205,7 @@ const createCustomNode = (model) => {
 };
 
 // 注册 Vue 节点类型
-register(ExtensionCategory.NODE, "vue-node", VueNode);
+// register(ExtensionCategory.NODE, "vue-node", VueNode);
 
 // 计算节点所需尺寸
 const calculateNodeSize = (nodeData) => {
@@ -865,31 +865,47 @@ const initGraph = () => {
         edges: formattedEdges,
       },
       node: {
-        type: "vue-node",
+        // type: "vue-node",
+        type: "circle",
         style: {
-          component: (model) => createCustomNode(model),
+          // component: (model) => createCustomNode(model),
           size: (d) => {
-          // 不使用style.size，强制重新计算
-          // 获取当前节点的关联边数量
-          const data = graph.value.getData();
-          const nodeCount = (data.nodes || []).length;
-          const edgeCount = (data.edges || []).filter(edge => edge.source === d.id || edge.target === d.id).length;
-           // 根据节点数量动态调整最小节点大小
-          const minSize = nodeCount > 30 ? 30 : 60;
-          const maxSize = 120;
-          // 计算size，假设每多一条边+10像素
-          let size = minSize + edgeCount * 10;
-          if (size > maxSize) size = maxSize;
-          return [size, size];
-        },
-          keyShape: {
-            type: "circle",
-            lineWidth: 2,
-            stroke: "#ddd",
-            fill: "transparent",
+            // // 不使用style.size，强制重新计算
+//           // 获取当前节点的关联边数量
+//           const data = graph.value.getData();
+//           const nodeCount = (data.nodes || []).length;
+//           const edgeCount = (data.edges || []).filter(edge => edge.source === d.id || edge.target === d.id).length;
+//            // 根据节点数量动态调整最小节点大小
+//           const minSize = nodeCount > 30 ? 30 : 60;
+//           const maxSize = 120;
+//           // 计算size，假设每多一条边+10像素
+//           let size = minSize + edgeCount * 10;
+//           if (size > maxSize) size = maxSize;
+//           return [size, size];
+//         },
+//           keyShape: {
+//             type: "circle",
+//             lineWidth: 2,
+//             stroke: "#ddd",
+//             fill: "transparent",
+//           },
+            // 获取当前节点的关联边数量
+            const data = graph.value.getData();
+            const nodeCount = (data.nodes || []).length;
+            const edgeCount = (data.edges || []).filter(edge => edge.source === d.id || edge.target === d.id).length;
+            // 根据节点数量动态调整最小节点大小
+            const minSize = nodeCount > 30 ? 30 : 60;
+            const maxSize = 120;
+            // 计算size，假设每多一条边+10像素
+            let size = minSize + edgeCount * 10;
+            if (size > maxSize) size = maxSize;
+            return size;
           },
+          fill: (d) => d.data?.backgroundColor || "#43D7B5",
+          stroke: (d) => d.data?.backgroundColor || "#43D7B5",
+          lineWidth: 0,
           cursor: "pointer",
-          // 使用 Canvas 渲染节点标签
+          // G6 默认标签配置
           label: true,
           labelText: (d) => d.data?.name || "未命名",
           labelFontSize: 13,
@@ -902,7 +918,20 @@ const initGraph = () => {
         state: {
           selected: {
             stroke: (data) => data.data?.backgroundColor || "#43D7B5",
-            lineWidth: 3,
+            lineWidth: 0,
+            // stroke: false,
+            halo: false,
+            shadowColor: (data) => {
+              const baseColor = hexToRgba(data.data?.backgroundColor || "#43D7B5", 0.6);
+              return baseColor;
+            },
+            shadowBlur: 30,
+            shadowOffsetX: 0,
+            shadowOffsetY: 2,
+            labelFontWeight: "600",
+            labelFontSize: 14,
+            labelFill: (data) => "#000",
+            // labelFill: (data) => data.data?.backgroundColor || "#43D7B5",
           },
         },
       },

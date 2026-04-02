@@ -167,6 +167,7 @@ const createCustomNode = (model) => {
           boxShadow: isSelected
             ? `0 6px 30px ${backGround}`
             : "0px 8px 10px 0px rgba(78,89,105,0.18)",
+          // outline: isSelected ? `6px solid ${backGround}` : "none",
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",

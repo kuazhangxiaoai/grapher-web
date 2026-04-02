@@ -43,6 +43,9 @@ export default defineConfig({
         // target: "http://10.11.52.10:8080", //李双
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/serve_api/, "/graph_api/v1"),
+        proxyTimeout:60000,
+        timeout:60000,
+        headers:{ Connection: "keep-alive" }
       },
     },
   },
