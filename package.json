@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@antv/algorithm": "^0.1.26",
+    "@antv/g-svg": "^2.1.1",
     "@antv/g6": "^5.0.51",
     "@arco-design/web-vue": "^2.57.0",
     "@embedpdf/core": "^2.7.0",

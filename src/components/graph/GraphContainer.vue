@@ -32,6 +32,7 @@ import {
   h,
 } from "vue";
 import { Graph, register, ExtensionCategory } from "@antv/g6";
+import { Renderer as SVGRenderer } from "@antv/g-svg";
 import GraphContextMenu from "./GraphContextMenu.vue";
 import { VueNode } from "g6-extension-vue";
 
@@ -632,7 +633,7 @@ const initGraph = () => {
           lineWidth: 2,
           radius: 8,
           size: [nodeSize.width, nodeSize.height],
-          shadowColor: "rgba(78,89,105,0.25)",
+          shadowColor: "rgba(78,89,105,0.18)",
           shadowBlur: 10,
           shadowOffsetX: 0,
           shadowOffsetY: 8,
@@ -882,6 +883,7 @@ const initGraph = () => {
       ],
       animation: true,
       autoResize: true,
+      renderer: () => new SVGRenderer(),
     });
 
     graph.value = graphInstance;
@@ -2061,6 +2063,9 @@ defineExpose({
   font-weight: bold;
   margin: 0 2px;
   min-width: 50px;
+}
+::v-deep foreignObject{
+  overflow: visible;
 }
 </style>
 
