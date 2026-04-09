@@ -37,12 +37,12 @@ export default defineConfig({
     host: "0.0.0.0", // 本地ip地址
     port: 5173,
     proxy: {
-      "/serve_api": {
+      "/graph_api": {
         // target: "http://10.11.52.199:8080", //杨刚
         target: "http://10.11.52.173:8080", //王浩
         // target: "http://10.11.52.10:8080", //李双
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/serve_api/, "/graph_api/v1"),
+        rewrite: (path) => path.replace(/^\/graph_api/, "/graph_api/v1"),
         proxyTimeout:60000,
         timeout:60000,
         headers:{ Connection: "keep-alive" }

@@ -216,7 +216,7 @@ const mockLibraryTemplates = [
 export default [
   // 获取领域列表
   {
-    url: "/serve_api/field/selectFieldByCondition",
+    url: "/graph_api/field/selectFieldByCondition",
     method: "get",
     response: ({ query }) => {
       const { condition } = query;
@@ -239,7 +239,7 @@ export default [
 
   // 新增领域
   {
-    url: "/serve_api/field/addField",
+    url: "/graph_api/field/addField",
     method: "post",
     response: ({ body }) => {
       const { fieldName } = body;
@@ -260,7 +260,7 @@ export default [
 
   // 删除领域
   {
-    url: "/serve_api/field/remove",
+    url: "/graph_api/field/remove",
     method: "get",
     response: () => {
       return {
@@ -272,7 +272,7 @@ export default [
 
   // 获取专题列表
   {
-    url: "/serve_api/topic/selectTopicByCondition",
+    url: "/graph_api/topic/selectTopicByCondition",
     method: "get",
     response: ({ query }) => {
       const { condition, fieldId } = query;
@@ -300,7 +300,7 @@ export default [
 
   // 新增专题
   {
-    url: "/serve_api/topic/addTopic",
+    url: "/graph_api/topic/addTopic",
     method: "post",
     response: ({ body }) => {
       const { topicName, fieldId } = body;
@@ -322,7 +322,7 @@ export default [
 
   // 删除专题
   {
-    url: "/serve_api/topic/remove",
+    url: "/graph_api/topic/remove",
     method: "get",
     response: () => {
       return {
@@ -334,7 +334,7 @@ export default [
 
   // 节点/关系模版查询
   {
-    url: "/serve_api/template/queryTemplate",
+    url: "/graph_api/template/queryTemplate",
     method: "get",
     response: ({ query }) => {
       const { topicId } = query;
@@ -391,7 +391,7 @@ export default [
 
   // 节点模板保存
   {
-    url: "/serve_api/template/saveNodeTemplate",
+    url: "/graph_api/template/saveNodeTemplate",
     method: "post",
     response: ({ body }) => {
       const {
@@ -429,7 +429,7 @@ export default [
 
   // 关系模板保存
   {
-    url: "/serve_api/template/saveRelationTemplate",
+    url: "/graph_api/template/saveRelationTemplate",
     method: "post",
     response: ({ body }) => {
       const {
@@ -470,7 +470,7 @@ export default [
 
   // 节点模版删除
   {
-    url: "/serve_api/template/deleteNodeTemplate",
+    url: "/graph_api/template/deleteNodeTemplate",
     method: "post",
     response: () => {
       return {
@@ -482,7 +482,7 @@ export default [
 
   // 关系模版删除
   {
-    url: "/serve_api/template/deleteRelationTemplate",
+    url: "/graph_api/template/deleteRelationTemplate",
     method: "post",
     response: () => {
       return {
@@ -494,7 +494,7 @@ export default [
 
   // 组件库查询
   {
-    url: "/serve_api/template/queryLibraryTemplate",
+    url: "/graph_api/template/queryLibraryTemplate",
     method: "get",
     response: ({ query }) => {
       const { templateName } = query;
@@ -516,7 +516,7 @@ export default [
 
   // 添加到模型接口
   {
-    url: "/serve_api/template/addToModel",
+    url: "/graph_api/template/addToModel",
     method: "post",
     response: () => {
       return {
@@ -528,7 +528,7 @@ export default [
 
   // 复制领域
   {
-    url: "/serve_api/field/copyField",
+    url: "/graph_api/field/copyField",
     method: "get",
     response: ({ query }) => {
       const { fieldId } = query;
@@ -557,7 +557,7 @@ export default [
 
   // 复制专题
   {
-    url: "/serve_api/topic/copyTopic",
+    url: "/graph_api/topic/copyTopic",
     method: "get",
     response: ({ query }) => {
       const { topicId } = query;
@@ -593,7 +593,7 @@ export default [
   // 文章相关接口
   // 获取graph列表
   {
-    url: "/serve_api/article/selectArticle",
+    url: "/graph_api/article/selectArticle",
     method: "get",
     response: ({ query }) => {
       const { topicId, condition } = query;
@@ -635,7 +635,7 @@ export default [
 
   // 创建文章
   {
-    url: "/serve_api/article/addArticle",
+    url: "/graph_api/article/addArticle",
     method: "post",
     response: () => {
       return {
@@ -651,7 +651,7 @@ export default [
 
   // 获取后端pdf的url
   {
-    url: "/serve_api/article/getFileUrl",
+    url: "/graph_api/article/getFileUrl",
     method: "get",
     response: () => {
       return {
@@ -666,7 +666,7 @@ export default [
 
   // 删除文章
   {
-    url: "/serve_api/article/deleteArticle",
+    url: "/graph_api/article/deleteArticle",
     method: "get",
     response: () => {
       return {
@@ -679,7 +679,7 @@ export default [
   // 模板相关接口
   // 获取topic下的所有节点模板
   {
-    url: "/serve_api/template/queryNodeTemplate",
+    url: "/graph_api/template/queryNodeTemplate",
     method: "get",
     response: ({ query }) => {
       const { topicId } = query;
@@ -707,7 +707,7 @@ export default [
 
   // 获取nodeTemplate 属性
   {
-    url: "/serve_api/template/queryNodeTemplateProperties",
+    url: "/graph_api/template/queryNodeTemplateProperties",
     method: "get",
     response: ({ query }) => {
       const { nodeTemplateId } = query;
@@ -735,7 +735,7 @@ export default [
 
   // 查询关系模板
   {
-    url: "/serve_api/template/queryRelationTemplate",
+    url: "/graph_api/template/queryRelationTemplate",
     method: "get",
     response: ({ query }) => {
       const { topicId } = query;
@@ -763,7 +763,7 @@ export default [
 
   // 查询关系模板属性
   {
-    url: "/serve_api/template/queryRelationTemplateProperties",
+    url: "/graph_api/template/queryRelationTemplateProperties",
     method: "get",
     response: ({ query }) => {
       const { relationTemplateId } = query;
@@ -792,7 +792,7 @@ export default [
   // 序列相关接口
   // 段落分词接口
   {
-    url: "/serve_api/sequence/segmentSequence",
+    url: "/graph_api/sequence/segmentSequence",
     method: "post",
     response: ({ body }) => {
       // 模拟分词结果
@@ -813,7 +813,7 @@ export default [
 
   // 段落列表查询接口
   {
-    url: "/serve_api/sequence/getSequenceList",
+    url: "/graph_api/sequence/getSequenceList",
     method: "get",
     response: ({ query }) => {
       const { articleId } = query;
@@ -841,7 +841,7 @@ export default [
 
   // 段落对应图谱保存提交接口
   {
-    url: "/serve_api/sequence/saveGraph",
+    url: "/graph_api/sequence/saveGraph",
     method: "post",
     response: () => {
       return {
@@ -853,7 +853,7 @@ export default [
 
   // 段落对应图谱查询接口
   {
-    url: "/serve_api/sequence/getGraphBySequenceId",
+    url: "/graph_api/sequence/getGraphBySequenceId",
     method: "get",
     response: ({ query }) => {
       const { sequenceId } = query;
@@ -1002,7 +1002,7 @@ export default [
 
   // 文章对应图谱查询接口
   {
-    url: "/serve_api/sequence/getGraphByArticleId",
+    url: "/graph_api/sequence/getGraphByArticleId",
     method: "get",
     response: ({ query }) => {
       const { articleId } = query;
@@ -1151,7 +1151,7 @@ export default [
 
   // 专题下所有图谱对应图谱查询接口
   {
-    url: "/serve_api/sequence/getGraphByTopicId",
+    url: "/graph_api/sequence/getGraphByTopicId",
     method: "get",
     response: ({ query }) => {
       const { topicId } = query;
@@ -1300,7 +1300,7 @@ export default [
 
   // 领域下所有专题对应图谱查询接口
   {
-    url: "/serve_api/sequence/getGraphByFieldId",
+    url: "/graph_api/sequence/getGraphByFieldId",
     method: "get",
     response: ({ query }) => {
       const { fieldId } = query;
@@ -1449,7 +1449,7 @@ export default [
 
   // 模糊查询节点名称
   {
-    url: "/serve_api/sequence/getNodeNamesByArticleId",
+    url: "/graph_api/sequence/getNodeNamesByArticleId",
     method: "post",
     response: () => {
       // 模拟节点名称数据
@@ -1468,7 +1468,7 @@ export default [
 
   // 模糊查询关系名称
   {
-    url: "/serve_api/sequence/getRelationNamesByArticleId",
+    url: "/graph_api/sequence/getRelationNamesByArticleId",
     method: "post",
     response: () => {
       // 模拟关系名称数据
@@ -1486,7 +1486,7 @@ export default [
 
   // 节点保存提交接口
   {
-    url: "/serve_api/sequence/saveNode",
+    url: "/graph_api/sequence/saveNode",
     method: "post",
     response: () => {
       return {
@@ -1501,7 +1501,7 @@ export default [
 
   // 节点删除接口
   {
-    url: "/serve_api/sequence/deleteNode",
+    url: "/graph_api/sequence/deleteNode",
     method: "post",
     response: () => {
       return {
@@ -1513,7 +1513,7 @@ export default [
 
   // 关系保存接口
   {
-    url: "/serve_api/sequence/saveRelation",
+    url: "/graph_api/sequence/saveRelation",
     method: "post",
     response: () => {
       return {
@@ -1528,7 +1528,7 @@ export default [
 
   // 关系删除接口
   {
-    url: "/serve_api/sequence/deleteRelation",
+    url: "/graph_api/sequence/deleteRelation",
     method: "post",
     response: () => {
       return {

@@ -2,7 +2,7 @@
 
 export default [
   {
-    url: '/serve_api/user/login',
+    url: '/graph_api/user/login',
     method: 'post',
     response: () => {
       // 直接返回成功的响应，忽略参数验证
@@ -24,7 +24,7 @@ export default [
     }
   },
   {
-    url: '/serve_api/user/register',
+    url: '/graph_api/user/register',
     method: 'post',
     response: () => {
       return {
@@ -37,7 +37,7 @@ export default [
     }
   },
   {
-    url: '/serve_api/user/logout',
+    url: '/graph_api/user/logout',
     method: 'post',
     response: () => {
       return {
@@ -47,7 +47,7 @@ export default [
     }
   },
   {
-    url: '/serve_api/user/getUserInfo',
+    url: '/graph_api/user/getUserInfo',
     method: 'get',
     response: () => {
       return {
